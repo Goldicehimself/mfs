@@ -9,12 +9,7 @@ import {
   Box,
   Divider,
 } from '@mui/material';
-import {
-  Assignment as AssignmentIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Build as BuildIcon,
-} from '@mui/icons-material';
+import { FileText, CheckCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const RecentActivity = ({ activities = [] }) => {
@@ -31,15 +26,15 @@ const RecentActivity = ({ activities = [] }) => {
   const getActivityIcon = (type) => {
     switch (type) {
       case 'work_order':
-        return <AssignmentIcon />;
+        return <FileText size={16} />;
       case 'completed':
-        return <CheckCircleIcon color="success" />;
+        return <CheckCircle size={16} />;
       case 'overdue':
-        return <WarningIcon color="error" />;
+        return <AlertTriangle size={16} />;
       case 'maintenance':
-        return <BuildIcon />;
+        return <Wrench size={16} />;
       default:
-        return <AssignmentIcon />;
+        return <FileText size={16} />;
     }
   };
 

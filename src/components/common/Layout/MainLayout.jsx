@@ -15,21 +15,7 @@ import {
   Divider,
   Badge,
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Notifications as NotificationsIcon,
-  Person as PersonIcon,
-  Logout as LogoutIcon,
-  Settings as SettingsIcon,
-  Dashboard as DashboardIcon,
-  Build as BuildIcon,
-  Business as BusinessIcon,
-  Inventory as InventoryIcon,
-  Assignment as AssignmentIcon,
-  CalendarToday as CalendarIcon,
-  People as PeopleIcon,
-  Assessment as AssessmentIcon,
-} from '@mui/icons-material';
+import { Menu as MenuIcon, Bell, User, LogOut, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import NavigationMenu from '../Navigation/NavigationMenu';
@@ -107,24 +93,26 @@ const MainLayout = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>
-              MaintainPro
-            </Typography>
-          </Box>
+
+          {/* App Title (visible on sm+) */}
+          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', display: { xs: 'none', sm: 'block' }, mr: 2 }}>
+            SonOfMan MaintainPro
+          </Typography>
+
+          {/* Spacer to push controls to right */}
+          <Box sx={{ flexGrow: 1 }} />
 
           {/* Notifications */}
-          <IconButton color="inherit" sx={{ mr: 2 }}>
+          <IconButton color="inherit" sx={{ mr: 2 }} aria-label="notifications">
             <Badge badgeContent={4} color="error">
-              <NotificationsIcon />
+              <Bell />
             </Badge>
           </IconButton>
 
           {/* User Profile */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Avatar
-              sx={{ width: 40, height: 40, cursor: 'pointer' }}
+              sx={{ width: 40, height: 40, cursor: 'pointer', border: '1px solid #e5e7eb' }}
               onClick={handleProfileMenuOpen}
               src={user?.avatar}
             >
@@ -151,14 +139,14 @@ const MainLayout = ({ children }) => {
           >
             <MenuItem onClick={handleProfile}>
               <ListItemIcon>
-                <PersonIcon fontSize="small" />
+                <User size={16} />
               </ListItemIcon>
               <ListItemText>Profile</ListItemText>
             </MenuItem>
             
             <MenuItem onClick={handleSettings}>
               <ListItemIcon>
-                <SettingsIcon fontSize="small" />
+                <Settings2 size={16} />
               </ListItemIcon>
               <ListItemText>Settings</ListItemText>
             </MenuItem>
@@ -167,7 +155,7 @@ const MainLayout = ({ children }) => {
             
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
-                <LogoutIcon fontSize="small" />
+                <LogOut size={16} />
               </ListItemIcon>
               <ListItemText>Logout</ListItemText>
             </MenuItem>

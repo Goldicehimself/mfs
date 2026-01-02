@@ -150,7 +150,7 @@ const NavigationMenu = () => {
       {/* Logo */}
       <Box className="logo" sx={{ p: 3, pb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          MaintainPro
+          SMMP
         </Typography>
         <Typography variant="caption" color="text.secondary">
           Facility Maintenance Platform

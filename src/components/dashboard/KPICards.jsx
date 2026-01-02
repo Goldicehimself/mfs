@@ -7,7 +7,7 @@ import {
   IconButton,
   Chip,
 } from '@mui/material';
-import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const KPICard = ({ title, value, change, trend, icon, color, link }) => {
@@ -46,7 +46,7 @@ const KPICard = ({ title, value, change, trend, icon, color, link }) => {
           </Box>
           {trend && (
             <Chip
-              icon={trend === 'up' ? <ArrowUpward /> : <ArrowDownward />}
+              icon={trend === 'up' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
               label={change}
               size="small"
               color={trend === 'up' ? 'success' : 'error'}

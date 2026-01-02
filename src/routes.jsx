@@ -18,6 +18,7 @@ import AssetDetail from './pages/Assets/AssetDetail';
 import AssetForm from './components/assets/AssetForm';
 import WorkOrders from './pages/WorkOrders/WorkOrders';
 import WorkOrderDetail from './pages/WorkOrders/WorkOrderDetail';
+import WorkOrderCreate from './pages/WorkOrders/WorkOrderCreate';
 import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaintenance';
 import Vendors from './pages/Vendors/Vendors';
 import VendorPortal from './pages/Vendors/VendorPortal';
@@ -101,6 +102,12 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      <Route path="/work-orders/new" element={
+        <ProtectedRoute>
+          <MainLayout><WorkOrderCreate /></MainLayout>
+        </ProtectedRoute>
+      } />
+
       <Route path="/work-orders/:id" element={
         <ProtectedRoute>
           <MainLayout><WorkOrderDetail /></MainLayout>

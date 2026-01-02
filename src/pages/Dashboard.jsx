@@ -10,16 +10,14 @@ import {
   Stack,
   Chip,
 } from '@mui/material';
-import {
-  TrendingUp,
-  TrendingDown,
-  Assignment,
-  Warning,
-  CheckCircle,
-  Schedule,
-  Build,
-  Business,
-} from '@mui/icons-material';
+import { ArrowUp, ArrowDown, FileText, AlertTriangle, CheckCircle, Clock, Wrench, Building } from 'lucide-react';
+import Assignment from '@mui/icons-material/Assignment';
+import Warning from '@mui/icons-material/Warning';
+import Schedule from '@mui/icons-material/Schedule';
+import Business from '@mui/icons-material/Business';
+import Build from '@mui/icons-material/Build';
+import TrendingUp from '@mui/icons-material/TrendingUp';
+import TrendingDown from '@mui/icons-material/TrendingDown';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
