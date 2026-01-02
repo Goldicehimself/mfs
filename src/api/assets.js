@@ -51,3 +51,15 @@ export const getAssetCategories = async () => {
   const response = await axiosInstance.get('/assets/categories');
   return response.data;
 };
+
+export const uploadAssetImage = async (assetId, file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await axiosInstance.post(`/assets/${assetId}/image`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

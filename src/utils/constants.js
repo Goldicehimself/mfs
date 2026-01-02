@@ -1,14 +1,16 @@
+import { Zap, Droplet, Snowflake, Brush, Bug, Flame, ArrowUpDown, Lock, Fuel, Toilet } from 'lucide-react';
+
 export const SERVICE_CATEGORIES = [
-  { value: 'electrical', label: 'Electrical', icon: '⚡' },
-  { value: 'plumbing', label: 'Plumbing', icon: '🚰' },
-  { value: 'hvac', label: 'HVAC', icon: '❄️' },
-  { value: 'cleaning', label: 'Cleaning', icon: '🧹' },
-  { value: 'pest_control', label: 'Pest Control', icon: '🐛' },
-  { value: 'fire_safety', label: 'Fire Safety', icon: '🔥' },
-  { value: 'elevator', label: 'Elevator', icon: '🛗' },
-  { value: 'security', label: 'Security', icon: '🔒' },
-  { value: 'gas', label: 'Gas Systems', icon: '⛽' },
-  { value: 'sewage', label: 'Sewage/Waste', icon: '🚽' },
+  { value: 'electrical', label: 'Electrical', icon: Zap },
+  { value: 'plumbing', label: 'Plumbing', icon: Droplet },
+  { value: 'hvac', label: 'HVAC', icon: Snowflake },
+  { value: 'cleaning', label: 'Cleaning', icon: Brush },
+  { value: 'pest_control', label: 'Pest Control', icon: Bug },
+  { value: 'fire_safety', label: 'Fire Safety', icon: Flame },
+  { value: 'elevator', label: 'Elevator', icon: ArrowUpDown },
+  { value: 'security', label: 'Security', icon: Lock },
+  { value: 'gas', label: 'Gas Systems', icon: Fuel },
+  { value: 'sewage', label: 'Sewage/Waste', icon: Toilet },
 ];
 
 export const WORK_ORDER_PRIORITIES = [

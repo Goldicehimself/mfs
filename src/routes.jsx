@@ -15,6 +15,7 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Assets from './pages/Assets/Assets';
 import AssetDetail from './pages/Assets/AssetDetail';
+import AssetForm from './components/assets/AssetForm';
 import WorkOrders from './pages/WorkOrders/WorkOrders';
 import WorkOrderDetail from './pages/WorkOrders/WorkOrderDetail';
 import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaintenance';
@@ -73,6 +74,18 @@ const AppRoutes = () => {
       <Route path="/assets" element={
         <ProtectedRoute allowedRoles={["facility_manager", "admin", "technician"]}>
           <MainLayout><Assets /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/assets/new" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><AssetForm /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/assets/:id/edit" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><AssetForm /></MainLayout>
         </ProtectedRoute>
       } />
       

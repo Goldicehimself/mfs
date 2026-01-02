@@ -9,21 +9,8 @@ import {
   Box,
   Typography,
 } from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Build as BuildIcon,
-  Assignment as AssignmentIcon,
-  CalendarToday as CalendarIcon,
-  Business as BusinessIcon,
-  People as PeopleIcon,
-  Inventory as InventoryIcon,
-  Assessment as AssessmentIcon,
-  Settings as SettingsIcon,
-  ExpandLess,
-  ExpandMore,
-  AddCircle as AddCircleIcon,
-  ViewList as ViewListIcon,
-} from '@mui/icons-material';
+import { LayoutDashboard, Wrench, ClipboardList, Calendar, Building, Users, Boxes, BarChart, Settings2, ChevronUp, ChevronDown, PlusCircle, List as IconList } from 'lucide-react';
+import './NavigationMenu.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -40,62 +27,62 @@ const NavigationMenu = () => {
   const menuItems = [
     {
       title: 'Dashboard',
-      icon: <DashboardIcon />,
+      icon: <LayoutDashboard size={18} />,
       path: '/dashboard',
       roles: ['facility_manager', 'admin'],
     },
     {
       title: 'Assets',
-      icon: <BusinessIcon />,
+      icon: <Building size={18} />,
       children: [
-        { title: 'Asset List', path: '/assets', icon: <ViewListIcon /> },
-        { title: 'Add New Asset', path: '/assets/new', icon: <AddCircleIcon /> },
+        { title: 'Asset List', path: '/assets', icon: <IconList size={16} /> },
+        { title: 'Add New Asset', path: '/assets/new', icon: <PlusCircle size={16} /> },
       ],
       roles: ['facility_manager', 'admin', 'technician'],
     },
     {
       title: 'Work Orders',
-      icon: <AssignmentIcon />,
+      icon: <ClipboardList size={18} />,
       children: [
-        { title: 'All Work Orders', path: '/work-orders', icon: <ViewListIcon /> },
-        { title: 'Create New', path: '/work-orders/new', icon: <AddCircleIcon /> },
-        { title: 'My Assignments', path: '/work-orders?filter=my-tasks', icon: <BuildIcon /> },
+        { title: 'All Work Orders', path: '/work-orders', icon: <IconList size={16} /> },
+        { title: 'Create New', path: '/work-orders/new', icon: <PlusCircle size={16} /> },
+        { title: 'My Assignments', path: '/work-orders?filter=my-tasks', icon: <Wrench size={16} /> },
       ],
       roles: ['facility_manager', 'admin', 'technician', 'vendor'],
     },
     {
       title: 'Preventive Maintenance',
-      icon: <CalendarIcon />,
+      icon: <Calendar size={18} />,
       path: '/preventive-maintenance',
       roles: ['facility_manager', 'admin'],
     },
     {
       title: 'Service Requests',
-      icon: <AddCircleIcon />,
+      icon: <PlusCircle size={18} />,
       path: '/service-requests',
       roles: ['facility_manager', 'admin', 'staff'],
     },
     {
       title: 'Vendors',
-      icon: <PeopleIcon />,
+      icon: <Users size={18} />,
       path: '/vendors',
       roles: ['facility_manager', 'admin', 'procurement'],
     },
     {
       title: 'Inventory',
-      icon: <InventoryIcon />,
+      icon: <Boxes size={18} />,
       path: '/inventory',
       roles: ['facility_manager', 'admin', 'technician'],
     },
     {
       title: 'Reports',
-      icon: <AssessmentIcon />,
+      icon: <BarChart size={18} />,
       path: '/reports',
       roles: ['facility_manager', 'admin', 'finance'],
     },
     {
       title: 'Settings',
-      icon: <SettingsIcon />,
+      icon: <Settings2 size={18} />,
       path: '/settings',
       roles: ['facility_manager', 'admin'],
     },
@@ -118,7 +105,7 @@ const NavigationMenu = () => {
                 {item.icon}
               </ListItemIcon>
               <ListItemText primary={item.title} />
-              {open ? <ExpandLess /> : <ExpandMore />}
+              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} /> }
             </ListItemButton>
           </ListItem>
           <Collapse in={open} timeout="auto" unmountOnExit>
@@ -159,9 +146,9 @@ const NavigationMenu = () => {
   };
 
   return (
-    <Box>
+    <Box className="navigation-menu">
       {/* Logo */}
-      <Box sx={{ p: 3, pb: 2 }}>
+      <Box className="logo" sx={{ p: 3, pb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
           MaintainPro
         </Typography>
@@ -195,7 +182,7 @@ const NavigationMenu = () => {
                 onClick={() => navigate('/work-orders/new')}
               >
                 <ListItemIcon sx={{ color: 'white' }}>
-                  <AddCircleIcon />
+                  <PlusCircle size={18} />
                 </ListItemIcon>
                 <ListItemText primary="Report Issue" />
               </ListItemButton>

@@ -1,0 +1,98 @@
+.qr-modal {
+  max-width: 900px;
+  width: 95vw;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.qr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  padding: 0.4rem;
+  border-radius: 6px;
+}
+
+.qr-body {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.video-wrap {
+  flex: 1 1 520px;
+  min-height: 320px;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.qr-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,0.9);
+  background: rgba(0,0,0,0.35);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.qr-controls {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-input input[type=file] {
+  display: block;
+}
+
+.status .error {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.status .result {
+  color: #047857;
+  font-weight: 700;
+}
+
+.status .warning {
+  color: #92400e;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+@media (max-width: 900px) {
+  .qr-body {
+    flex-direction: column;
+  }
+  .qr-controls {
+    width: 100%;
+  }
+}
