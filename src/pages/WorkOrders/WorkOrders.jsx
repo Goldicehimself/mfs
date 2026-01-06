@@ -201,70 +201,60 @@ export default function WorkOrders() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-col md:flex-row md:items-center md:gap-4 gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 text-gray-400" />
-            <input
-              className="w-full pl-10 pr-3 py-2 border rounded-md bg-gray-50"
-              placeholder="Search work orders by ID"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            />
-          </div>
-
-          <select className="border rounded-md p-2 bg-white" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="overdue">Overdue</option>
-          </select>
-
-          <select className="border rounded-md p-2 bg-white" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
-            <option value="all">All Priorities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-
-          <div className="ml-auto flex gap-2">
-            <button className="px-3 py-1 border rounded-md text-sm" onClick={() => alert('Bulk assign')}>
-              Bulk Assign
-            </button>
-            <button className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm flex items-center gap-2" onClick={() => alert('Export CSV')}>
-              <Download size={14} /> Export CSV
-            </button>
-          </div>
+      <div className="filters-section">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search work orders by ID or title"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          />
         </div>
 
-        {/* Bottom row: Assignee / Date Range / Location */}
-        <div className="flex items-center gap-6 mt-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">Assignee:</span>
-            <select className="filter-select bg-white" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
-              <option value="all">All Technicians</option>
-              {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
+        <select className="filter-select" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Categories</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">Date Range:</span>
-            <select className="filter-select bg-white" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="90">Last 90 Days</option>
-            </select>
-          </div>
+        <select className="filter-select" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Status</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="overdue">Overdue</option>
+        </select>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">Location:</span>
-            <select className="filter-select bg-white" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
-              <option value="all">All Locations</option>
-              {locations.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-          </div>
+        <select className="filter-select" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Priorities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <select className="filter-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Technicians</option>
+          {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+
+        <select className="filter-select" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
+          <option value="7">Last 7 Days</option>
+          <option value="30">Last 30 Days</option>
+          <option value="90">Last 90 Days</option>
+        </select>
+
+        <select className="filter-select" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Locations</option>
+          {locations.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+
+        <div className="sort-controls ml-auto">
+          <button className="px-3 py-1 border rounded-md text-sm" onClick={() => alert('Bulk assign')}>
+            Bulk Assign
+          </button>
+          <button className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm flex items-center gap-2" onClick={() => alert('Export CSV')}>
+            <Download size={14} /> Export CSV
+          </button>
         </div>
       </div>
 
