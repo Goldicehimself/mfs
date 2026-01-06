@@ -203,7 +203,9 @@ export default function WorkOrders() {
       {/* Filters */}
       <div className="filters-section">
         <div className="search-box">
+          <Search className="search-icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
+            className="w-full pl-10 pr-3 py-2 border rounded-md bg-gray-50"
             type="text"
             placeholder="Search work orders by ID or title"
             value={search}
@@ -211,17 +213,17 @@ export default function WorkOrders() {
           />
         </div>
 
-        <select className="filter-select" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-
         <select className="filter-select" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
           <option value="all">All Status</option>
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="completed">Completed</option>
           <option value="overdue">Overdue</option>
+        </select>
+
+        <select className="filter-select" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
+          <option value="all">All Categories</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
 
         <select className="filter-select" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
