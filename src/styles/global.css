@@ -32,11 +32,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom theme helpers */
-.kpi-card { padding: 1rem 1.25rem; border-radius: 0.75rem; background: var(--mp-card); box-shadow: var(--mp-shadow); display:flex; align-items:center; justify-content:space-between; }
-.kpi-value { font-size: 2rem; line-height:1; font-weight:700; color:var(--mp-heading); }
-.kpi-label { font-size: 0.875rem; color:var(--mp-muted); }
-.kpi-badge { min-width: 2rem; height: 2rem; display:flex; align-items:center; justify-content:center; border-radius:9999px; font-weight:700; color: #fff; font-size:0.85rem; }
+/* KPI styles migrated to Tailwind — removed */
 
 
 /* Selected row visuals */
@@ -69,15 +65,36 @@ body {
 .filter-label { font-size: 0.95rem; color: var(--mp-text); margin-right: 0.5rem; font-weight:500; }
 
 /* Standard filters-section used across lists (search + compact selects + actions) */
-.filters-section { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-wrap: wrap; }
-.search-box { position: relative; flex: 1; min-width: 200px; }
-.search-box .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9CA3AF; }
-.search-box input { width: 100%; padding: 0.75rem 1rem 0.75rem 38px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; background: white; transition: all 0.3s ease; }
-.search-box input:focus { outline: none; border-color: #2c5aa0; box-shadow: 0 0 0 3px rgba(44,90,160,0.1); }
-.filter-select, .sort-select { padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 6px; background: white; font-size: 0.95rem; cursor: pointer; transition: all 0.3s ease; min-width: 120px; }
-.filter-select:hover, .sort-select:hover { border-color: #2c5aa0; }
-.filter-select:focus, .sort-select:focus { outline: none; border-color: #2c5aa0; box-shadow: 0 0 0 3px rgba(44,90,160,0.1); }
+.filters-section { display:flex; gap:1rem; align-items:center; margin-bottom:2rem; background:#fff; padding:1.5rem; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.06); flex-wrap:wrap; }
+.search-box { position:relative; flex:1; min-width:200px; }
+.search-box .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9CA3AF; }
+.search-box input { width:100%; padding:0.75rem 1rem 0.75rem 38px; border:1px solid #e6eef9; border-radius:8px; font-size:0.95rem; background:#f8fafc; transition:all .2s ease; }
+.search-box input:focus { outline:none; border-color:#2c5aa0; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
+
+/* Compact filter chips (status pills) */
+.filter-chip { display:inline-flex; align-items:center; gap:0.45rem; padding:0.4rem 0.7rem; border-radius:9999px; background:#f1f5f9; border:1px solid #e6eef9; font-weight:600; font-size:0.85rem; color:var(--mp-text); cursor:pointer; }
+.filter-chip--active { background:#2563eb; color:white; border-color:rgba(37,99,235,0.12); }
+
+.filter-select, .sort-select { padding:0.6rem 0.9rem; border:1px solid #e6eef9; border-radius:0.6rem; background:white; font-size:0.95rem; cursor:pointer; transition:all 0.15s ease; min-width:140px; }
+.filter-select:hover, .sort-select:hover { border-color:#cbd5e1; }
+
+/* Assignment card styles */
+.assignment-card { background:white; border-radius:8px; box-shadow:0 1px 2px rgba(2,6,23,0.03); display:flex; align-items:center; justify-content:space-between; padding:1rem; border:1px solid #eef2f6; }
+.assignment-left { display:flex; flex-direction:column; gap:6px; }
+.assignment-top { display:flex; align-items:center; gap:8px; }
+.assignment-id { font-weight:700; color:var(--mp-heading); }
+.assignment-meta { font-size:0.85rem; color:#6b7280; }
+
+/* KPI badge */
+.kp-badge { min-width:2rem; height:2rem; display:flex; align-items:center; justify-content:center; border-radius:9999px; font-weight:700; color:#fff; font-size:0.85rem; }
+.kp-badge.green { background:#10b981; }
+.kp-badge.yellow { background:#f59e0b; }
+.kp-badge.red { background:#ef4444; }
+
 .sort-controls { display:flex; gap:0.75rem; align-items:center; margin-left:auto; white-space:nowrap; }
+
+/* Make sure everything wraps nicely on small screens */
+@media (max-width:768px) { .filters-section { gap:0.5rem; padding:1rem; } .filter-select { min-width:120px; } .search-box { min-width:160px; } }
 /* Table tweaks */
 .table-header { font-size: 0.75rem; color: var(--mp-muted); font-weight:600; letter-spacing:0.01em; }
 .table-cell { font-size: 0.95rem; color: var(--mp-text); }
@@ -89,10 +106,7 @@ body {
 .table-action-outline { background:transparent; border:1px solid #e6edf8; color:var(--mp-primary); }
 
 
-/* KPI helpers */
-.kpi-card { padding: 1rem; border-radius: 0.75rem; background: var(--mp-card); box-shadow: 0 1px 3px rgba(15,23,42,0.04); }
-.kpi-value { font-size: 1.875rem; font-weight: 700; }
-.kpi-badge { width: 2rem; height: 2rem; display:flex; align-items:center; justify-content:center; border-radius:9999px; font-weight:700; color: #fff; }
+/* KPI styles migrated to Tailwind — removed */
 
 /* Modal tweaks */
 .modal-confirm { font-weight: 600; }
@@ -187,10 +201,7 @@ body {
   font-weight: 600;
 }
 
-/* KPI tweaks */
-.kpi-card { padding: 1rem; border-radius: 0.75rem; }
-.kpi-value { font-size: 1.875rem; font-weight: 700; }
-.kpi-badge { width: 2rem; height: 2rem; display:flex; align-items:center; justify-content:center; border-radius:9999px; font-weight:700; }
+/* KPI styles migrated to Tailwind — removed */
 
 /* Table responsive */
 @media (max-width: 640px) {

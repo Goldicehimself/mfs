@@ -14,8 +14,7 @@ const AuthLayout = ({ children }) => {
       }}
     >
       <Container maxWidth="sm">
-        <Paper
-          elevation={3}
+        <Paper className="bg-card shadow"
           sx={{
             padding: 4,
             borderRadius: 2,

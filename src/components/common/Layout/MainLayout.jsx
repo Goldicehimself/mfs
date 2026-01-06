@@ -1,222 +1,148 @@
-import React, { useState } from 'react';
-import {
-  AppBar,
-  Box,
-  CssBaseline,
-  Drawer,
-  IconButton,
-  Toolbar,
-  Typography,
-  Avatar,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Badge,
-} from '@mui/material';
-import { Menu as MenuIcon, Bell, User, LogOut, Settings2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
-import NavigationMenu from '../Navigation/NavigationMenu';
+import React, { useState, useContext } from "react";
+import { Menu, Bell, Sun, Moon, LogOut, Settings, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-const drawerWidth = 260;
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+
+// import ThemeContext from "../../../contexts/ThemeContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import NavigationMenu from "../Navigation/NavigationMenu";
 
 const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
   const { user, logout } = useAuth();
+  // const { theme, toggleTheme } = useContext(ThemeContext);
+  // Theme context temporarily disabled — use safe fallbacks
+  const theme = 'light';
+  const toggleTheme = () => {};
   const navigate = useNavigate();
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleProfileMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    logout();
-    handleProfileMenuClose();
-  };
-
-  const handleProfile = () => {
-    navigate('/profile');
-    handleProfileMenuClose();
-  };
-
-  const handleSettings = () => {
-    navigate('/settings');
-    handleProfileMenuClose();
-  };
 
   const getRoleDisplay = (role) => {
     const roles = {
-      facility_manager: 'Facility Manager',
-      technician: 'Maintenance Technician',
-      vendor: 'Vendor',
-      staff: 'Staff Member',
-      finance: 'Finance Officer',
-      admin: 'Administrator',
+      facility_manager: "Facility Manager",
+      technician: "Maintenance Technician",
+      vendor: "Vendor",
+      staff: "Staff Member",
+      finance: "Finance Officer",
+      admin: "Administrator",
     };
     return roles[role] || role;
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
+    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
       
-      {/* App Bar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-          backgroundColor: 'white',
-          color: 'text.primary',
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
-          borderBottom: '1px solid #e5e7eb',
-        }}
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform duration-300
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
+        <NavigationMenu />
+      </aside>
 
-          {/* App Title (visible on sm+) */}
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', display: { xs: 'none', sm: 'block' }, mr: 2 }}>
-            SonOfMan MaintainPro
-          </Typography>
+      {/* Overlay (mobile) */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
-          {/* Spacer to push controls to right */}
-          <Box sx={{ flexGrow: 1 }} />
-
-          {/* Notifications */}
-          <IconButton color="inherit" sx={{ mr: 2 }} aria-label="notifications">
-            <Badge badgeContent={4} color="error">
-              <Bell />
-            </Badge>
-          </IconButton>
-
-          {/* User Profile */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Avatar
-              sx={{ width: 40, height: 40, cursor: 'pointer', border: '1px solid #e5e7eb' }}
-              onClick={handleProfileMenuOpen}
-              src={user?.avatar}
-            >
-              {user?.name?.charAt(0)}
-            </Avatar>
-            
-            <Box sx={{ ml: 2, display: { xs: 'none', md: 'block' } }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                {user?.name}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {getRoleDisplay(user?.role)}
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Profile Menu */}
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleProfileMenuClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <MenuItem onClick={handleProfile}>
-              <ListItemIcon>
-                <User size={16} />
-              </ListItemIcon>
-              <ListItemText>Profile</ListItemText>
-            </MenuItem>
-            
-            <MenuItem onClick={handleSettings}>
-              <ListItemIcon>
-                <Settings2 size={16} />
-              </ListItemIcon>
-              <ListItemText>Settings</ListItemText>
-            </MenuItem>
-            
-            <Divider />
-            
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
-                <LogOut size={16} />
-              </ListItemIcon>
-              <ListItemText>Logout</ListItemText>
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
-
-      {/* Navigation Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-        >
-          <NavigationMenu />
-        </Drawer>
+      {/* Main area */}
+      <div className="flex flex-1 flex-col md:ml-64">
         
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: '1px solid #e5e7eb',
-            },
-          }}
-          open
-        >
-          <NavigationMenu />
-        </Drawer>
-      </Box>
+        {/* Topbar */}
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-card px-4">
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu />
+            </Button>
 
-      {/* Main Content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
-        }}
-      >
-        <Toolbar /> {/* Spacing for fixed AppBar */}
-        {children}
-      </Box>
-    </Box>
+            <h1 className="hidden text-lg font-bold text-primary md:block">
+              SonOfMan MaintainPro
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            
+            {/* Notifications */}
+            <Button variant="ghost" size="icon">
+              <Badge className="absolute -right-1 -top-1 px-1">4</Badge>
+              <Bell />
+            </Button>
+
+            {/* Theme toggle */}
+            <Button variant="ghost" size="icon" onClick={() => {}}>
+              <Sun />
+            </Button>
+
+            {/* Profile dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback>
+                      {user?.name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="hidden text-left md:block">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {getRoleDisplay(user?.role)}
+                    </p>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

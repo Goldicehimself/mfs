@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Grid,
   Paper,
@@ -10,14 +10,16 @@ import {
   Stack,
   Chip,
 } from '@mui/material';
-import { ArrowUp, ArrowDown, FileText, AlertTriangle, CheckCircle, Clock, Wrench, Building } from 'lucide-react';
-import Assignment from '@mui/icons-material/Assignment';
-import Warning from '@mui/icons-material/Warning';
-import Schedule from '@mui/icons-material/Schedule';
-import Business from '@mui/icons-material/Business';
-import Build from '@mui/icons-material/Build';
-import TrendingUp from '@mui/icons-material/TrendingUp';
-import TrendingDown from '@mui/icons-material/TrendingDown';
+import {
+  TrendingUp,
+  TrendingDown,
+  Assignment,
+  Warning,
+  CheckCircle,
+  Schedule,
+  Build,
+  Business,
+} from '@mui/icons-material';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -33,6 +35,26 @@ import { getDashboardData, getRecentActivities } from '../api/dashboard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [cssVars, setCssVars] = useState({ primary: '', border: '', card: '' });
+
+  useEffect(() => {
+    try {
+      const styles = getComputedStyle(document.documentElement);
+      setCssVars({
+        primary: styles.getPropertyValue('--primary').trim(),
+        border: styles.getPropertyValue('--border').trim(),
+        card: styles.getPropertyValue('--card').trim()
+      });
+      // helpful for browser console debugging
+      console.log('Theme CSS vars:', {
+        primary: styles.getPropertyValue('--primary').trim(),
+        border: styles.getPropertyValue('--border').trim(),
+        card: styles.getPropertyValue('--card').trim()
+      });
+    } catch (err) {
+      // ignore in non-browser environments
+    }
+  }, []);
   
   const { data: dashboardData, isLoading } = useQuery(
     'dashboard',
@@ -125,6 +147,10 @@ const Dashboard = () => {
         <Typography variant="body1" color="text.secondary">
           Overview of your facility maintenance operations
         </Typography>
+        {/* Debug: show computed theme vars in UI during development */}
+        {/* <div style={{ marginTop: 8 }} className="text-sm text-muted-foreground">
+          <strong>Theme vars:</strong> --primary: {cssVars.primary || '<unset>'} • --border: {cssVars.border || '<unset>'} • --card: {cssVars.card || '<unset>'}
+        </div> */}
       </Box>
 
       {/* Quick Actions */}
@@ -179,7 +205,7 @@ const Dashboard = () => {
           <Grid container spacing={3}>
             {/* Compliance Chart */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
+              <Paper className="bg-card" sx={{ p: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Preventive Maintenance Compliance
                 </Typography>
@@ -189,7 +215,7 @@ const Dashboard = () => {
 
             {/* Cost Analysis */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
+              <Paper className="bg-card" sx={{ p: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Maintenance Cost Analysis
                 </Typography>
@@ -201,7 +227,7 @@ const Dashboard = () => {
 
         {/* Right Column - Recent Activity */}
         <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 3, height: '100%' }}>
+          <Paper className="bg-card" sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Recent Activity
             </Typography>
@@ -211,14 +237,14 @@ const Dashboard = () => {
       </Grid>
 
       {/* Service Category Summary */}
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper className="bg-card" sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>
           Service Categories Summary
         </Typography>
         <Grid container spacing={2}>
           {dashboardData?.serviceCategories?.map((category) => (
             <Grid item xs={6} sm={4} md={2} key={category.name}>
-              <Card variant="outlined">
+              <Card variant="outlined" className="bg-card">
                 <CardContent sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h4" color="primary" sx={{ mb: 1 }}>
                     {category.count}

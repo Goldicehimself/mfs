@@ -106,30 +106,26 @@ export const AuthProvider = ({ children }) => {
     try {
       // Try API first
       const response = await axiosInstance.post('/auth/register', userData);
-      const { token, user } = response.data;
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      setUser(user);
-      toast.success('Registration successful');
-
-      // Redirect based on role
-      switch (user.role) {
-        case 'facility_manager':
-          navigate('/dashboard');
-          break;
-        case 'technician':
-          navigate('/work-orders');
-          break;
-        case 'vendor':
-          navigate('/vendor-portal');
-          break;
-        default:
-          navigate('/service-requests');
+      // Ensure we have a local record for development fallback so users can sign in
+      try {
+        const users = getLocalUsers();
+        if (!users.find(u => u.email === userData.email)) {
+          users.push({
+            id: `local-${Date.now()}`,
+            name: userData.name,
+            email: userData.email,
+            role: userData.role || 'technician',
+            password: userData.password,
+          });
+          saveLocalUsers(users);
+        }
+      } catch (e) {
+        // ignore local save failures
       }
 
+      // Do NOT auto-login after registration; inform the user and redirect to login
+      toast.success('Registration successful — please sign in');
+      navigate('/login');
       return { success: true };
     } catch (error) {
       // Fallback to localStorage-based registration
@@ -154,29 +150,9 @@ export const AuthProvider = ({ children }) => {
         users.push(newUser);
         saveLocalUsers(users);
 
-        const token = `local-${Date.now()}`;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        setUser(newUser);
-        toast.success('Registration successful (local)');
-
-        // Redirect based on role
-        switch (newUser.role) {
-          case 'facility_manager':
-            navigate('/dashboard');
-            break;
-          case 'technician':
-            navigate('/work-orders');
-            break;
-          case 'vendor':
-            navigate('/vendor-portal');
-            break;
-          default:
-            navigate('/service-requests');
-        }
-
+        // Do NOT set token or auto-login for local registrations; redirect to login instead
+        toast.success('Registration successful (local) — please sign in');
+        navigate('/login');
         return { success: true };
       } catch (e) {
         // Show a short, generic message only (do not display server-provided messages).

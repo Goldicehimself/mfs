@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAssets, bulkImportAssets, deleteAsset } from '../../api/assets';
 import { AlertCircle, Plus, Upload, Download, Grid3x3, List, Settings2, CheckCircle, AlertTriangle, Clock, QrCode, Edit, MoreVertical, FileText, Calendar, Check, BarChart } from 'lucide-react';
-import './AssetList.css';
+// styles migrated to Tailwind - see AssetList.css removal planned
 import Modal from '../common/Modal';
 import AssetQRScanner from './AssetQRScanner';
 
@@ -159,71 +159,75 @@ export default function AssetList() {
   };
 
   return (
-    <div className="asset-list-container">
+    <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="asset-list-header">
-        <div className="header-title">
-          <h1>Assets</h1>
-          <p>Comprehensive view of all facility assets and equipment</p>
-        </div>
-        <div className="header-stats">
-          <div className="stat-item">
-            <span className="stat-label">Total Assets:</span>
-            <span className="stat-value">{kpi.total.toLocaleString()}</span>
+      <div className="bg-card p-6 rounded-lg shadow">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Assets</h1>
+            <p className="text-sm text-muted-foreground">Comprehensive view of all facility assets and equipment</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <div className="text-xs uppercase text-gray-500 font-semibold">Total Assets:</div>
+              <div className="text-2xl font-bold">{kpi.total.toLocaleString()}</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="action-buttons">
-        <button className="btn btn-primary" onClick={() => navigate('/assets/new')}>
+      <div className="flex flex-wrap gap-3 items-center">
+        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700" onClick={() => navigate('/assets/new')}>
           <Plus size={20} /> Add Asset
         </button>
-        <button className="btn btn-secondary" onClick={handleImport}>
+        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={handleImport}>
           <Upload size={20} /> Import
         </button>
-        <button className="btn btn-secondary" onClick={handleExport}>
+        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={handleExport}>
           <Download size={20} /> Export
         </button>
-        <button className="btn btn-secondary" onClick={() => setScannerOpen(true)}>
+        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={() => setScannerOpen(true)}>
           <QrCode size={20} /> Scan QR
         </button>
-        <div className="view-controls">
+
+        <div className="ml-auto inline-flex items-center gap-2 bg-card border rounded-md p-1">
           <button 
-            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+            className={`${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'} p-2 rounded`} 
             onClick={() => setViewMode('grid')}
             title="Grid view"
           >
             <Grid3x3 size={20} />
           </button>
           <button 
-            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+            className={`${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'} p-2 rounded`} 
             onClick={() => setViewMode('list')}
             title="List view"
           >
             <List size={20} />
           </button>
-          <button className="view-btn" title="Settings">
+          <button className="text-gray-500 p-2 rounded" title="Settings">
             <Settings2 size={20} />
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
+      <div className="bg-card p-4 rounded-lg shadow flex flex-wrap gap-3 items-center">
+        <div className="flex-1 min-w-[220px]">
           <input
             type="text"
             placeholder="Search assets..."
             value={filters.search}
             onChange={(e) => handleFilterChange('search', e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
           />
         </div>
 
         <select
           value={filters.category}
           onChange={(e) => handleFilterChange('category', e.target.value)}
-          className="filter-select"
+          className="px-3 py-2 border rounded-md"
         >
           <option value="">Category</option>
           <option value="HVAC">HVAC</option>
@@ -236,7 +240,7 @@ export default function AssetList() {
         <select
           value={filters.location}
           onChange={(e) => handleFilterChange('location', e.target.value)}
-          className="filter-select"
+          className="px-3 py-2 border rounded-md"
         >
           <option value="">Location</option>
           <option value="BUILDING_A">Building A</option>
@@ -247,7 +251,7 @@ export default function AssetList() {
         <select
           value={filters.status}
           onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="filter-select"
+          className="px-3 py-2 border rounded-md"
         >
           <option value="">Status</option>
           <option value="ACTIVE">Active</option>
@@ -258,7 +262,7 @@ export default function AssetList() {
         <select
           value={filters.warranty}
           onChange={(e) => handleFilterChange('warranty', e.target.value)}
-          className="filter-select"
+          className="px-3 py-2 border rounded-md"
         >
           <option value="">Warranty</option>
           <option value="ACTIVE">Active</option>
@@ -266,16 +270,16 @@ export default function AssetList() {
           <option value="EXPIRING_SOON">Expiring Soon</option>
         </select>
 
-        <button className="clear-filters-btn" onClick={handleClearFilters}>
+        <button className="text-indigo-600 font-semibold underline" onClick={handleClearFilters}>
           Clear all filters
         </button>
 
-        <div className="sort-controls">
-          <label>Sort by:</label>
+        <div className="ml-auto flex items-center gap-2">
+          <label className="text-sm font-semibold text-gray-600">Sort by:</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="sort-select"
+            className="px-3 py-2 border rounded-md"
           >
             <option value="name">Asset Name</option>
             <option value="date_added">Date Added</option>
@@ -286,59 +290,59 @@ export default function AssetList() {
       </div>
 
       {/* KPI Cards */}
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-icon">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
+          <div className="p-2 w-10 h-10 rounded-md bg-gray-200 text-gray-800 flex items-center justify-center mr-3">
             <CheckCircle size={24} />
           </div>
-          <div className="kpi-content">
-            <h3 className="kpi-title">Total Assets</h3>
-            <p className="kpi-value">{kpi.total.toLocaleString()}</p>
-            <p className="kpi-subtitle">Across all properties</p>
+          <div className="flex-1 ml-2">
+            <h3 className="text-sm font-medium text-gray-500">Total Assets</h3>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.total.toLocaleString()}</p>
+            <p className="text-sm text-gray-500">Across all properties</p>
           </div>
         </div>
 
-        <div className="kpi-card warning">
-          <div className="kpi-icon">
+        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
+          <div className="p-2 w-10 h-10 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center mr-3">
             <AlertTriangle size={24} />
           </div>
-          <div className="kpi-content">
-            <h3 className="kpi-title">Need Attention</h3>
-            <p className="kpi-value">{kpi.needAttention}</p>
-            <p className="kpi-subtitle">Maintenance required</p>
+          <div className="flex-1 ml-2">
+            <h3 className="text-sm font-medium text-gray-500">Need Attention</h3>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.needAttention}</p>
+            <p className="text-sm text-gray-500">Maintenance required</p>
           </div>
         </div>
 
-        <div className="kpi-card success">
-          <div className="kpi-icon">
+        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
+          <div className="p-2 w-10 h-10 rounded-md bg-green-100 text-green-700 flex items-center justify-center mr-3">
             <CheckCircle size={24} />
           </div>
-          <div className="kpi-content">
-            <h3 className="kpi-title">Active Warranties</h3>
-            <p className="kpi-value">{kpi.activeWarranties}</p>
-            <p className="kpi-subtitle">Under warranty</p>
+          <div className="flex-1 ml-2">
+            <h3 className="text-sm font-medium text-gray-500">Active Warranties</h3>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.activeWarranties}</p>
+            <p className="text-sm text-gray-500">Under warranty</p>
           </div>
         </div>
 
-        <div className="kpi-card danger">
-          <div className="kpi-icon">
+        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
+          <div className="p-2 w-10 h-10 rounded-md bg-red-100 text-red-700 flex items-center justify-center mr-3">
             <Clock size={24} />
           </div>
-          <div className="kpi-content">
-            <h3 className="kpi-title">Overdue PM</h3>
-            <p className="kpi-value">{kpi.overdueHours}</p>
-            <p className="kpi-subtitle">Past due date</p>
+          <div className="flex-1 ml-2">
+            <h3 className="text-sm font-medium text-gray-500">Overdue PM</h3>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.overdueHours}</p>
+            <p className="text-sm text-gray-500">Past due date</p>
           </div>
         </div>
 
-        <div className="kpi-card">
-          <div className="kpi-icon">
+        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
+          <div className="p-2 w-10 h-10 rounded-md bg-gray-200 text-gray-800 flex items-center justify-center mr-3">
             <Clock size={24} />
           </div>
-          <div className="kpi-content">
-            <h3 className="kpi-title">Average Age</h3>
-            <p className="kpi-value">{kpi.avgAge}y</p>
-            <p className="kpi-subtitle">Portfolio average</p>
+          <div className="flex-1 ml-2">
+            <h3 className="text-sm font-medium text-gray-500">Average Age</h3>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.avgAge}y</p>
+            <p className="text-sm text-gray-500">Portfolio average</p>
           </div>
         </div>
       </div>
@@ -351,32 +355,32 @@ export default function AssetList() {
         </div>
       ) : (
         <>
-          <div className={`assets-container ${viewMode}`}>
+          <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'grid grid-cols-1 gap-4'}`}>
             {assets.length > 0 ? (
               assets.map((asset) => (
                 <div
                   key={asset.id}
-                  className="asset-card"
+                  className="bg-card rounded-lg shadow overflow-hidden cursor-pointer hover:shadow-lg transition p-4 flex flex-col"
                   onClick={() => navigate(`/assets/${asset.id}`)}
                 >
-                  <div className="asset-image">
-                    <img src={asset.imageUrl || '/placeholder-asset.png'} alt={asset.name} />
-                    <div className={`status-indicator ${asset.status?.toLowerCase()}`}></div>
+                  <div className="relative w-full pb-[100%] bg-gray-100 rounded overflow-hidden">
+                    <img src={asset.imageUrl || '/placeholder-asset.png'} alt={asset.name} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white ${asset.status === 'ACTIVE' ? 'bg-green-500' : asset.status === 'MAINTENANCE' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
                   </div>
 
-                  <div className="asset-content">
-                    <div className="asset-header">
-                      <h3 className="asset-id">{asset.id}</h3>
-                      <div className="asset-actions">
+                  <div className="mt-3 flex-1 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{asset.id}</h3>
+                      <div className="flex items-center gap-2 relative">
                         <button
-                          className="asset-menu-btn"
+                          className="p-1 text-gray-500 rounded hover:bg-gray-50"
                           title="Edit asset"
                           onClick={(e) => { e.stopPropagation(); navigate(`/assets/${asset.id}/edit`); }}
                         >
                           <Edit size={16} />
                         </button>
                         <button
-                          className="asset-menu-btn"
+                          className="p-1 text-gray-500 rounded hover:bg-gray-50"
                           title="More actions"
                           onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === asset.id ? null : asset.id); }}
                         >
@@ -384,34 +388,41 @@ export default function AssetList() {
                         </button>
 
                         {menuOpenId === asset.id && (
-                          <div className="asset-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                            <button className="dropdown-item" onClick={() => { navigate(`/assets/${asset.id}/edit`); setMenuOpenId(null); }}>Edit</button>
-                            <button className="dropdown-item danger" onClick={() => { setConfirmDeleteAsset(asset); setMenuOpenId(null); }}>Delete</button>
+                          <div className="absolute right-0 top-8 w-40 bg-card border rounded-md shadow-md z-20" onClick={(e) => e.stopPropagation()}>
+                            <button className="w-full text-left px-4 py-2 hover:bg-gray-50" onClick={() => { navigate(`/assets/${asset.id}/edit`); setMenuOpenId(null); }}>Edit</button>
+                            <button className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50" onClick={() => { setConfirmDeleteAsset(asset); setMenuOpenId(null); }}>Delete</button>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <h2 className="asset-name">{asset.name}</h2>
-                    <p className="asset-category">
-                      {asset.category} • {asset.type}
-                    </p>
-                    <p className="asset-location">Building • {asset.location || 'N/A'}</p>
+                    <h2 className="text-lg font-semibold">{asset.name}</h2>
+                    <p className="text-sm text-gray-600">{asset.category} • {asset.type}</p>
+                    <p className="text-sm text-gray-500">Building • {asset.location || 'N/A'}</p>
 
-                    <div className="maintenance-info">
-                      <div className="maintenance-item">
-                        <span className="label">Last Maintenance</span>
-                        <span className="value">{asset.lastMaintenance || 'N/A'}</span>
+                    {/* Thumbnails */}
+                    <div className="flex gap-2 mt-1">
+                      {((asset.imageUrls && asset.imageUrls.length > 0) ? asset.imageUrls : [asset.imageUrl || '/placeholder-asset.svg']).slice(0,3).map((img, i) => (
+                        <div key={i} className="w-12 h-12 rounded-md overflow-hidden border" onClick={(e) => { e.stopPropagation(); navigate(`/assets/${asset.id}`); }}>
+                          <img src={img} alt={`${asset.name} thumb ${i+1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t">
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase font-semibold">Last Maintenance</div>
+                        <div className="text-sm font-semibold">{asset.lastMaintenance || 'N/A'}</div>
                       </div>
-                      <div className="maintenance-item">
-                        <span className="label">Next Service</span>
-                        <span className="value">{asset.nextService || 'N/A'}</span>
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase font-semibold">Next Service</div>
+                        <div className="text-sm font-semibold">{asset.nextService || 'N/A'}</div>
                       </div>
                     </div>
 
-                    <div className="warranty-badge">
+                    <div className="mt-3">
                       {asset.warrantyStatus && (
-                        <span className={`badge badge-${getStatusBadge(asset.warrantyStatus).color}`}>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(asset.warrantyStatus).color === 'success' ? 'bg-green-100 text-green-700' : getStatusBadge(asset.warrantyStatus).color === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                           {getStatusBadge(asset.warrantyStatus).label}
                         </span>
                       )}
@@ -420,9 +431,9 @@ export default function AssetList() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">
-                <AlertCircle size={48} />
-                <h3>No assets found</h3>
+              <div className="bg-card rounded-lg shadow p-8 text-center text-gray-500">
+                <AlertCircle size={48} className="mx-auto" />
+                <h3 className="mt-4 text-lg font-semibold">No assets found</h3>
                 <p>Try adjusting your filters or add a new asset</p>
               </div>
             )}
@@ -431,12 +442,12 @@ export default function AssetList() {
           {/* Delete confirmation modal */}
           {confirmDeleteAsset && (
             <Modal>
-              <div className="delete-modal">
-                <h3>Delete asset?</h3>
+              <div className="max-w-lg w-full p-6 bg-card rounded-lg shadow">
+                <h3 className="text-lg font-semibold">Delete asset?</h3>
                 <p>Are you sure you want to delete <strong>{confirmDeleteAsset.name}</strong>? This action cannot be undone.</p>
-                <div className="modal-actions">
-                  <button className="btn btn-secondary" onClick={handleCancelDelete} disabled={deleting}>Cancel</button>
-                  <button className="btn btn-primary" onClick={handleDeleteConfirmed} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete'}</button>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="px-3 py-2 rounded-md border" onClick={handleCancelDelete} disabled={deleting}>Cancel</button>
+                  <button className="px-3 py-2 rounded-md bg-indigo-600 text-white" onClick={handleDeleteConfirmed} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete'}</button>
                 </div>
               </div>
             </Modal>
@@ -504,28 +515,28 @@ export default function AssetList() {
       />
 
       {/* Quick Actions */}
-      <div className="quick-actions">
-        <h3>Quick Actions</h3>
-        <div className="actions-grid">
-          <button className="action-card">
-            <div className="action-icon"><FileText size={20} /></div>
-            <h4>Bulk Operations</h4>
-            <p>Update multiple assets</p>
+      <div className="bg-card p-4 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
+            <div className="text-indigo-600"><FileText size={20} /></div>
+            <h4 className="font-semibold">Bulk Operations</h4>
+            <p className="text-sm text-gray-500">Update multiple assets</p>
           </button>
-          <button className="action-card">
-            <div className="action-icon"><Calendar size={20} /></div>
-            <h4>Schedule PM</h4>
-            <p>Preventive maintenance</p>
+          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
+            <div className="text-indigo-600"><Calendar size={20} /></div>
+            <h4 className="font-semibold">Schedule PM</h4>
+            <p className="text-sm text-gray-500">Preventive maintenance</p>
           </button>
-          <button className="action-card">
-            <div className="action-icon"><Check size={20} /></div>
-            <h4>Update Status</h4>
-            <p>Bulk status changes</p>
+          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
+            <div className="text-indigo-600"><Check size={20} /></div>
+            <h4 className="font-semibold">Update Status</h4>
+            <p className="text-sm text-gray-500">Bulk status changes</p>
           </button>
-          <button className="action-card">
-            <div className="action-icon"><BarChart size={20} /></div>
-            <h4>Generate Report</h4>
-            <p>Asset reports</p>
+          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
+            <div className="text-indigo-600"><BarChart size={20} /></div>
+            <h4 className="font-semibold">Generate Report</h4>
+            <p className="text-sm text-gray-500">Asset reports</p>
           </button>
         </div>
       </div>

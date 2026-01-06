@@ -167,7 +167,7 @@ export default function WorkOrders() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
           <div>
             <div className="text-sm text-gray-500">Total Open</div>
             <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
@@ -175,7 +175,7 @@ export default function WorkOrders() {
           <div className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded-full">+3</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
           <div>
             <div className="text-sm text-gray-500">In Progress</div>
             <div className="text-3xl font-bold text-gray-900">{stats.inProgress}</div>
@@ -183,7 +183,7 @@ export default function WorkOrders() {
           <div className="text-sm text-yellow-700 bg-yellow-50 px-2 py-1 rounded-full">+2</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
           <div>
             <div className="text-sm text-gray-500">Completed</div>
             <div className="text-3xl font-bold text-gray-900">{stats.completed}</div>
@@ -191,7 +191,7 @@ export default function WorkOrders() {
           <div className="text-sm text-green-700 bg-green-50 px-2 py-1 rounded-full">+12</div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
           <div>
             <div className="text-sm text-gray-500">Overdue</div>
             <div className="text-3xl font-bold text-gray-900">{stats.overdue}</div>
@@ -261,7 +261,7 @@ export default function WorkOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <label className="inline-flex items-start sm:items-center gap-3 text-sm text-gray-700 w-full sm:w-auto">
             <input
@@ -354,7 +354,7 @@ export default function WorkOrders() {
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
+            <tbody className="bg-card divide-y divide-gray-100">
               {isLoading && (
                 <tr><td colSpan={9} className="p-6 text-center">Loading...</td></tr>
               )}
@@ -457,7 +457,7 @@ export default function WorkOrders() {
       {bulkModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black opacity-40" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }} />
-          <div className="bg-white rounded-lg shadow-lg p-6 z-10 w-full max-w-md">
+          <div className="bg-card rounded-lg shadow-lg p-6 z-10 w-full max-w-md">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold">Bulk Assign Work Orders</h3>

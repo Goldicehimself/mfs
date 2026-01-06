@@ -21,6 +21,7 @@ const KPICard = ({ title, value, change, trend, icon, color, link }) => {
 
   return (
     <Card
+      className="bg-card"
       sx={{
         height: '100%',
         cursor: link ? 'pointer' : 'default',
@@ -29,37 +30,29 @@ const KPICard = ({ title, value, change, trend, icon, color, link }) => {
           transform: 'translateY(-4px)',
           boxShadow: 4,
         } : {},
+        p: 0,
       }}
       onClick={handleClick}
     >
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Box
-            sx={{
-              backgroundColor: `${color}.light`,
-              borderRadius: 2,
-              p: 1.5,
-              color: `${color}.main`,
-            }}
-          >
-            {icon}
-          </Box>
-          {trend && (
-            <Chip
-              icon={trend === 'up' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-              label={change}
-              size="small"
-              color={trend === 'up' ? 'success' : 'error'}
-              sx={{ height: 24 }}
-            />
-          )}
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2 }}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backgroundColor: `${color}.light`, color: `${color}.main`, borderRadius: 1.5, width: 44, height: 44 }}>
+          {icon}
         </Box>
-        <Typography variant="h4" sx={{ fontWeight: 600, mb: 0.5 }}>
-          {value}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
+
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, lineHeight: 1 }}>{value}</Typography>
+          <Typography variant="body2" color="text.secondary">{title}</Typography>
+        </Box>
+
+        {trend && (
+          <Chip
+            icon={trend === 'up' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+            label={change}
+            size="small"
+            color={trend === 'up' ? 'success' : 'error'}
+            sx={{ height: 28, borderRadius: '999px' }}
+          />
+        )}
       </CardContent>
     </Card>
   );

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Modal from '../common/Modal';
 import { X } from 'lucide-react';
-import './AssetQRScanner.css';
 
 export default function AssetQRScanner({ open = false, onClose = () => {}, onScan = () => {} }) {
   const videoRef = useRef(null);
@@ -158,41 +157,41 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
 
   return (
     <Modal>
-      <div className="qr-modal">
-        <div className="qr-header">
-          <h3>Scan QR Code</h3>
-          <button className="close-btn" onClick={handleClose}><X size={18} /></button>
+      <div className="max-w-3xl w-[95vw] bg-card p-4 rounded-lg">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold">Scan QR Code</h3>
+          <button className="p-2 rounded hover:bg-gray-100 text-gray-600" onClick={handleClose}><X size={18} /></button>
         </div>
 
-        <div className="qr-body">
-          <div className="video-wrap">
-            <video ref={videoRef} muted playsInline className="qr-video" />
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex-1 min-h-[320px] bg-black rounded-md overflow-hidden relative">
+            <video ref={videoRef} muted playsInline className="w-full h-full object-cover block" />
             <canvas ref={canvasRef} style={{ display: 'none' }} />
-            <div className="overlay">Align QR code inside the frame</div>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 px-3 py-1 rounded font-semibold">Align QR code inside the frame</div>
           </div>
 
-          <div className="qr-controls">
-            <div className="device-select">
+          <div className="w-72 flex flex-col gap-3">
+            <div>
               {devices.length > 0 && (
-                <select value={selectedDeviceId || ''} onChange={(e) => setSelectedDeviceId(e.target.value)}>
+                <select value={selectedDeviceId || ''} onChange={(e) => setSelectedDeviceId(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-card">
                   {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || d.deviceId}</option>)}
                 </select>
               )}
             </div>
 
-            <div className="file-input">
-              <label className="file-label">Or upload an image</label>
-              <input type="file" accept="image/*" onChange={handleFile} />
+            <div>
+              <label className="text-sm block mb-1">Or upload an image</label>
+              <input type="file" accept="image/*" onChange={handleFile} className="block w-full text-sm" />
             </div>
 
-            <div className="status">
-              {error && <div className="error">{error}</div>}
-              {result && <div className="result">Scanned: <strong>{result}</strong></div>}
-              {!result && !detectorAvailable && <div className="warning">QR scanning not supported in your browser. Try uploading an image or use a Chrome-based browser.</div>}
+            <div className="space-y-2">
+              {error && <div className="text-red-600 font-semibold">{error}</div>}
+              {result && <div className="text-green-700 font-bold">Scanned: <strong>{result}</strong></div>}
+              {!result && !detectorAvailable && <div className="text-amber-700 font-semibold">QR scanning not supported in your browser. Try uploading an image or use a Chrome-based browser.</div>}
             </div>
 
-            <div className="actions">
-              <button className="btn btn-secondary" onClick={handleClose}>Close</button>
+            <div className="mt-auto flex">
+              <button className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50" onClick={handleClose}>Close</button>
             </div>
           </div>
         </div>

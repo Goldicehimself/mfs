@@ -17,6 +17,7 @@ import Assets from './pages/Assets/Assets';
 import AssetDetail from './pages/Assets/AssetDetail';
 import AssetForm from './components/assets/AssetForm';
 import WorkOrders from './pages/WorkOrders/WorkOrders';
+import MyAssignments from './pages/WorkOrders/MyAssignments';
 import WorkOrderDetail from './pages/WorkOrders/WorkOrderDetail';
 import WorkOrderCreate from './pages/WorkOrders/WorkOrderCreate';
 import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaintenance';
@@ -105,6 +106,12 @@ const AppRoutes = () => {
       <Route path="/work-orders/new" element={
         <ProtectedRoute>
           <MainLayout><WorkOrderCreate /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/work-orders/my-assignments" element={
+        <ProtectedRoute>
+          <MainLayout><MyAssignments /></MainLayout>
         </ProtectedRoute>
       } />
 

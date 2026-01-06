@@ -25,13 +25,35 @@ export const getDashboardData = async () => {
   }
 };
 
+import { getWorkOrders } from './workOrders';
+
 export const getRecentActivities = async () => {
   try {
     const response = await axiosInstance.get('/dashboard/activities');
     return response.data;
   } catch (error) {
-    // Return mock data if API fails
-    return [];
+    // Return mock recent activities derived from local work orders
+    const workOrders = await getWorkOrders();
+    const now = () => new Date().toISOString();
+
+    const activities = [
+      ...workOrders.slice(0, 5).map((wo, idx) => ({
+        id: `act-${wo.id}`,
+        type: wo.status === 'completed' ? 'completed' : wo.status === 'overdue' ? 'overdue' : 'work_order',
+        title: wo.title,
+        description: `${wo.woNumber} — ${wo.assignedTo?.name || 'Unassigned'}`,
+        timestamp: wo.createdAt || now(),
+      })),
+      {
+        id: 'act-manual-1',
+        type: 'maintenance',
+        title: 'PM schedule created',
+        description: 'New PM schedule created for HVAC units',
+        timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      },
+    ];
+
+    return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }
 };
 

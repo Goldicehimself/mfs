@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createAsset, updateAsset, getAsset } from '../../api/assets';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import './AssetForm.css';
+// styles migrated to Tailwind - AssetForm.css will be removed after verification
 
 
 export default function AssetForm() {
@@ -71,23 +71,23 @@ export default function AssetForm() {
       const asset = await getAsset(id);
       setFormData({
         name: asset.name || '',
-        assetId: asset.assetId || '',
+        assetId: asset.assetTag || '',
         category: asset.category || '',
         type: asset.type || '',
-        description: asset.description || '',
+        description: asset.description || asset.shortDescription || '',
         location: asset.location || '',
         building: asset.building || '',
         floor: asset.floor || '',
         room: asset.room || '',
         manufacturer: asset.manufacturer || '',
         model: asset.model || '',
-        serialNumber: asset.serialNumber || '',
-        specifications: asset.specifications || '',
-        installDate: asset.installDate?.split('T')[0] || '',
-        warrantyExpiry: asset.warrantyExpiry?.split('T')[0] || '',
-        warrantyProvider: asset.warrantyProvider || '',
-        lastMaintenanceDate: asset.lastMaintenanceDate?.split('T')[0] || '',
-        nextMaintenanceDate: asset.nextMaintenanceDate?.split('T')[0] || '',
+        serialNumber: asset.serial || '',
+        specifications: asset.specs ? JSON.stringify(asset.specs) : asset.specifications || '',
+        installDate: asset.installationDate?.split('T')[0] || asset.installDate?.split('T')[0] || '',
+        warrantyExpiry: (asset.warranty && asset.warranty.expires) ? asset.warranty.expires.split('T')[0] : '',
+        warrantyProvider: (asset.warranty && asset.warranty.provider) ? asset.warranty.provider : asset.warrantyProvider || '',
+        lastMaintenanceDate: asset.lastMaintenance || asset.lastMaintenanceDate || '',
+        nextMaintenanceDate: asset.nextService || asset.nextMaintenanceDate || '',
         maintenanceFrequency: asset.maintenanceFrequency || 'monthly',
         maintenanceProvider: asset.maintenanceProvider || '',
         purchasePrice: asset.purchasePrice || '',
@@ -95,7 +95,7 @@ export default function AssetForm() {
         depreciationRate: asset.depreciationRate || '',
         status: asset.status || 'active',
         notes: asset.notes || '',
-        imageUrl: asset.imageUrl || ''
+        imageUrl: asset.imageUrl || (asset.imageUrls && asset.imageUrls[0]) || ''
       });
 
       if (asset.imageUrl) {
@@ -191,10 +191,43 @@ export default function AssetForm() {
     try {
       setSaving(true);
       let saved;
+      // Map form fields to asset shape used by the app
+      const payload = {
+        name: formData.name,
+        assetTag: formData.assetId,
+        category: formData.category,
+        type: formData.type,
+        description: formData.description,
+        shortDescription: formData.description,
+        location: formData.location,
+        building: formData.building,
+        floor: formData.floor,
+        room: formData.room,
+        manufacturer: formData.manufacturer,
+        model: formData.model,
+        serial: formData.serialNumber,
+        // Simple conversion for specs: store as 'specs' object if JSON, otherwise leave as string in specifications
+        specs: (() => {
+          try { return formData.specifications ? JSON.parse(formData.specifications) : undefined; } catch (e) { return { notes: formData.specifications }; }
+        })(),
+        installationDate: formData.installDate || undefined,
+        warranty: { expires: formData.warrantyExpiry || undefined, provider: formData.warrantyProvider || undefined, purchaseDate: formData.purchaseDate || undefined },
+        purchaseDate: formData.purchaseDate || undefined,
+        lastMaintenance: formData.lastMaintenanceDate || undefined,
+        nextService: formData.nextMaintenanceDate || undefined,
+        maintenanceFrequency: formData.maintenanceFrequency || undefined,
+        maintenanceProvider: formData.maintenanceProvider || undefined,
+        purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
+        depreciationRate: formData.depreciationRate ? Number(formData.depreciationRate) : undefined,
+        status: formData.status,
+        notes: formData.notes,
+        imageUrl: formData.imageUrl || imagePreview || undefined
+      };
+
       if (isEditMode) {
-        saved = await updateAsset(id, formData);
+        saved = await updateAsset(id, payload);
       } else {
-        saved = await createAsset(formData);
+        saved = await createAsset(payload);
       }
 
       // Upload image if provided
@@ -203,13 +236,20 @@ export default function AssetForm() {
           const assetId = isEditMode ? id : (saved?.id || saved?.data?.id);
           if (assetId) {
             const { uploadAssetImage } = await import('../../api/assets');
-            await uploadAssetImage(assetId, imageFile);
+            const res = await uploadAssetImage(assetId, imageFile);
+            // If upload returns an imageUrl (fallback or server), update preview and form data
+            if (res && res.imageUrl) {
+              setImagePreview(res.imageUrl);
+              setFormData(fd => ({ ...fd, imageUrl: res.imageUrl }));
+            }
           }
         }
       } catch (imgErr) {
         console.warn('Image upload failed but asset saved:', imgErr);
       }
 
+      // wait a tick so user sees the updated preview if they remain on the form
+      await new Promise(r => setTimeout(r, 150));
       navigate('/assets');
     } catch (error) {
       console.error('Error saving asset:', error);
@@ -221,45 +261,47 @@ export default function AssetForm() {
 
   if (loading) {
     return (
-      <div className="asset-form-container">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading asset...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-gray-200 rounded-full border-t-indigo-500 animate-spin mb-3"></div>
+            <p>Loading asset...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="asset-form-container">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="form-header">
-        <div className="header-content">
-          <button className="back-btn" onClick={() => navigate('/assets')}>
+      <div className="sticky top-0 z-10 bg-card border-b">
+        <div className="max-w-6xl mx-auto p-4 flex items-center gap-4">
+          <button className="p-2 rounded hover:bg-gray-100" onClick={() => navigate('/assets')}>
             <ArrowLeft size={20} />
           </button>
-          <div className="header-title">
-            <h1>{isEditMode ? 'Edit Asset' : 'Create New Asset'}</h1>
-            <p>{isEditMode ? `Updating ${formData.name}` : 'Add a new facility asset or equipment'}</p>
+          <div>
+            <h1 className="text-xl font-semibold">{isEditMode ? 'Edit Asset' : 'Create New Asset'}</h1>
+            <p className="text-sm text-gray-500">{isEditMode ? `Updating ${formData.name}` : 'Add a new facility asset or equipment'}</p>
           </div>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="asset-form">
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 md:p-6">
         {/* Error Message */}
         {errors.submit && (
-          <div className="alert alert-error">
-            <p>{errors.submit}</p>
+          <div className="rounded-md bg-red-50 border-l-4 border-red-400 p-3 mb-4">
+            <p className="text-red-700">{errors.submit}</p>
           </div>
         )}
 
         {/* Basic Information Section */}
-        <div className="form-section">
-          <h2 className="section-title">Basic Information</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="name">Asset Name *</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Basic Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="name" className="block font-semibold mb-1">Asset Name *</label>
               <input
                 type="text"
                 id="name"
@@ -267,13 +309,13 @@ export default function AssetForm() {
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder="e.g., Rooftop Chiller Unit"
-                className={errors.name ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.name ? 'border-red-500' : ''}`}
               />
-              {errors.name && <span className="error-text">{errors.name}</span>}
+              {errors.name && <span className="text-sm text-red-600">{errors.name}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="assetId">Asset ID *</label>
+            <div>
+              <label htmlFor="assetId" className="block font-semibold mb-1">Asset ID *</label>
               <input
                 type="text"
                 id="assetId"
@@ -281,19 +323,19 @@ export default function AssetForm() {
                 value={formData.assetId}
                 onChange={handleInputChange}
                 placeholder="e.g., AC-001"
-                className={errors.assetId ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.assetId ? 'border-red-500' : ''}`}
               />
-              {errors.assetId && <span className="error-text">{errors.assetId}</span>}
+              {errors.assetId && <span className="text-sm text-red-600">{errors.assetId}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="category">Category *</label>
+            <div>
+              <label htmlFor="category" className="block font-semibold mb-1">Category *</label>
               <select
                 id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className={errors.category ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.category ? 'border-red-500' : ''}`}
               >
                 <option value="">Select a category</option>
                 <option value="HVAC">HVAC</option>
@@ -305,11 +347,11 @@ export default function AssetForm() {
                 <option value="LIGHTING">Lighting</option>
                 <option value="OTHER">Other</option>
               </select>
-              {errors.category && <span className="error-text">{errors.category}</span>}
+              {errors.category && <span className="text-sm text-red-600">{errors.category}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="type">Type</label>
+            <div>
+              <label htmlFor="type" className="block font-semibold mb-1">Type</label>
               <input
                 type="text"
                 id="type"
@@ -317,11 +359,12 @@ export default function AssetForm() {
                 value={formData.type}
                 onChange={handleInputChange}
                 placeholder="e.g., Chiller"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group full-width">
-              <label htmlFor="description">Description</label>
+            <div className="md:col-span-2">
+              <label htmlFor="description" className="block font-semibold mb-1">Description</label>
               <textarea
                 id="description"
                 name="description"
@@ -329,23 +372,24 @@ export default function AssetForm() {
                 onChange={handleInputChange}
                 placeholder="Provide details about this asset"
                 rows="3"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Location & Details Section */}
-        <div className="form-section">
-          <h2 className="section-title">Location & Building Details</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="location">Location *</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Location & Building Details</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="location" className="block mb-1 font-semibold">Location *</label>
               <select
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
-                className={errors.location ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.location ? 'border-red-500' : ''}`}
               >
                 <option value="">Select location</option>
                 <option value="BUILDING_A">Building A</option>
@@ -354,11 +398,11 @@ export default function AssetForm() {
                 <option value="PARKING">Parking Structure</option>
                 <option value="OUTDOOR">Outdoor</option>
               </select>
-              {errors.location && <span className="error-text">{errors.location}</span>}
+              {errors.location && <span className="text-sm text-red-600">{errors.location}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="building">Building</label>
+            <div>
+              <label htmlFor="building" className="block mb-1 font-semibold">Building</label>
               <input
                 type="text"
                 id="building"
@@ -366,11 +410,12 @@ export default function AssetForm() {
                 value={formData.building}
                 onChange={handleInputChange}
                 placeholder="e.g., Main Building"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="floor">Floor</label>
+            <div>
+              <label htmlFor="floor" className="block mb-1 font-semibold">Floor</label>
               <input
                 type="text"
                 id="floor"
@@ -378,11 +423,12 @@ export default function AssetForm() {
                 value={formData.floor}
                 onChange={handleInputChange}
                 placeholder="e.g., Roof"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="room">Room/Space</label>
+            <div>
+              <label htmlFor="room" className="block mb-1 font-semibold">Room/Space</label>
               <input
                 type="text"
                 id="room"
@@ -390,17 +436,18 @@ export default function AssetForm() {
                 value={formData.room}
                 onChange={handleInputChange}
                 placeholder="e.g., Mechanical Room A"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Technical Specifications Section */}
-        <div className="form-section">
-          <h2 className="section-title">Technical Specifications</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="manufacturer">Manufacturer *</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Technical Specifications</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="manufacturer" className="block mb-1 font-semibold">Manufacturer *</label>
               <input
                 type="text"
                 id="manufacturer"
@@ -408,13 +455,13 @@ export default function AssetForm() {
                 value={formData.manufacturer}
                 onChange={handleInputChange}
                 placeholder="e.g., Carrier"
-                className={errors.manufacturer ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.manufacturer ? 'border-red-500' : ''}`}
               />
-              {errors.manufacturer && <span className="error-text">{errors.manufacturer}</span>}
+              {errors.manufacturer && <span className="text-sm text-red-600">{errors.manufacturer}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="model">Model *</label>
+            <div>
+              <label htmlFor="model" className="block mb-1 font-semibold">Model *</label>
               <input
                 type="text"
                 id="model"
@@ -422,13 +469,13 @@ export default function AssetForm() {
                 value={formData.model}
                 onChange={handleInputChange}
                 placeholder="e.g., X200"
-                className={errors.model ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.model ? 'border-red-500' : ''}`}
               />
-              {errors.model && <span className="error-text">{errors.model}</span>}
+              {errors.model && <span className="text-sm text-red-600">{errors.model}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="serialNumber">Serial Number *</label>
+            <div>
+              <label htmlFor="serialNumber" className="block mb-1 font-semibold">Serial Number *</label>
               <input
                 type="text"
                 id="serialNumber"
@@ -436,13 +483,13 @@ export default function AssetForm() {
                 value={formData.serialNumber}
                 onChange={handleInputChange}
                 placeholder="e.g., SN123456"
-                className={errors.serialNumber ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.serialNumber ? 'border-red-500' : ''}`}
               />
-              {errors.serialNumber && <span className="error-text">{errors.serialNumber}</span>}
+              {errors.serialNumber && <span className="text-sm text-red-600">{errors.serialNumber}</span>}
             </div>
 
-            <div className="form-group full-width">
-              <label htmlFor="specifications">Specifications</label>
+            <div className="md:col-span-2">
+              <label htmlFor="specifications" className="block mb-1 font-semibold">Specifications</label>
               <textarea
                 id="specifications"
                 name="specifications"
@@ -450,41 +497,43 @@ export default function AssetForm() {
                 onChange={handleInputChange}
                 placeholder="Technical specifications, capacity, power requirements, etc."
                 rows="3"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Installation & Warranty Section */}
-        <div className="form-section">
-          <h2 className="section-title">Installation & Warranty</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="installDate">Installation Date *</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Installation & Warranty</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="installDate" className="block mb-1 font-semibold">Installation Date *</label>
               <input
                 type="date"
                 id="installDate"
                 name="installDate"
                 value={formData.installDate}
                 onChange={handleInputChange}
-                className={errors.installDate ? 'error' : ''}
+                className={`w-full px-3 py-2 border rounded-md ${errors.installDate ? 'border-red-500' : ''}`}
               />
-              {errors.installDate && <span className="error-text">{errors.installDate}</span>}
+              {errors.installDate && <span className="text-sm text-red-600">{errors.installDate}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="warrantyExpiry">Warranty Expiry Date</label>
+            <div>
+              <label htmlFor="warrantyExpiry" className="block mb-1 font-semibold">Warranty Expiry Date</label>
               <input
                 type="date"
                 id="warrantyExpiry"
                 name="warrantyExpiry"
                 value={formData.warrantyExpiry}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="warrantyProvider">Warranty Provider</label>
+            <div>
+              <label htmlFor="warrantyProvider" className="block mb-1 font-semibold">Warranty Provider</label>
               <input
                 type="text"
                 id="warrantyProvider"
@@ -492,44 +541,48 @@ export default function AssetForm() {
                 value={formData.warrantyProvider}
                 onChange={handleInputChange}
                 placeholder="e.g., Carrier Warranty"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Maintenance Section */}
-        <div className="form-section">
-          <h2 className="section-title">Maintenance Schedule</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="lastMaintenanceDate">Last Maintenance Date</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Maintenance Schedule</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="lastMaintenanceDate" className="block mb-1 font-semibold">Last Maintenance Date</label>
               <input
                 type="date"
                 id="lastMaintenanceDate"
                 name="lastMaintenanceDate"
                 value={formData.lastMaintenanceDate}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="nextMaintenanceDate">Next Maintenance Date</label>
+            <div>
+              <label htmlFor="nextMaintenanceDate" className="block mb-1 font-semibold">Next Maintenance Date</label>
               <input
                 type="date"
                 id="nextMaintenanceDate"
                 name="nextMaintenanceDate"
                 value={formData.nextMaintenanceDate}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="maintenanceFrequency">Maintenance Frequency</label>
+            <div>
+              <label htmlFor="maintenanceFrequency" className="block mb-1 font-semibold">Maintenance Frequency</label>
               <select
                 id="maintenanceFrequency"
                 name="maintenanceFrequency"
                 value={formData.maintenanceFrequency}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               >
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
@@ -540,8 +593,8 @@ export default function AssetForm() {
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="maintenanceProvider">Maintenance Provider</label>
+            <div>
+              <label htmlFor="maintenanceProvider" className="block mb-1 font-semibold">Maintenance Provider</label>
               <input
                 type="text"
                 id="maintenanceProvider"
@@ -549,17 +602,18 @@ export default function AssetForm() {
                 value={formData.maintenanceProvider}
                 onChange={handleInputChange}
                 placeholder="e.g., ABC Maintenance Co."
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Financial Information Section */}
-        <div className="form-section">
-          <h2 className="section-title">Financial Information</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="purchasePrice">Purchase Price</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Financial Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="purchasePrice" className="block mb-1 font-semibold">Purchase Price</label>
               <input
                 type="number"
                 id="purchasePrice"
@@ -568,22 +622,24 @@ export default function AssetForm() {
                 onChange={handleInputChange}
                 placeholder="0.00"
                 step="0.01"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="purchaseDate">Purchase Date</label>
+            <div>
+              <label htmlFor="purchaseDate" className="block mb-1 font-semibold">Purchase Date</label>
               <input
                 type="date"
                 id="purchaseDate"
                 name="purchaseDate"
                 value={formData.purchaseDate}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="depreciationRate">Depreciation Rate (%)</label>
+            <div>
+              <label htmlFor="depreciationRate" className="block mb-1 font-semibold">Depreciation Rate (%)</label>
               <input
                 type="number"
                 id="depreciationRate"
@@ -594,22 +650,24 @@ export default function AssetForm() {
                 step="0.1"
                 min="0"
                 max="100"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
         </div>
 
         {/* Status & Additional Notes */}
-        <div className="form-section">
-          <h2 className="section-title">Status & Additional Information</h2>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="status">Status</label>
+        <div className="bg-card p-4 rounded-lg shadow mb-4">
+          <h2 className="text-lg font-semibold mb-3">Status & Additional Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="status" className="block mb-1 font-semibold">Status</label>
               <select
                 id="status"
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-md"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -618,25 +676,26 @@ export default function AssetForm() {
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="imageUrl">Image</label>
+            <div>
+              <label htmlFor="imageUrl" className="block mb-1 font-semibold">Image</label>
               <input
                 type="file"
                 id="imageUrl"
                 name="imageUrl"
                 accept="image/*"
                 onChange={handleFileChange}
+                className="block"
               />
               {imagePreview && (
-                <div className="image-preview">
-                  <img src={imagePreview} alt="preview" />
+                <div className="mt-2 max-w-[220px] rounded-md overflow-hidden border">
+                  <img src={imagePreview} alt="preview" className="w-full h-auto block" />
                 </div>
               )}
-              {errors.imageUrl && <span className="error-text">{errors.imageUrl}</span>}
+              {errors.imageUrl && <span className="text-sm text-red-600">{errors.imageUrl}</span>}
             </div>
 
-            <div className="form-group full-width">
-              <label htmlFor="notes">Notes</label>
+            <div className="md:col-span-2">
+              <label htmlFor="notes" className="block mb-1 font-semibold">Notes</label>
               <textarea
                 id="notes"
                 name="notes"
@@ -644,6 +703,7 @@ export default function AssetForm() {
                 onChange={handleInputChange}
                 placeholder="Additional notes and comments about this asset"
                 rows="3"
+                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
           </div>
@@ -651,10 +711,10 @@ export default function AssetForm() {
 
         {/* Form Actions */}
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => navigate('/assets')}>
+          <button type="button" className="px-3 py-2 rounded-md border flex items-center gap-2" onClick={() => navigate('/assets')}>
             <X size={20} /> Cancel
           </button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
+          <button type="submit" className="px-3 py-2 rounded-md bg-indigo-600 text-white flex items-center gap-2" disabled={saving}>
             <Save size={20} /> {saving ? 'Saving...' : isEditMode ? 'Update Asset' : 'Create Asset'}
           </button>
         </div>

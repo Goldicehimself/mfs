@@ -10,7 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { LayoutDashboard, Wrench, ClipboardList, Calendar, Building, Users, Boxes, BarChart, Settings2, ChevronUp, ChevronDown, PlusCircle, List as IconList } from 'lucide-react';
-import './NavigationMenu.css';
+// styles migrated to Tailwind - NavigationMenu.css will be removed after verification
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -18,6 +18,8 @@ const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  // Debug: log user to help diagnose missing menu items
+  if (process.env.NODE_ENV !== 'production') console.debug('NavigationMenu user:', user);
   
   const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
   const [openAssets, setOpenAssets] = React.useState(false);
@@ -46,7 +48,7 @@ const NavigationMenu = () => {
       children: [
         { title: 'All Work Orders', path: '/work-orders', icon: <IconList size={16} /> },
         { title: 'Create New', path: '/work-orders/new', icon: <PlusCircle size={16} /> },
-        { title: 'My Assignments', path: '/work-orders?filter=my-tasks', icon: <Wrench size={16} /> },
+        { title: 'My Assignments', path: '/work-orders/my-assignments', icon: <Wrench size={16} /> },
       ],
       roles: ['facility_manager', 'admin', 'technician', 'vendor'],
     },
@@ -91,6 +93,9 @@ const NavigationMenu = () => {
   const filteredMenuItems = menuItems.filter(item => 
     item.roles.includes(user?.role) || user?.role === 'admin'
   );
+
+  // Debug: log filtered menu items for troubleshooting
+  if (process.env.NODE_ENV !== 'production') console.debug('NavigationMenu filtered items:', filteredMenuItems);
 
   const renderMenuItem = (item) => {
     if (item.children) {
@@ -146,9 +151,9 @@ const NavigationMenu = () => {
   };
 
   return (
-    <Box className="navigation-menu">
+    <Box className="w-60 h-screen overflow-auto bg-card border-r p-4">
       {/* Logo */}
-      <Box className="logo" sx={{ p: 3, pb: 2 }}>
+      <Box className="mb-3 border-b pb-3">
         <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
           SMMP
         </Typography>
@@ -161,6 +166,12 @@ const NavigationMenu = () => {
       <List>
         {filteredMenuItems.map(renderMenuItem)}
       </List>
+
+      {filteredMenuItems.length === 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ p: 2 }}>
+          No menu items available — check user role and AuthContext
+        </Typography>
+      )}
 
       {/* Quick Actions for Technicians */}
       {user?.role === 'technician' && (
