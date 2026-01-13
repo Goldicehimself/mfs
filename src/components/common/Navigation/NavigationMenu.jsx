@@ -9,7 +9,10 @@ import {
   Collapse,
   Typography,
   Divider,
+  Avatar,
+  IconButton,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Wrench,
@@ -183,13 +186,32 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
   };
 
   const drawerContent = (
-    <Box className="h-full">
+    <Box className="h-full mp-sidebar">
       <Box className="mp-sidebar-header">
-        <Typography className="mp-sidebar-header-title">SMMP</Typography>
-        <Typography className="mp-sidebar-header-subtitle">Facility Maintenance</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ width: 40, height: 40, borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', boxShadow: '0 1px 4px rgba(30,58,138,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 9, ease: 'linear', repeat: Infinity }} style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Wrench size={18} color="#1e3a8a" />
+            </motion.div>
+          </Box>
+
+          <div style={{ flex: 1 }}>
+            <Typography className="mp-sidebar-header-title">FacilityPro</Typography>
+            <Typography className="mp-sidebar-header-subtitle">Maintenance made simple</Typography>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <IconButton size="small" onClick={() => navigate('/profile')} title="Profile">
+              <Avatar sx={{ width: 28, height: 28 }}>{user?.name?.charAt(0) || 'U'}</Avatar>
+            </IconButton>
+            <IconButton size="small" onClick={() => navigate('/settings')} title="Settings">
+              <Settings2 size={16} />
+            </IconButton>
+          </div>
+        </Box>
       </Box>
 
-      <List>{filteredMenu.map(renderMenuItem)}</List>
+      <List sx={{ mt: 1 }}>{filteredMenu.map(renderMenuItem)}</List>
 
       {user.role === 'technician' && (
         <>

@@ -140,22 +140,26 @@ body {
 
 /* Sidebar header/brand section */
 .mp-sidebar-header {
-  padding: 20px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e8eef8;
+  background: linear-gradient(180deg, rgba(30,58,138,0.03), rgba(255,255,255,0));
 }
 .mp-sidebar-header-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   margin: 0;
 }
 .mp-sidebar-header-subtitle {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
   font-weight: 500;
   margin: 4px 0 0 0;
 }
+.mp-sidebar .mp-nav-item .icon { color: #6b7280; }
+.mp-sidebar .mp-nav-item.active { background: #eef2ff; border-radius: 6px; }
+.mp-sidebar .mp-nav-item.active .icon { color: #1e3a8a; }
 
 /* Sidebar scrollbar - subtle */
 .mp-sidebar ::-webkit-scrollbar { width: 8px; }
