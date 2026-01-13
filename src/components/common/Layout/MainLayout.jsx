@@ -50,6 +50,7 @@ const MainLayout = ({ children }) => {
           sticky top-0 z-50 h-16
           flex items-center justify-between
           px-6
+          md:ml-72
           bg-white/95 backdrop-blur
           border-b border-slate-200
         "
