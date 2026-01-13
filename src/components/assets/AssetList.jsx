@@ -1,144 +1,106 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAssets, bulkImportAssets, deleteAsset } from '../../api/assets';
-import { AlertCircle, Plus, Upload, Download, Grid3x3, List, Settings2, CheckCircle, AlertTriangle, Clock, QrCode, Edit, MoreVertical, FileText, Calendar, Check, BarChart } from 'lucide-react';
-// styles migrated to Tailwind - see AssetList.css removal planned
+import {
+  getAssets,
+  bulkImportAssets,
+  deleteAsset,
+  updateAsset,
+  uploadAssetImage,
+} from '../../api/assets';
+
+import {
+  AlertCircle,
+  Plus,
+  Upload,
+  Grid3x3,
+  List,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  QrCode,
+  Edit,
+  Trash2,
+  Search,
+} from 'lucide-react';
+
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Modal from '../common/Modal';
 import AssetQRScanner from './AssetQRScanner';
+import AssetImage from './AssetImage';
 
+/* =========================
+   Constants
+========================= */
+const CATEGORIES = [
+  'HVAC',
+  'ELECTRICAL',
+  'PLUMBING',
+  'SECURITY',
+  'FIRE_SAFETY',
+  'ELEVATOR',
+  'LIGHTING',
+  'OTHER',
+];
+
+const LOCATIONS = [
+  'BUILDING_A',
+  'BUILDING_B',
+  'BUILDING_C',
+  'PARKING',
+  'OUTDOOR',
+];
+
+const STATUSES = ['active', 'inactive', 'maintenance', 'retired'];
+
+/* =========================
+   Main Component
+========================= */
 export default function AssetList() {
   const navigate = useNavigate();
+
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalAssets, setTotalAssets] = useState(0);
-  const [itemsPerPage] = useState(8);
+  const itemsPerPage = 12;
 
-  // Menu & Delete state
-  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [confirmDeleteAsset, setConfirmDeleteAsset] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
 
-  // Filters
-  const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    location: '',
-    status: '',
-    warranty: ''
-  });
+  const [filters, setFilters] = useState({ search: '' });
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef(null);
 
-  const [sortBy, setSortBy] = useState('name');
-
+  /* =========================
+     Data Fetch
+  ========================= */
   useEffect(() => {
     fetchAssets();
-  }, [currentPage, filters, sortBy]);
+  }, [currentPage, filters]);
 
-  const fetchAssets = async () => {
+  async function fetchAssets() {
     try {
       setLoading(true);
-      const params = {
+      const res = await getAssets({
         page: currentPage,
         limit: itemsPerPage,
         ...filters,
-        sort: sortBy
-      };
-      const response = await getAssets(params);
-      setAssets(response.data || []);
-      setTotalAssets(response.total || 0);
-    } catch (error) {
-      console.error('Error fetching assets:', error);
+      });
+      setAssets(res.data || []);
+      setTotalAssets(res.total || 0);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-    setCurrentPage(1);
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      search: '',
-      category: '',
-      location: '',
-      status: '',
-      warranty: ''
-    });
-    setCurrentPage(1);
-  };
-
-  const handleExport = () => {
-    const csv = [
-      ['Asset ID', 'Name', 'Category', 'Location', 'Status', 'Warranty Status'],
-      ...assets.map(asset => [
-        asset.id,
-        asset.name,
-        asset.category,
-        asset.location,
-        asset.status,
-        asset.warrantyStatus
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `assets-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
-
-  const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,.xlsx';
-    input.onchange = async (e) => {
-      try {
-        const file = e.target.files[0];
-        if (file) {
-          await bulkImportAssets(file);
-          fetchAssets();
-        }
-      } catch (error) {
-        console.error('Error importing assets:', error);
-      }
-    };
-    input.click();
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      'ACTIVE_WARRANTY': { label: 'Active Warranty', color: 'success' },
-      'WARRANTY_EXPIRED': { label: 'Warranty Expired', color: 'danger' },
-      'EXPIRING_SOON': { label: 'Expiring Soon', color: 'warning' },
-      'OVERDUE': { label: 'Overdue', color: 'danger' }
-    };
-    const config = statusConfig[status] || { label: status, color: 'secondary' };
-    return config;
-  };
-
-  const getKPIData = () => {
-    const needAttention = assets.filter(a => a.status === 'NEEDS_ATTENTION').length;
-    const activeWarranties = assets.filter(a => a.warrantyStatus === 'ACTIVE_WARRANTY').length;
-    const overdueHours = assets.filter(a => a.maintenanceStatus === 'OVERDUE').length;
-    const avgAge = assets.length > 0 ? (assets.reduce((sum, a) => sum + (a.ageYears || 0), 0) / assets.length).toFixed(1) : 0;
-
-    return {
-      total: totalAssets,
-      needAttention,
-      activeWarranties,
-      overdueHours,
-      avgAge
-    };
-  };
-
-  const kpi = getKPIData();
-  const totalPages = Math.ceil(totalAssets / itemsPerPage);
-
+  /* =========================
+     Handlers
+  ========================= */
   const handleDeleteConfirmed = async () => {
     if (!confirmDeleteAsset) return;
     try {
@@ -146,400 +108,486 @@ export default function AssetList() {
       await deleteAsset(confirmDeleteAsset.id);
       setConfirmDeleteAsset(null);
       fetchAssets();
-    } catch (error) {
-      console.error('Error deleting asset:', error);
-      alert('Failed to delete asset');
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleCancelDelete = () => {
-    setConfirmDeleteAsset(null);
+  const handleImportAssets = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      await bulkImportAssets(formData);
+      fetchAssets();
+      alert('Assets imported successfully!');
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('Failed to import assets. Please check the file format.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExportAssets = () => {
+    const csv = [
+      ['ID', 'Name', 'Code', 'Category', 'Location', 'Manufacturer', 'Status', 'Warranty Status'].join(','),
+      ...assets.map(a => [
+        a.id,
+        `"${a.name}"`,
+        a.code || '',
+        a.category || '',
+        a.location || '',
+        a.manufacturer || '',
+        a.status || '',
+        a.warrantyStatus || ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `assets-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleScanResult = (scannedAssetId) => {
+    const asset = assets.find(a => a.id === scannedAssetId);
+    if (asset) {
+      setViewingAsset(asset);
+      setScannerOpen(false);
+    } else {
+      alert('Asset not found in the system');
+    }
+  };
+
+  const totalPages = Math.ceil(totalAssets / itemsPerPage);
+
+  /* =========================
+     KPI
+  ========================= */
+  const kpi = {
+    total: totalAssets,
+    attention: assets.filter(a => a.status === 'NEEDS_ATTENTION').length,
+    warranties: assets.filter(a => a.warrantyStatus === 'ACTIVE_WARRANTY').length,
+    overdue: assets.filter(a => a.maintenanceStatus === 'OVERDUE').length,
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="bg-card p-6 rounded-lg shadow">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Assets</h1>
-            <p className="text-sm text-muted-foreground">Comprehensive view of all facility assets and equipment</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+
+        {/* ================= HEADER ================= */}
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+            Assets Management
+          </h1>
+          <p className="text-base text-slate-600 dark:text-slate-400">
+            Manage and monitor your facility assets across all locations
+          </p>
+        </div>
+
+        {/* ================= STATS BAR ================= */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">Total Assets</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white">{totalAssets}</p>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <div className="text-xs uppercase text-gray-500 font-semibold">Total Assets:</div>
-              <div className="text-2xl font-bold">{kpi.total.toLocaleString()}</div>
-            </div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">Active</p>
+            <p className="text-3xl font-bold text-green-600">{assets.filter(a => a.status === 'active').length}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">Need Attention</p>
+            <p className="text-3xl font-bold text-amber-600">{kpi.attention}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">Maintenance Due</p>
+            <p className="text-3xl font-bold text-red-600">{kpi.overdue}</p>
           </div>
         </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700" onClick={() => navigate('/assets/new')}>
-          <Plus size={20} /> Add Asset
-        </button>
-        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={handleImport}>
-          <Upload size={20} /> Import
-        </button>
-        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={handleExport}>
-          <Download size={20} /> Export
-        </button>
-        <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border" onClick={() => setScannerOpen(true)}>
-          <QrCode size={20} /> Scan QR
-        </button>
-
-        <div className="ml-auto inline-flex items-center gap-2 bg-card border rounded-md p-1">
-          <button 
-            className={`${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'} p-2 rounded`} 
-            onClick={() => setViewMode('grid')}
-            title="Grid view"
+        {/* ================= ACTIONS ================= */}
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate('/assets/new')} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+            <Plus className="mr-2 h-4 w-4" /> Add Asset
+          </Button>
+          <Button 
+            onClick={() => importInputRef.current?.click()}
+            disabled={importing}
+            variant="outline" 
+            className="border-slate-300 dark:border-slate-600"
           >
-            <Grid3x3 size={20} />
-          </button>
-          <button 
-            className={`${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'} p-2 rounded`} 
-            onClick={() => setViewMode('list')}
-            title="List view"
-          >
-            <List size={20} />
-          </button>
-          <button className="text-gray-500 p-2 rounded" title="Settings">
-            <Settings2 size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-card p-4 rounded-lg shadow flex flex-wrap gap-3 items-center">
-        <div className="flex-1 min-w-[220px]">
+            <Upload className="mr-2 h-4 w-4" /> 
+            {importing ? 'Importing...' : 'Import Assets'}
+          </Button>
           <input
-            type="text"
-            placeholder="Search assets..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            className="w-full px-3 py-2 border rounded-md"
+            ref={importInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleImportAssets}
+            className="hidden"
           />
+          <Button onClick={handleExportAssets} variant="outline" className="border-slate-300 dark:border-slate-600">
+            Export List
+          </Button>
+          <Button onClick={() => setScannerOpen(true)} variant="outline" className="border-slate-300 dark:border-slate-600">
+            <QrCode className="mr-2 h-4 w-4" /> Scanner
+          </Button>
         </div>
 
-        <select
-          value={filters.category}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">Category</option>
-          <option value="HVAC">HVAC</option>
-          <option value="ELECTRICAL">Electrical</option>
-          <option value="PLUMBING">Plumbing</option>
-          <option value="SECURITY">Security</option>
-          <option value="OTHER">Other</option>
-        </select>
-
-        <select
-          value={filters.location}
-          onChange={(e) => handleFilterChange('location', e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">Location</option>
-          <option value="BUILDING_A">Building A</option>
-          <option value="BUILDING_B">Building B</option>
-          <option value="BUILDING_C">Building C</option>
-        </select>
-
-        <select
-          value={filters.status}
-          onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">Status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-          <option value="MAINTENANCE">Maintenance</option>
-        </select>
-
-        <select
-          value={filters.warranty}
-          onChange={(e) => handleFilterChange('warranty', e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">Warranty</option>
-          <option value="ACTIVE">Active</option>
-          <option value="EXPIRED">Expired</option>
-          <option value="EXPIRING_SOON">Expiring Soon</option>
-        </select>
-
-        <button className="text-indigo-600 font-semibold underline" onClick={handleClearFilters}>
-          Clear all filters
-        </button>
-
-        <div className="ml-auto flex items-center gap-2">
-          <label className="text-sm font-semibold text-gray-600">Sort by:</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 border rounded-md"
-          >
-            <option value="name">Asset Name</option>
-            <option value="date_added">Date Added</option>
-            <option value="next_service">Next Service</option>
-            <option value="warranty">Warranty Status</option>
-          </select>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
-          <div className="p-2 w-10 h-10 rounded-md bg-gray-200 text-gray-800 flex items-center justify-center mr-3">
-            <CheckCircle size={24} />
-          </div>
-          <div className="flex-1 ml-2">
-            <h3 className="text-sm font-medium text-gray-500">Total Assets</h3>
-            <p className="text-2xl font-semibold text-gray-900">{kpi.total.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Across all properties</p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
-          <div className="p-2 w-10 h-10 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center mr-3">
-            <AlertTriangle size={24} />
-          </div>
-          <div className="flex-1 ml-2">
-            <h3 className="text-sm font-medium text-gray-500">Need Attention</h3>
-            <p className="text-2xl font-semibold text-gray-900">{kpi.needAttention}</p>
-            <p className="text-sm text-gray-500">Maintenance required</p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
-          <div className="p-2 w-10 h-10 rounded-md bg-green-100 text-green-700 flex items-center justify-center mr-3">
-            <CheckCircle size={24} />
-          </div>
-          <div className="flex-1 ml-2">
-            <h3 className="text-sm font-medium text-gray-500">Active Warranties</h3>
-            <p className="text-2xl font-semibold text-gray-900">{kpi.activeWarranties}</p>
-            <p className="text-sm text-gray-500">Under warranty</p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
-          <div className="p-2 w-10 h-10 rounded-md bg-red-100 text-red-700 flex items-center justify-center mr-3">
-            <Clock size={24} />
-          </div>
-          <div className="flex-1 ml-2">
-            <h3 className="text-sm font-medium text-gray-500">Overdue PM</h3>
-            <p className="text-2xl font-semibold text-gray-900">{kpi.overdueHours}</p>
-            <p className="text-sm text-gray-500">Past due date</p>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-card shadow-sm flex items-center hover:shadow-md transition">
-          <div className="p-2 w-10 h-10 rounded-md bg-gray-200 text-gray-800 flex items-center justify-center mr-3">
-            <Clock size={24} />
-          </div>
-          <div className="flex-1 ml-2">
-            <h3 className="text-sm font-medium text-gray-500">Average Age</h3>
-            <p className="text-2xl font-semibold text-gray-900">{kpi.avgAge}y</p>
-            <p className="text-sm text-gray-500">Portfolio average</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Assets Grid/List */}
-      {loading ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading assets...</p>
-        </div>
-      ) : (
-        <>
-          <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'grid grid-cols-1 gap-4'}`}>
-            {assets.length > 0 ? (
-              assets.map((asset) => (
-                <div
-                  key={asset.id}
-                  className="bg-card rounded-lg shadow overflow-hidden cursor-pointer hover:shadow-lg transition p-4 flex flex-col"
-                  onClick={() => navigate(`/assets/${asset.id}`)}
-                >
-                  <div className="relative w-full pb-[100%] bg-gray-100 rounded overflow-hidden">
-                    <img src={asset.imageUrl || '/placeholder-asset.png'} alt={asset.name} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white ${asset.status === 'ACTIVE' ? 'bg-green-500' : asset.status === 'MAINTENANCE' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
-                  </div>
-
-                  <div className="mt-3 flex-1 flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{asset.id}</h3>
-                      <div className="flex items-center gap-2 relative">
-                        <button
-                          className="p-1 text-gray-500 rounded hover:bg-gray-50"
-                          title="Edit asset"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/assets/${asset.id}/edit`); }}
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          className="p-1 text-gray-500 rounded hover:bg-gray-50"
-                          title="More actions"
-                          onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === asset.id ? null : asset.id); }}
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-
-                        {menuOpenId === asset.id && (
-                          <div className="absolute right-0 top-8 w-40 bg-card border rounded-md shadow-md z-20" onClick={(e) => e.stopPropagation()}>
-                            <button className="w-full text-left px-4 py-2 hover:bg-gray-50" onClick={() => { navigate(`/assets/${asset.id}/edit`); setMenuOpenId(null); }}>Edit</button>
-                            <button className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50" onClick={() => { setConfirmDeleteAsset(asset); setMenuOpenId(null); }}>Delete</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <h2 className="text-lg font-semibold">{asset.name}</h2>
-                    <p className="text-sm text-gray-600">{asset.category} • {asset.type}</p>
-                    <p className="text-sm text-gray-500">Building • {asset.location || 'N/A'}</p>
-
-                    {/* Thumbnails */}
-                    <div className="flex gap-2 mt-1">
-                      {((asset.imageUrls && asset.imageUrls.length > 0) ? asset.imageUrls : [asset.imageUrl || '/placeholder-asset.svg']).slice(0,3).map((img, i) => (
-                        <div key={i} className="w-12 h-12 rounded-md overflow-hidden border" onClick={(e) => { e.stopPropagation(); navigate(`/assets/${asset.id}`); }}>
-                          <img src={img} alt={`${asset.name} thumb ${i+1}`} className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t">
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase font-semibold">Last Maintenance</div>
-                        <div className="text-sm font-semibold">{asset.lastMaintenance || 'N/A'}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase font-semibold">Next Service</div>
-                        <div className="text-sm font-semibold">{asset.nextService || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      {asset.warrantyStatus && (
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(asset.warrantyStatus).color === 'success' ? 'bg-green-100 text-green-700' : getStatusBadge(asset.warrantyStatus).color === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                          {getStatusBadge(asset.warrantyStatus).label}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="bg-card rounded-lg shadow p-8 text-center text-gray-500">
-                <AlertCircle size={48} className="mx-auto" />
-                <h3 className="mt-4 text-lg font-semibold">No assets found</h3>
-                <p>Try adjusting your filters or add a new asset</p>
-              </div>
-            )}
-          </div>
-
-          {/* Delete confirmation modal */}
-          {confirmDeleteAsset && (
-            <Modal>
-              <div className="max-w-lg w-full p-6 bg-card rounded-lg shadow">
-                <h3 className="text-lg font-semibold">Delete asset?</h3>
-                <p>Are you sure you want to delete <strong>{confirmDeleteAsset.name}</strong>? This action cannot be undone.</p>
-                <div className="mt-4 flex justify-end gap-2">
-                  <button className="px-3 py-2 rounded-md border" onClick={handleCancelDelete} disabled={deleting}>Cancel</button>
-                  <button className="px-3 py-2 rounded-md bg-indigo-600 text-white" onClick={handleDeleteConfirmed} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete'}</button>
-                </div>
-              </div>
-            </Modal>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="pagination">
+        {/* ================= FILTER CARD ================= */}
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900 dark:text-white">Filters</h3>
               <button
-                className="pagination-btn"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                onClick={() => setFilters({ search: '' })}
+                className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
               >
-                ‹
+                Clear all
               </button>
-
-              {Array.from({ length: totalPages }, (_, i) => {
-                const page = i + 1;
-                if (page <= 3 || page > totalPages - 3 || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                  return (
-                    <button
-                      key={page}
-                      className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </button>
-                  );
-                } else if (page === 4 || page === totalPages - 3) {
-                  return <span key={page} className="pagination-dots">...</span>;
-                }
-                return null;
-              })}
-
-              <button
-                className="pagination-btn"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                ›
-              </button>
-
-              <span className="pagination-info">
-                Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalAssets)} of {totalAssets} assets
-              </span>
             </div>
-          )}
-        </>
-      )}
 
-      {/* QR Scanner Modal */}
-      <AssetQRScanner
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="relative md:col-span-2">
+                <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  className="pl-10 w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Search assets by name, code..."
+                  value={filters.search}
+                  onChange={e =>
+                    setFilters(prev => ({ ...prev, search: e.target.value }))
+                  }
+                />
+              </div>
+
+              <select className="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option>All Categories</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              
+              <select className="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option>All Locations</option>
+                {LOCATIONS.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+              
+              <select className="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option>All Status</option>
+                {STATUSES.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+          </CardContent>
+        </Card>
+        {/* ================= ASSET GRID ================= */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-slate-800 rounded-xl animate-pulse">
+                <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-t-xl" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : assets.length === 0 ? (
+          <div className="col-span-full text-center py-16">
+            <div className="text-slate-400 dark:text-slate-500 mb-4">
+              <AlertCircle className="h-12 w-12 mx-auto opacity-50" />
+            </div>
+            <p className="text-slate-600 dark:text-slate-400">No assets found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {assets.map(asset => (
+              <div
+                key={asset.id}
+                onClick={() => navigate(`/assets/${asset.id}`)}
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 overflow-hidden group cursor-pointer"
+              >
+                {/* Image */}
+                <div className="h-40 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 relative">
+                  <AssetImage
+                    src={asset.imageUrl ? `${asset.imageUrl}?t=${asset.updatedAt || 0}` : undefined}
+                    alt={asset.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    imgProps={{ sizes: '(max-width: 640px) 100vw, 25vw' }}
+                  />
+                  
+                  {/* Status Badge - Top Right */}
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      asset.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' :
+                      asset.status === 'maintenance' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200' :
+                      asset.status === 'inactive' ? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200' :
+                      'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {asset.status ? asset.status.toUpperCase() : 'UNKNOWN'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                  {/* Code */}
+                  <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
+                    #{asset.code || asset.id.slice(0, 8)}
+                  </p>
+
+                  {/* Name */}
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-2">
+                    {asset.name}
+                  </h3>
+
+                  {/* Category & Manufacturer */}
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {asset.category || '—'} • {asset.manufacturer || '—'}
+                  </p>
+
+                  {/* Location */}
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {asset.location || '—'}
+                  </p>
+
+                  {/* Maintenance Dates */}
+                  <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-200 dark:border-slate-700 pt-3">
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400">Last Maintenance</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">{asset.lastMaintenance || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400">Next Service</p>
+                      <p className={`font-semibold ${
+                        asset.maintenanceStatus === 'OVERDUE' 
+                          ? 'text-red-600 dark:text-red-400' 
+                          : 'text-slate-900 dark:text-white'
+                      }`}>
+                        {asset.nextService || '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Warranty Badge */}
+                  {asset.warrantyStatus && (
+                    <div className="pt-2">
+                      <span className={`inline-block px-2.5 py-1 text-xs rounded-full font-semibold ${
+                        asset.warrantyStatus === 'ACTIVE_WARRANTY'
+                          ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-200'
+                          : asset.warrantyStatus === 'EXPIRING_SOON'
+                          ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
+                          : 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-200'
+                      }`}>
+                        {asset.warrantyStatus.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ================= PAGINATION ================= */}
+        {totalPages > 1 && (
+        <div className="flex justify-between items-center text-sm pt-8 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-slate-600 dark:text-slate-400">
+            Showing <span className="font-semibold">{(currentPage - 1) * itemsPerPage + 1}</span>–
+            <span className="font-semibold">{Math.min(currentPage * itemsPerPage, totalAssets)}</span> of <span className="font-semibold">{totalAssets}</span>
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalPages }).slice(
+              Math.max(0, currentPage - 2),
+              Math.min(totalPages, currentPage + 3)
+            ).map((_, i) => {
+              const page = Math.max(1, currentPage - 1) + i;
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-lg font-semibold transition-colors ${
+                    currentPage === page
+                      ? 'bg-indigo-600 text-white'
+                      : 'border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+        )}
+      </div>
+
+      {/* ================= QUICK ACTIONS ================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+            <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📦</div>
+            <p className="font-semibold text-slate-900 dark:text-white">Bulk Operations</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Update multiple assets</p>
+          </button>
+          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+            <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📅</div>
+            <p className="font-semibold text-slate-900 dark:text-white">Schedule PM</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Preventive maintenance</p>
+          </button>
+          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+            <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">🔄</div>
+            <p className="font-semibold text-slate-900 dark:text-white">Update Status</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Bulk status changes</p>
+          </button>
+          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+            <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📊</div>
+            <p className="font-semibold text-slate-900 dark:text-white">Generate Report</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Asset analytics</p>
+          </button>
+        </div>
+      </div>
+
+      {/* ================= SCANNER MODAL ================= */}
+      <AssetQRScanner 
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
-        onScan={(val) => {
-          // try to navigate to matching asset id or show result
-          const found = assets.find(a => String(a.id) === String(val) || (a.assetTag && String(a.assetTag) === String(val)));
-          if (found) {
-            navigate(`/assets/${found.id}`);
-          } else {
-            alert(`Scanned value: ${val}`);
-          }
-          setScannerOpen(false);
-        }}
+        onAssetScanned={handleScanResult}
       />
 
-      {/* Quick Actions */}
-      <div className="bg-card p-4 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
-            <div className="text-indigo-600"><FileText size={20} /></div>
-            <h4 className="font-semibold">Bulk Operations</h4>
-            <p className="text-sm text-gray-500">Update multiple assets</p>
-          </button>
-          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
-            <div className="text-indigo-600"><Calendar size={20} /></div>
-            <h4 className="font-semibold">Schedule PM</h4>
-            <p className="text-sm text-gray-500">Preventive maintenance</p>
-          </button>
-          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
-            <div className="text-indigo-600"><Check size={20} /></div>
-            <h4 className="font-semibold">Update Status</h4>
-            <p className="text-sm text-gray-500">Bulk status changes</p>
-          </button>
-          <button className="p-3 rounded-md border text-left flex flex-col gap-1">
-            <div className="text-indigo-600"><BarChart size={20} /></div>
-            <h4 className="font-semibold">Generate Report</h4>
-            <p className="text-sm text-gray-500">Asset reports</p>
-          </button>
+
+
+    </div>
+  );
+}
+
+/* =========================
+   Reusable Components
+========================= */
+function StatCard({ icon, label, value }) {
+  return (
+    <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
+      <CardContent className="p-6 space-y-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs uppercase font-semibold text-slate-600 dark:text-slate-400 tracking-wide">{label}</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{value}</p>
+          </div>
+          {icon && <div className="text-slate-300 dark:text-slate-600">{icon}</div>}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InputField({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">{label}</label>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+    </div>
+  );
+}
+
+function SelectField({ label, value, options, onChange }) {
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <option value="">Select {label.toLowerCase()}</option>
+        {options.map(o => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/* =========================
+   Image Upload (Drag & Drop)
+========================= */
+function AssetImageUploader({ preview, onSelect, progress }) {
+  const inputRef = useRef(null);
+
+  const handleFile = file => {
+    if (!file) return;
+    onSelect(file, URL.createObjectURL(file));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div
+        className="border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-lg p-6 text-center cursor-pointer transition-colors"
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => {
+          e.preventDefault();
+          handleFile(e.dataTransfer.files[0]);
+        }}
+        onClick={() => inputRef.current.click()}
+      >
+        <div className="text-slate-400">
+          <Upload className="mx-auto mb-3 h-8 w-8" />
+        </div>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Upload Image</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Drag & drop or click</p>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={e => handleFile(e.target.files[0])}
+        />
       </div>
+
+      {progress > 0 && progress < 100 && (
+        <div className="space-y-2">
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="h-2 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-center text-slate-600 dark:text-slate-400">{progress}% uploaded</p>
+        </div>
+      )}
     </div>
   );
 }

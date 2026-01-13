@@ -10,26 +10,36 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  InputAdornment,
+  IconButton,
+  Paper,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Wrench } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
-const schema = yup.object().shape({
+const schema = yup.object({
   name: yup.string().required('Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  confirmPassword: yup.string().oneOf([yup.ref('password'), null], 'Passwords must match').required('Please confirm your password'),
+  password: yup.string().min(6).required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required(),
   role: yup.string().required('Role is required'),
 });
 
 const Register = () => {
   const { register: registerUser } = useAuth();
-  const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -45,24 +55,72 @@ const Register = () => {
     setLoading(true);
 
     const { name, email, password, role } = data;
-    const payload = { name, email, password, role };
+    const result = await registerUser({ name, email, password, role });
 
-    const result = await registerUser(payload);
     setLoading(false);
-
-    if (result.success) {
-      // AuthContext already sets user and navigates based on role
-    } else {
-      // Show a short, generic message only (do not display server-provided messages).
+    if (!result.success) {
       setServerError('Registration failed.');
     }
   };
 
+  const fieldProps = {
+    variant: 'outlined',
+    fullWidth: true,
+    size: 'small',
+    margin: 'normal',
+    sx: {
+      '& .MuiOutlinedInput-root': {
+        borderRadius: 1,
+        backgroundColor: '#f8fafc',
+        '&.Mui-focused fieldset': { borderColor: '#1e3a8a' },
+        '& fieldset': { borderColor: '#e6eef8' },
+        fontSize: '0.95rem',
+      },
+      '& .MuiInputLabel-root': { fontSize: '0.9rem', color: '#374151' },
+    },
+  };
+
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
-      <Typography component="h1" variant="h4" align="center" gutterBottom>
-        Create an account
+    <React.Fragment>
+      {/* Logo + Brand */}
+      <Box textAlign="center" mb={3}>
+        <Box
+        sx={{
+          width: 56,
+          height: 56,
+          mx: 'auto',
+          mb: 2,
+          borderRadius: 2,
+          bgcolor: 'primary.main',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden'
+        }}
+      >
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: 'center' }}
+        >
+          <Wrench size={26} color="#fff" />
+        </motion.div>
+      </Box>
+
+      <Typography fontWeight={700} variant="h6">
+        FacilityPro
       </Typography>
+    </Box>
+
+      {/* Header */}
+      <Box textAlign="center" mb={3}>
+        <Typography variant="h5" fontWeight={700} gutterBottom>
+          Create Account
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Join our facility management platform to get started
+        </Typography>
+      </Box>
 
       {serverError && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -70,87 +128,136 @@ const Register = () => {
         </Alert>
       )}
 
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="name"
-        label="Full Name"
-        {...register('name')}
-        error={!!errors.name}
-        helperText={errors.name?.message}
-      />
+      {/* Form */}
+      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <TextField
+          {...fieldProps}
+          label="Full Name"
+          {...register('name')}
+          error={!!errors.name}
+          helperText={errors.name?.message}
+        />
 
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="email"
-        label="Email Address"
-        {...register('email')}
-        error={!!errors.email}
-        helperText={errors.email?.message}
-      />
+        <TextField
+          {...fieldProps}
+          label="Email Address"
+          {...register('email')}
+          error={!!errors.email}
+          helperText={errors.email?.message}
+        />
 
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        name="password"
-        label="Password"
-        type="password"
-        id="password"
-        {...register('password')}
-        error={!!errors.password}
-        helperText={errors.password?.message}
-      />
+        <TextField
+          {...fieldProps}
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          {...register('password')}
+          error={!!errors.password}
+          helperText={errors.password?.message}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowPassword(v => !v)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        name="confirmPassword"
-        label="Confirm Password"
-        type="password"
-        id="confirmPassword"
-        {...register('confirmPassword')}
-        error={!!errors.confirmPassword}
-        helperText={errors.confirmPassword?.message}
-      />
+        <TextField
+          {...fieldProps}
+          label="Confirm Password"
+          type={showConfirmPassword ? 'text' : 'password'}
+          {...register('confirmPassword')}
+          error={!!errors.confirmPassword}
+          helperText={errors.confirmPassword?.message}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
-      <FormControl fullWidth margin="normal">
-        <InputLabel id="role-label">Role</InputLabel>
-        <Select
-          labelId="role-label"
-          id="role"
-          label="Role"
-          defaultValue="technician"
-          {...register('role')}
-          error={!!errors.role}
+        <FormControl fullWidth margin="normal" error={!!errors.role}>
+          <InputLabel>Role</InputLabel>
+          <Select label="Role" defaultValue="technician" {...register('role')}>
+            <MenuItem value="facility_manager">Facility Manager</MenuItem>
+            <MenuItem value="technician">Maintenance Technician</MenuItem>
+            <MenuItem value="vendor">Vendor</MenuItem>
+            <MenuItem value="staff">Staff</MenuItem>
+            <MenuItem value="finance">Finance</MenuItem>
+          </Select>
+          {errors.role && (
+            <Typography variant="caption" color="error">
+              {errors.role.message}
+            </Typography>
+          )}
+        </FormControl>
+
+        {/* Terms */}
+        <FormControlLabel
+          sx={{ mt: 1 }}
+          control={<Checkbox defaultChecked />}
+          label={
+            <Typography variant="body2">
+              I agree to the{' '}
+              <Link href="/terms" fontWeight={600}>
+                Terms and Conditions
+              </Link>
+            </Typography>
+          }
+        />
+
+        <Button
+          type="submit"
+          fullWidth
+          size="large"
+          variant="contained"
+          disabled={loading}
+          sx={{
+            mt: 3,
+            py: 1.4,
+            fontWeight: 600,
+            textTransform: 'none',
+          }}
         >
-          <MenuItem value="facility_manager">Facility Manager</MenuItem>
-          <MenuItem value="technician">Maintenance Technician</MenuItem>
-          <MenuItem value="vendor">Vendor</MenuItem>
-          <MenuItem value="staff">Staff</MenuItem>
-          <MenuItem value="finance">Finance</MenuItem>
-        </Select>
-        {errors.role && <Typography variant="caption" color="error">{errors.role.message}</Typography>}
-      </FormControl>
+          {loading ? 'Creating Account…' : 'Create Account'}
+        </Button>
 
-      <Button
-        type="submit"
-        fullWidth
-        variant="contained"
-        sx={{ mt: 3, mb: 2 }}
-        disabled={loading}
-      >
-        {loading ? 'Creating account...' : 'Register'}
-      </Button>
-
-      <Box textAlign="center">
-        <Link href="/login" variant="body2">Already have an account? Sign in</Link>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          textAlign="center"
+          mt={3}
+        >
+          Already have an account?{' '}
+          <Link href="/login" fontWeight={600}>
+            Log in
+          </Link>
+        </Typography>
       </Box>
-    </Box>
+
+      {/* Footer */}
+      <Box textAlign="center" mt={4}>
+        <Typography variant="caption" color="text.secondary">
+          © 2024 FacilityPro. All rights reserved.
+        </Typography>
+        <Box mt={1} display="flex" justifyContent="center" gap={2}>
+          <Link variant="caption" href="/terms">Terms of Service</Link>
+          <Link variant="caption" href="/privacy">Privacy Policy</Link>
+        </Box>
+      </Box>
+    </React.Fragment>
   );
 };
 

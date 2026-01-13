@@ -1,6 +1,7 @@
-import React, { useState, useContext } from "react";
-import { Menu, Bell, Sun, Moon, LogOut, Settings, User } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Menu, Bell, LogOut, Settings, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../contexts/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,20 +13,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
-// import ThemeContext from "../../../contexts/ThemeContext";
-import { useAuth } from "../../../contexts/AuthContext";
 import NavigationMenu from "../Navigation/NavigationMenu";
 
 const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
-  // const { theme, toggleTheme } = useContext(ThemeContext);
-  // Theme context temporarily disabled — use safe fallbacks
-  const theme = 'light';
-  const toggleTheme = () => {};
   const navigate = useNavigate();
+
+  // ✅ Prevent background scroll on mobile
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
+  }, [mobileOpen]);
 
   const getRoleDisplay = (role) => {
     const roles = {
@@ -40,17 +40,145 @@ const MainLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
-      
-      {/* Sidebar */}
+    <div className="min-h-screen bg-background text-foreground">
+
+      {/* HEADER */}
+      <header className="mp-header sticky top-0 z-50 flex h-16 items-center justify-between px-6">
+        {/* Left Section: Menu + Logo */}
+        <div className="flex items-center gap-4 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden mp-header-action"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="brand-accent text-base">SMMP</span>
+              <div className="h-4 w-px bg-gray-200"></div>
+              <span className="text-sm font-medium text-gray-700">FacilityPro</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Section: Notifications + User Menu */}
+        <div className="flex items-center gap-3">
+          {/* Notifications */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative mp-header-action"
+            title="Notifications"
+          >
+            <span className="mp-notification-badge">4</span>
+            <Bell className="h-5 w-5" />
+          </Button>
+
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2.5 px-2 mp-header-action"
+              >
+                <Avatar className="h-8 w-8 border border-gray-200 bg-blue-50">
+                  <AvatarImage
+                    src={user?.avatar}
+                    alt={user?.name || "User avatar"}
+                  />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold text-xs">
+                    {user?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="hidden sm:flex flex-col items-start">
+                  <p className="text-sm font-semibold text-gray-900 leading-none">
+                    {user?.name || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {getRoleDisplay?.(user?.role) || user?.role}
+                  </p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              align="end"
+              sideOffset={12}
+              className="w-56 rounded-lg border border-gray-200 shadow-lg"
+            >
+              {/* User Info Section */}
+              <div className="px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border border-gray-200 bg-blue-50">
+                    <AvatarImage
+                      src={user?.avatar}
+                      alt={user?.name || "User avatar"}
+                    />
+                    <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                      {user?.name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {user?.name || "User"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user?.email || getRoleDisplay?.(user?.role)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <DropdownMenuItem 
+                onClick={() => navigate("/profile")}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
+              >
+                <User className="h-4 w-4 text-gray-400" />
+                <span>My Profile</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={() => navigate("/settings")}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50"
+              >
+                <Settings className="h-4 w-4 text-gray-400" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-2" />
+
+              <DropdownMenuItem
+                onClick={async () => await logout?.()}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform duration-300
-        ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+        className={`mp-sidebar fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-72
+        overflow-y-auto overscroll-contain touch-pan-y
+        transition-transform duration-300
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+        md:translate-x-0`}
       >
-        <NavigationMenu />
+        <NavigationMenu onCloseMobile={() => setMobileOpen(false)} />
       </aside>
 
-      {/* Overlay (mobile) */}
+      {/* MOBILE OVERLAY */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 md:hidden"
@@ -58,90 +186,10 @@ const MainLayout = ({ children }) => {
         />
       )}
 
-      {/* Main area */}
-      <div className="flex flex-1 flex-col md:ml-64">
-        
-        {/* Topbar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-card px-4">
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu />
-            </Button>
-
-            <h1 className="hidden text-lg font-bold text-primary md:block">
-              SonOfMan MaintainPro
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            
-            {/* Notifications */}
-            <Button variant="ghost" size="icon">
-              <Badge className="absolute -right-1 -top-1 px-1">4</Badge>
-              <Bell />
-            </Button>
-
-            {/* Theme toggle */}
-            <Button variant="ghost" size="icon" onClick={() => {}}>
-              <Sun />
-            </Button>
-
-            {/* Profile dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar} />
-                    <AvatarFallback>
-                      {user?.name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="hidden text-left md:block">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {getRoleDisplay(user?.role)}
-                    </p>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                  onClick={logout}
-                  className="text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="flex-1 p-4 md:p-6">
-          {children}
-        </main>
-      </div>
+      {/* MAIN CONTENT */}
+      <main className="p-4 md:p-6 md:ml-72">
+        {children}
+      </main>
     </div>
   );
 };

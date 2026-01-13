@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createAsset, updateAsset, getAsset } from '../../api/assets';
-import { ArrowLeft, Save, X } from 'lucide-react';
-// styles migrated to Tailwind - AssetForm.css will be removed after verification
-
+import { createAsset, updateAsset, getAsset, uploadAssetImage } from '../../api/assets';
+import { ArrowLeft, Save, Upload, Image as ImageIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function AssetForm() {
   const navigate = useNavigate();
@@ -58,6 +58,7 @@ export default function AssetForm() {
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     if (isEditMode) {
@@ -152,7 +153,6 @@ export default function AssetForm() {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -163,8 +163,11 @@ export default function AssetForm() {
 
   const handleFileChange = (e) => {
     const file = e.target.files && e.target.files[0];
+    processFile(file);
+  };
+
+  const processFile = (file) => {
     if (file) {
-      // Basic file validation - only images under 5MB
       if (!file.type.startsWith('image/')) {
         setErrors(prev => ({ ...prev, imageUrl: 'Only image files are allowed' }));
         return;
@@ -176,9 +179,26 @@ export default function AssetForm() {
 
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
-      // clear any image errors
       if (errors.imageUrl) setErrors(prev => ({ ...prev, imageUrl: '' }));
     }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    processFile(file);
   };
 
   const handleSubmit = async (e) => {
@@ -191,7 +211,6 @@ export default function AssetForm() {
     try {
       setSaving(true);
       let saved;
-      // Map form fields to asset shape used by the app
       const payload = {
         name: formData.name,
         assetTag: formData.assetId,
@@ -206,7 +225,6 @@ export default function AssetForm() {
         manufacturer: formData.manufacturer,
         model: formData.model,
         serial: formData.serialNumber,
-        // Simple conversion for specs: store as 'specs' object if JSON, otherwise leave as string in specifications
         specs: (() => {
           try { return formData.specifications ? JSON.parse(formData.specifications) : undefined; } catch (e) { return { notes: formData.specifications }; }
         })(),
@@ -230,14 +248,11 @@ export default function AssetForm() {
         saved = await createAsset(payload);
       }
 
-      // Upload image if provided
       try {
         if (imageFile) {
           const assetId = isEditMode ? id : (saved?.id || saved?.data?.id);
           if (assetId) {
-            const { uploadAssetImage } = await import('../../api/assets');
             const res = await uploadAssetImage(assetId, imageFile);
-            // If upload returns an imageUrl (fallback or server), update preview and form data
             if (res && res.imageUrl) {
               setImagePreview(res.imageUrl);
               setFormData(fd => ({ ...fd, imageUrl: res.imageUrl }));
@@ -248,7 +263,6 @@ export default function AssetForm() {
         console.warn('Image upload failed but asset saved:', imgErr);
       }
 
-      // wait a tick so user sees the updated preview if they remain on the form
       await new Promise(r => setTimeout(r, 150));
       navigate('/assets');
     } catch (error) {
@@ -261,11 +275,11 @@ export default function AssetForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="space-y-6 pb-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 border-4 border-gray-200 rounded-full border-t-indigo-500 animate-spin mb-3"></div>
-            <p>Loading asset...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <p className="text-gray-600 dark:text-gray-400 mt-3">Loading asset...</p>
           </div>
         </div>
       </div>
@@ -273,452 +287,493 @@ export default function AssetForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b">
-        <div className="max-w-6xl mx-auto p-4 flex items-center gap-4">
-          <button className="p-2 rounded hover:bg-gray-100" onClick={() => navigate('/assets')}>
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-xl font-semibold">{isEditMode ? 'Edit Asset' : 'Create New Asset'}</h1>
-            <p className="text-sm text-gray-500">{isEditMode ? `Updating ${formData.name}` : 'Add a new facility asset or equipment'}</p>
-          </div>
+      <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
+        <button className="p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => navigate('/assets')}>
+          <ArrowLeft className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">
+            {isEditMode ? 'Edit Asset' : 'Create New Asset'}
+          </h1>
+          <p className="text-indigo-700 dark:text-indigo-300 mt-1">
+            {isEditMode ? `Updating ${formData.name}` : 'Add a new facility asset or equipment to your inventory'}
+          </p>
         </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-4 md:p-6">
-        {/* Error Message */}
-        {errors.submit && (
-          <div className="rounded-md bg-red-50 border-l-4 border-red-400 p-3 mb-4">
-            <p className="text-red-700">{errors.submit}</p>
-          </div>
-        )}
-
-        {/* Basic Information Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Basic Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="name" className="block font-semibold mb-1">Asset Name *</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="e.g., Rooftop Chiller Unit"
-                className={`w-full px-3 py-2 border rounded-md ${errors.name ? 'border-red-500' : ''}`}
-              />
-              {errors.name && <span className="text-sm text-red-600">{errors.name}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="assetId" className="block font-semibold mb-1">Asset ID *</label>
-              <input
-                type="text"
-                id="assetId"
-                name="assetId"
-                value={formData.assetId}
-                onChange={handleInputChange}
-                placeholder="e.g., AC-001"
-                className={`w-full px-3 py-2 border rounded-md ${errors.assetId ? 'border-red-500' : ''}`}
-              />
-              {errors.assetId && <span className="text-sm text-red-600">{errors.assetId}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="category" className="block font-semibold mb-1">Category *</label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md ${errors.category ? 'border-red-500' : ''}`}
-              >
-                <option value="">Select a category</option>
-                <option value="HVAC">HVAC</option>
-                <option value="ELECTRICAL">Electrical</option>
-                <option value="PLUMBING">Plumbing</option>
-                <option value="SECURITY">Security</option>
-                <option value="FIRE_SAFETY">Fire Safety</option>
-                <option value="ELEVATOR">Elevator</option>
-                <option value="LIGHTING">Lighting</option>
-                <option value="OTHER">Other</option>
-              </select>
-              {errors.category && <span className="text-sm text-red-600">{errors.category}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="type" className="block font-semibold mb-1">Type</label>
-              <input
-                type="text"
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                placeholder="e.g., Chiller"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label htmlFor="description" className="block font-semibold mb-1">Description</label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Provide details about this asset"
-                rows="3"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
+      {/* Error Message */}
+      {errors.submit && (
+        <div className="rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4">
+          <p className="text-red-700 dark:text-red-300 text-sm">{errors.submit}</p>
         </div>
+      )}
 
-        {/* Location & Details Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Location & Building Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="location" className="block mb-1 font-semibold">Location *</label>
-              <select
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md ${errors.location ? 'border-red-500' : ''}`}
-              >
-                <option value="">Select location</option>
-                <option value="BUILDING_A">Building A</option>
-                <option value="BUILDING_B">Building B</option>
-                <option value="BUILDING_C">Building C</option>
-                <option value="PARKING">Parking Structure</option>
-                <option value="OUTDOOR">Outdoor</option>
-              </select>
-              {errors.location && <span className="text-sm text-red-600">{errors.location}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="building" className="block mb-1 font-semibold">Building</label>
-              <input
-                type="text"
-                id="building"
-                name="building"
-                value={formData.building}
-                onChange={handleInputChange}
-                placeholder="e.g., Main Building"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="floor" className="block mb-1 font-semibold">Floor</label>
-              <input
-                type="text"
-                id="floor"
-                name="floor"
-                value={formData.floor}
-                onChange={handleInputChange}
-                placeholder="e.g., Roof"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="room" className="block mb-1 font-semibold">Room/Space</label>
-              <input
-                type="text"
-                id="room"
-                name="room"
-                value={formData.room}
-                onChange={handleInputChange}
-                placeholder="e.g., Mechanical Room A"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Technical Specifications Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Technical Specifications</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="manufacturer" className="block mb-1 font-semibold">Manufacturer *</label>
-              <input
-                type="text"
-                id="manufacturer"
-                name="manufacturer"
-                value={formData.manufacturer}
-                onChange={handleInputChange}
-                placeholder="e.g., Carrier"
-                className={`w-full px-3 py-2 border rounded-md ${errors.manufacturer ? 'border-red-500' : ''}`}
-              />
-              {errors.manufacturer && <span className="text-sm text-red-600">{errors.manufacturer}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="model" className="block mb-1 font-semibold">Model *</label>
-              <input
-                type="text"
-                id="model"
-                name="model"
-                value={formData.model}
-                onChange={handleInputChange}
-                placeholder="e.g., X200"
-                className={`w-full px-3 py-2 border rounded-md ${errors.model ? 'border-red-500' : ''}`}
-              />
-              {errors.model && <span className="text-sm text-red-600">{errors.model}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="serialNumber" className="block mb-1 font-semibold">Serial Number *</label>
-              <input
-                type="text"
-                id="serialNumber"
-                name="serialNumber"
-                value={formData.serialNumber}
-                onChange={handleInputChange}
-                placeholder="e.g., SN123456"
-                className={`w-full px-3 py-2 border rounded-md ${errors.serialNumber ? 'border-red-500' : ''}`}
-              />
-              {errors.serialNumber && <span className="text-sm text-red-600">{errors.serialNumber}</span>}
-            </div>
-
-            <div className="md:col-span-2">
-              <label htmlFor="specifications" className="block mb-1 font-semibold">Specifications</label>
-              <textarea
-                id="specifications"
-                name="specifications"
-                value={formData.specifications}
-                onChange={handleInputChange}
-                placeholder="Technical specifications, capacity, power requirements, etc."
-                rows="3"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Installation & Warranty Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Installation & Warranty</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="installDate" className="block mb-1 font-semibold">Installation Date *</label>
-              <input
-                type="date"
-                id="installDate"
-                name="installDate"
-                value={formData.installDate}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md ${errors.installDate ? 'border-red-500' : ''}`}
-              />
-              {errors.installDate && <span className="text-sm text-red-600">{errors.installDate}</span>}
-            </div>
-
-            <div>
-              <label htmlFor="warrantyExpiry" className="block mb-1 font-semibold">Warranty Expiry Date</label>
-              <input
-                type="date"
-                id="warrantyExpiry"
-                name="warrantyExpiry"
-                value={formData.warrantyExpiry}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="warrantyProvider" className="block mb-1 font-semibold">Warranty Provider</label>
-              <input
-                type="text"
-                id="warrantyProvider"
-                name="warrantyProvider"
-                value={formData.warrantyProvider}
-                onChange={handleInputChange}
-                placeholder="e.g., Carrier Warranty"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Maintenance Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Maintenance Schedule</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="lastMaintenanceDate" className="block mb-1 font-semibold">Last Maintenance Date</label>
-              <input
-                type="date"
-                id="lastMaintenanceDate"
-                name="lastMaintenanceDate"
-                value={formData.lastMaintenanceDate}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="nextMaintenanceDate" className="block mb-1 font-semibold">Next Maintenance Date</label>
-              <input
-                type="date"
-                id="nextMaintenanceDate"
-                name="nextMaintenanceDate"
-                value={formData.nextMaintenanceDate}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="maintenanceFrequency" className="block mb-1 font-semibold">Maintenance Frequency</label>
-              <select
-                id="maintenanceFrequency"
-                name="maintenanceFrequency"
-                value={formData.maintenanceFrequency}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="semi_annual">Semi-Annual</option>
-                <option value="annual">Annual</option>
-                <option value="as_needed">As Needed</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="maintenanceProvider" className="block mb-1 font-semibold">Maintenance Provider</label>
-              <input
-                type="text"
-                id="maintenanceProvider"
-                name="maintenanceProvider"
-                value={formData.maintenanceProvider}
-                onChange={handleInputChange}
-                placeholder="e.g., ABC Maintenance Co."
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Financial Information Section */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Financial Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="purchasePrice" className="block mb-1 font-semibold">Purchase Price</label>
-              <input
-                type="number"
-                id="purchasePrice"
-                name="purchasePrice"
-                value={formData.purchasePrice}
-                onChange={handleInputChange}
-                placeholder="0.00"
-                step="0.01"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="purchaseDate" className="block mb-1 font-semibold">Purchase Date</label>
-              <input
-                type="date"
-                id="purchaseDate"
-                name="purchaseDate"
-                value={formData.purchaseDate}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="depreciationRate" className="block mb-1 font-semibold">Depreciation Rate (%)</label>
-              <input
-                type="number"
-                id="depreciationRate"
-                name="depreciationRate"
-                value={formData.depreciationRate}
-                onChange={handleInputChange}
-                placeholder="10"
-                step="0.1"
-                min="0"
-                max="100"
-                className="w-full px-3 py-2 border rounded-md"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Status & Additional Notes */}
-        <div className="bg-card p-4 rounded-lg shadow mb-4">
-          <h2 className="text-lg font-semibold mb-3">Status & Additional Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="status" className="block mb-1 font-semibold">Status</label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-md"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Under Maintenance</option>
-                <option value="retired">Retired</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="imageUrl" className="block mb-1 font-semibold">Image</label>
-              <input
-                type="file"
-                id="imageUrl"
-                name="imageUrl"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="block"
-              />
-              {imagePreview && (
-                <div className="mt-2 max-w-[220px] rounded-md overflow-hidden border">
-                  <img src={imagePreview} alt="preview" className="w-full h-auto block" />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Basic Information */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📋 Basic Information</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    label="Asset Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    error={errors.name}
+                    placeholder="e.g., Rooftop Chiller Unit"
+                    required
+                  />
+                  <InputField
+                    label="Asset ID"
+                    name="assetId"
+                    value={formData.assetId}
+                    onChange={handleInputChange}
+                    error={errors.assetId}
+                    placeholder="e.g., AC-001"
+                    required
+                  />
                 </div>
-              )}
-              {errors.imageUrl && <span className="text-sm text-red-600">{errors.imageUrl}</span>}
-            </div>
 
-            <div className="md:col-span-2">
-              <label htmlFor="notes" className="block mb-1 font-semibold">Notes</label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                placeholder="Additional notes and comments about this asset"
-                rows="3"
-                className="w-full px-3 py-2 border rounded-md"
-              />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="Category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    error={errors.category}
+                    options={[
+                      { value: '', label: 'Select a category' },
+                      { value: 'HVAC', label: '❄️ HVAC' },
+                      { value: 'ELECTRICAL', label: '⚡ Electrical' },
+                      { value: 'PLUMBING', label: '💧 Plumbing' },
+                      { value: 'SECURITY', label: '🔒 Security' },
+                      { value: 'FIRE_SAFETY', label: '🚒 Fire Safety' },
+                      { value: 'ELEVATOR', label: '⬆️ Elevator' },
+                      { value: 'LIGHTING', label: '💡 Lighting' },
+                      { value: 'OTHER', label: 'Other' }
+                    ]}
+                    required
+                  />
+                  <InputField
+                    label="Type"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Chiller"
+                  />
+                </div>
+
+                <TextAreaField
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Provide details about this asset"
+                  rows="3"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Location & Details */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📍 Location & Details</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    error={errors.location}
+                    options={[
+                      { value: '', label: 'Select location' },
+                      { value: 'BUILDING_A', label: 'Building A' },
+                      { value: 'BUILDING_B', label: 'Building B' },
+                      { value: 'BUILDING_C', label: 'Building C' },
+                      { value: 'PARKING', label: 'Parking Structure' },
+                      { value: 'OUTDOOR', label: 'Outdoor' }
+                    ]}
+                    required
+                  />
+                  <InputField
+                    label="Building"
+                    name="building"
+                    value={formData.building}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Main Building"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    label="Floor"
+                    name="floor"
+                    value={formData.floor}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Roof"
+                  />
+                  <InputField
+                    label="Room/Space"
+                    name="room"
+                    value={formData.room}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Mechanical Room A"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Technical Specifications */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">🔧 Technical Specifications</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    label="Manufacturer"
+                    name="manufacturer"
+                    value={formData.manufacturer}
+                    onChange={handleInputChange}
+                    error={errors.manufacturer}
+                    placeholder="e.g., Carrier"
+                    required
+                  />
+                  <InputField
+                    label="Model"
+                    name="model"
+                    value={formData.model}
+                    onChange={handleInputChange}
+                    error={errors.model}
+                    placeholder="e.g., X200"
+                    required
+                  />
+                </div>
+
+                <InputField
+                  label="Serial Number"
+                  name="serialNumber"
+                  value={formData.serialNumber}
+                  onChange={handleInputChange}
+                  error={errors.serialNumber}
+                  placeholder="e.g., SN123456"
+                  required
+                />
+
+                <TextAreaField
+                  label="Specifications"
+                  name="specifications"
+                  value={formData.specifications}
+                  onChange={handleInputChange}
+                  placeholder="Technical specifications, capacity, power requirements, etc."
+                  rows="3"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Installation & Warranty */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📅 Installation & Warranty</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    type="date"
+                    label="Installation Date"
+                    name="installDate"
+                    value={formData.installDate}
+                    onChange={handleInputChange}
+                    error={errors.installDate}
+                    required
+                  />
+                  <InputField
+                    type="date"
+                    label="Warranty Expiry Date"
+                    name="warrantyExpiry"
+                    value={formData.warrantyExpiry}
+                    onChange={handleInputChange}
+                    error={errors.warrantyExpiry}
+                  />
+                </div>
+
+                <InputField
+                  label="Warranty Provider"
+                  name="warrantyProvider"
+                  value={formData.warrantyProvider}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Carrier Warranty"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Maintenance Schedule */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">⚙️ Maintenance Schedule</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    type="date"
+                    label="Last Maintenance Date"
+                    name="lastMaintenanceDate"
+                    value={formData.lastMaintenanceDate}
+                    onChange={handleInputChange}
+                  />
+                  <InputField
+                    type="date"
+                    label="Next Maintenance Date"
+                    name="nextMaintenanceDate"
+                    value={formData.nextMaintenanceDate}
+                    onChange={handleInputChange}
+                    error={errors.nextMaintenanceDate}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="Maintenance Frequency"
+                    name="maintenanceFrequency"
+                    value={formData.maintenanceFrequency}
+                    onChange={handleInputChange}
+                    options={[
+                      { value: 'weekly', label: 'Weekly' },
+                      { value: 'monthly', label: 'Monthly' },
+                      { value: 'quarterly', label: 'Quarterly' },
+                      { value: 'semi_annual', label: 'Semi-Annual' },
+                      { value: 'annual', label: 'Annual' },
+                      { value: 'as_needed', label: 'As Needed' }
+                    ]}
+                  />
+                  <InputField
+                    label="Maintenance Provider"
+                    name="maintenanceProvider"
+                    value={formData.maintenanceProvider}
+                    onChange={handleInputChange}
+                    placeholder="e.g., ABC Maintenance Co."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Financial Information */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">💰 Financial Information</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField
+                    type="number"
+                    label="Purchase Price"
+                    name="purchasePrice"
+                    value={formData.purchasePrice}
+                    onChange={handleInputChange}
+                    error={errors.purchasePrice}
+                    placeholder="0.00"
+                    step="0.01"
+                  />
+                  <InputField
+                    type="date"
+                    label="Purchase Date"
+                    name="purchaseDate"
+                    value={formData.purchaseDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <InputField
+                  type="number"
+                  label="Depreciation Rate (%)"
+                  name="depreciationRate"
+                  value={formData.depreciationRate}
+                  onChange={handleInputChange}
+                  error={errors.depreciationRate}
+                  placeholder="10"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Status & Notes */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📝 Status & Notes</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <SelectField
+                  label="Status"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  options={[
+                    { value: 'active', label: '🟢 Active' },
+                    { value: 'inactive', label: '⚪ Inactive' },
+                    { value: 'maintenance', label: '🔧 Under Maintenance' },
+                    { value: 'retired', label: '🔴 Retired' }
+                  ]}
+                />
+
+                <TextAreaField
+                  label="Additional Notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Additional notes and comments about this asset"
+                  rows="3"
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Image Upload */}
+            <Card className="border-0 shadow-sm sticky top-24">
+              <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">🖼️ Asset Image</h2>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                {imagePreview ? (
+                  <div className="space-y-3">
+                    <img src={imagePreview} alt="Asset preview" className="w-full rounded-lg object-cover aspect-square" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full text-sm"
+                      onClick={() => document.getElementById('imageInput').click()}
+                    >
+                      <Upload className="h-4 w-4 mr-2" /> Change Image
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+                      dragActive
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950'
+                        : 'border-gray-300 dark:border-zinc-700 hover:border-indigo-400'
+                    }`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('imageInput').click()}
+                  >
+                    <ImageIcon className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Drag image here</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">or click to select</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">PNG, JPG (max 5MB)</p>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  id="imageInput"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {errors.imageUrl && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{errors.imageUrl}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Form Actions */}
+            <div className="space-y-2 sticky top-96">
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2" disabled={saving}>
+                <Save className="h-4 w-4" />
+                {saving ? 'Saving...' : isEditMode ? 'Update Asset' : 'Create Asset'}
+              </Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/assets')} disabled={saving}>
+                Cancel
+              </Button>
             </div>
           </div>
-        </div>
-
-        {/* Form Actions */}
-        <div className="form-actions">
-          <button type="button" className="px-3 py-2 rounded-md border flex items-center gap-2" onClick={() => navigate('/assets')}>
-            <X size={20} /> Cancel
-          </button>
-          <button type="submit" className="px-3 py-2 rounded-md bg-indigo-600 text-white flex items-center gap-2" disabled={saving}>
-            <Save size={20} /> {saving ? 'Saving...' : isEditMode ? 'Update Asset' : 'Create Asset'}
-          </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function InputField({ type = 'text', label, name, value, onChange, error, placeholder, required, step, min, max }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+        {label} {required && <span className="text-red-600">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        step={step}
+        min={min}
+        max={max}
+        className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors ${
+          error
+            ? 'border-red-500 focus:ring-red-500'
+            : 'border-gray-200 dark:border-zinc-700 focus:ring-indigo-500'
+        } focus:outline-none focus:ring-2`}
+      />
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function SelectField({ label, name, value, onChange, error, options, required }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+        {label} {required && <span className="text-red-600">*</span>}
+      </label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 transition-colors ${
+          error
+            ? 'border-red-500 focus:ring-red-500'
+            : 'border-gray-200 dark:border-zinc-700 focus:ring-indigo-500'
+        } focus:outline-none focus:ring-2`}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value} disabled={opt.value === '' && required}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function TextAreaField({ label, name, value, onChange, placeholder, rows = 3 }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">{label}</label>
+      <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
+      />
     </div>
   );
 }

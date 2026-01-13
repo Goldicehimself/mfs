@@ -81,6 +81,33 @@ const theme = createTheme({
         },
       },
     },
+    MuiListItemIcon: {
+      styleOverrides: {
+        root: {
+          minWidth: 36,
+          color: '#6b7280',
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontSize: '14px',
+          '&.mp-nav-item': {
+            color: '#374151',
+            '&:hover': { backgroundColor: 'rgba(37,99,235,0.04)', color: '#2563eb' },
+          },
+          '&.mp-nav-item.active': {
+            background: 'rgba(37,99,235,0.08)',
+            borderLeft: '3px solid #2563eb',
+            paddingLeft: '11px',
+            color: '#2563eb',
+            fontWeight: 600,
+          },
+        },
+      },
+    },
   },
 });
 

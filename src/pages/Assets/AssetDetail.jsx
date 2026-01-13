@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Typography, Box, Button, Grid, Avatar, Paper, Chip, Divider, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Typography, Box, Button, Grid, Avatar, Paper, Chip, Divider, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
-import { deleteAsset, getAsset, updateAsset } from '../../api/assets';
+import { deleteAsset, getAsset, updateAsset, uploadAssetImage } from '../../api/assets';
 import { getWorkOrders } from '../../api/workOrders';
 import MaintenanceTimeline from '../../components/assets/MaintenanceTimeline';
+import AssetImage from '../../components/assets/AssetImage';
 import { toast } from 'react-toastify';
 
 const AssetDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -21,6 +25,23 @@ const AssetDetail = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [relatedWOs, setRelatedWOs] = useState([]);
+
+  // Edit Asset Modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    shortDescription: '',
+    description: '',
+    category: '',
+    type: '',
+    manufacturer: '',
+    model: '',
+    serial: '',
+    propertyLocation: '',
+    status: 'active'
+  });
 
   // Schedule & Parts editing state
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -35,6 +56,48 @@ const AssetDetail = () => {
     if (item) { setScheduleEditing(item); setScheduleForm({ ...item }); }
     else { setScheduleEditing(null); setScheduleForm({ title: '', frequency: '', last: '', next: '', status: '' }); }
     setScheduleModalOpen(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !asset) return;
+
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await uploadAssetImage(asset.id, formData);
+      
+      // Update the asset with the new image URL
+      const updated = { ...asset, imageUrl: response.imageUrl || response.url };
+      setAsset(updated);
+      setSelectedImage(response.imageUrl || response.url);
+      toast.success('Image uploaded successfully');
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const openEditModal = () => {
+    if (asset) {
+      setEditForm({
+        name: asset.name || '',
+        shortDescription: asset.shortDescription || '',
+        description: asset.description || asset.shortDescription || '',
+        category: asset.category || '',
+        type: asset.type || '',
+        manufacturer: asset.manufacturer || '',
+        model: asset.model || '',
+        serial: asset.serial || '',
+        propertyLocation: asset.propertyLocation || '',
+        status: asset.status || 'active'
+      });
+      setEditModalOpen(true);
+    }
   };
 
   const openPartModal = (item) => {
@@ -65,6 +128,32 @@ const AssetDetail = () => {
       setScheduleModalOpen(false);
       toast.success('Schedule saved');
     } catch (err) { console.error(err); toast.error('Failed to save schedule'); }
+  };
+
+  const saveAssetEdit = async () => {
+    if (!editForm.name.trim()) { toast.error('Asset name is required'); return; }
+    try {
+      const updated = {
+        ...asset,
+        name: editForm.name,
+        shortDescription: editForm.shortDescription,
+        description: editForm.description,
+        category: editForm.category,
+        type: editForm.type,
+        manufacturer: editForm.manufacturer,
+        model: editForm.model,
+        serial: editForm.serial,
+        propertyLocation: editForm.propertyLocation,
+        status: editForm.status
+      };
+      await updateAsset(asset.id, updated);
+      setAsset(updated);
+      setEditModalOpen(false);
+      toast.success('Asset updated successfully');
+    } catch (err) {
+      console.error('Error saving asset:', err);
+      toast.error('Failed to save asset');
+    }
   };
 
   const savePart = async () => {
@@ -181,83 +270,202 @@ const AssetDetail = () => {
   const images = (asset.imageUrls && asset.imageUrls.length > 0) ? asset.imageUrls : [asset.imageUrl || '/placeholder-asset.svg'];
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/assets')} sx={{ mr: 2 }}>Back</Button>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', pb: 4 }}>
+      {/* Professional Header Bar */}
+      <Box sx={{ 
+        bgcolor: 'white', 
+        borderBottom: '1px solid #e2e8f0',
+        py: 2,
+        px: 3,
+        mb: 3,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>{asset.name}</Typography>
-            <Typography variant="body2" color="text.secondary">{asset.shortDescription || ''}</Typography>
-            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-              {(asset.statusLabels || []).map((s, i) => <Chip key={i} label={s} size="small" color="success" />)}
-            </Stack>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+              <IconButton 
+                onClick={() => navigate('/assets')} 
+                sx={{ color: '#6366f1' }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>Asset Details</Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: '#64748b', ml: 5 }}>
+              {asset.code || asset.id} • {asset.category}
+            </Typography>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="outlined" onClick={() => navigate(`/assets/${id}/edit`)}>Edit Asset</Button>
-          <Button variant="contained" onClick={() => navigate('/work-orders/new')}>Create Work Order</Button>
-          <Button variant="outlined" onClick={() => window.print()}>Print</Button>
-        </div>
+          
+          <Stack direction="row" spacing={1}>
+            <Button 
+              variant="contained"
+              startIcon={<EditIcon />}
+              onClick={openEditModal}
+              sx={{ fontWeight: 600 }}
+            >
+              Edit
+            </Button>
+            <Button 
+              variant="outlined"
+              onClick={() => setConfirmOpen(true)}
+              color="error"
+              startIcon={<DeleteIcon />}
+            >
+              Delete
+            </Button>
+          </Stack>
+        </Box>
       </Box>
 
-      <Grid container spacing={3}>
+      <Box sx={{ px: 3 }}>
+        {/* Asset Title Card */}
+        <Paper sx={{ 
+          p: 3, 
+          mb: 3,
+          bgcolor: 'white',
+          border: '1px solid #e2e8f0',
+          borderRadius: 2
+        }}>
+          <Grid container spacing={3} alignItems="flex-start">
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ 
+                borderRadius: 2, 
+                overflow: 'hidden',
+                bgcolor: '#f1f5f9',
+                border: '1px solid #e2e8f0'
+              }}>
+                <AssetImage
+                  src={selectedImage}
+                  alt={asset.name}
+                  onClick={() => setViewerOpen(true)}
+                  style={{
+                    width: '100%',
+                    height: 240,
+                    objectFit: 'cover',
+                    cursor: 'pointer'
+                  }}
+                  imgProps={{ sizes: '50vw' }}
+                />
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={8}>
+              <div>
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: '#1e293b' }}>
+                  {asset.name}
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                  {asset.shortDescription || asset.description}
+                </Typography>
+                
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
+                  <Chip 
+                    label={asset.status?.toUpperCase()} 
+                    color={asset.status === 'active' ? 'success' : asset.status === 'maintenance' ? 'warning' : 'default'}
+                    variant="filled"
+                  />
+                  <Chip 
+                    label={asset.category}
+                    variant="outlined"
+                  />
+                </Stack>
+
+                <Grid container spacing={2} sx={{ mt: 0 }}>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>MANUFACTURER</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.manufacturer || '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>MODEL</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.model || '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>SERIAL NUMBER</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.serial || '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>LOCATION</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.propertyLocation || '—'}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </div>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Box>
+
+      {/* Main Content */}
+      <Box sx={{ px: 3 }}>
+        <Grid container spacing={3}>
         {/* Left - Overview + Specs + History */}
         <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={5}>
-                <div style={{ borderRadius: 8, overflow: 'hidden', background: '#f8fafc' }}>
-                  <img src={selectedImage} alt={asset.name} style={{ width: '100%', height: 220, objectFit: 'cover' }} />
-                </div>
-              </Grid>
-
-              <Grid item xs={12} md={7}>
-                <Typography variant="h6" sx={{ mb: 1 }}>{asset.name}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{asset.shortDescription}</Typography>
-
-                <Grid container spacing={1}>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Equipment Category</Typography><Typography>{asset.category}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Equipment Type</Typography><Typography>{asset.type}</Typography></Grid>
-
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Manufacturer</Typography><Typography>{asset.manufacturer}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Model Number</Typography><Typography>{asset.model}</Typography></Grid>
-
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Serial Number</Typography><Typography>{asset.serial}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Installation Date</Typography><Typography>{asset.installationDate || asset.purchaseDate}</Typography></Grid>
-
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Property Location</Typography><Typography>{asset.propertyLocation}</Typography></Grid>
-                  <Grid item xs={6}><Typography variant="caption" color="text.secondary">Building Location</Typography><Typography>{asset.buildingLocation}</Typography></Grid>
-
-                  <Grid item xs={12}><Typography variant="caption" color="text.secondary">Service Area</Typography><Typography>{asset.serviceArea}</Typography></Grid>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Specifications & Technical Details</Typography>
+          <Paper sx={{ 
+            p: 3, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Equipment Information</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6}><Typography color="text.secondary">Cooling Capacity</Typography><Typography>{asset.specs?.coolingCapacity}</Typography></Grid>
-              <Grid item xs={6}><Typography color="text.secondary">Refrigerant Type</Typography><Typography>{asset.specs?.refrigerantType}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>CATEGORY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.category || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.type || '—'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography color="text.secondary">Power Consumption</Typography><Typography>{asset.specs?.powerConsumption}</Typography></Grid>
-              <Grid item xs={6}><Typography color="text.secondary">SEER Rating</Typography><Typography>{asset.specs?.seerRating}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>MANUFACTURER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.manufacturer || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>MODEL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.model || '—'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography color="text.secondary">Dimensions</Typography><Typography>{asset.specs?.dimensions}</Typography></Grid>
-              <Grid item xs={6}><Typography color="text.secondary">Weight</Typography><Typography>{asset.specs?.weight}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SERIAL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serial || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>INSTALLATION DATE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.installationDate || asset.purchaseDate || '—'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography color="text.secondary">Operating Temperature Range</Typography><Typography>{asset.specs?.operatingTempRange}</Typography></Grid>
-              <Grid item xs={6}><Typography color="text.secondary">Compliance Certifications</Typography><Typography>{asset.specs?.compliance}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>PROPERTY LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.propertyLocation || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>BUILDING LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.buildingLocation || '—'}</Typography></Grid>
+
+              <Grid item xs={12}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SERVICE AREA</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serviceArea || '—'}</Typography></Grid>
             </Grid>
           </Paper>
 
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Warranty & Documentation</Typography>
+          <Paper sx={{ 
+            p: 3, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Specifications & Technical Details</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>COOLING CAPACITY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.coolingCapacity || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>REFRIGERANT TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.refrigerantType || '—'}</Typography></Grid>
+
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>POWER CONSUMPTION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.powerConsumption || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SEER RATING</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.seerRating || '—'}</Typography></Grid>
+
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>DIMENSIONS</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.dimensions || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>WEIGHT</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.weight || '—'}</Typography></Grid>
+
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>OPERATING TEMPERATURE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.operatingTempRange || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>COMPLIANCE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.compliance || '—'}</Typography></Grid>
+            </Grid>
+          </Paper>
+
+          <Paper sx={{ 
+            p: 3, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Warranty & Documentation</Typography>
             <Grid container spacing={2}>
               <Grid item xs={8}>
-                <Typography color="text.secondary">Warranty Status</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>WARRANTY STATUS</Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   <Chip label={`ACTIVE — Expires ${asset.warranty?.expires}`} color="success" />
                 </Stack>
@@ -287,9 +495,15 @@ const AssetDetail = () => {
             </Grid>
           </Paper>
 
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" gutterBottom>Maintenance History</Typography>
+          <Paper sx={{ 
+            p: 3, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Maintenance History</Typography>
               {/* Future: filter controls */}
             </Box>
 
@@ -303,20 +517,26 @@ const AssetDetail = () => {
 
         {/* Right - Sidebar */}
         <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Maintenance Schedule</Typography>
-              <Button startIcon={<AddIcon />} size="small" onClick={() => openScheduleModal(null)}>Add Schedule</Button>
+          <Paper sx={{ 
+            p: 2, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Maintenance Schedule</Typography>
+              <Button startIcon={<AddIcon />} size="small" onClick={() => openScheduleModal(null)}>Add</Button>
             </Box>
-            <Stack spacing={1} sx={{ mt: 2 }}>
+            <Stack spacing={1}>
               {asset.maintenanceSchedule?.map(s => (
-                <Paper key={s.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} elevation={0}>
+                <Paper key={s.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
                   <div>
-                    <Typography sx={{ fontWeight: 700 }}>{s.title}</Typography>
-                    <Typography variant="caption" color="text.secondary">{s.frequency} • Last: {s.last} • Next: {s.next}</Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{s.title}</Typography>
+                    <Typography variant="caption" color="text.secondary">{s.frequency} • Next: {s.next}</Typography>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <Chip label={s.status === 'due_soon' ? 'DUE SOON' : s.status === 'scheduled' ? 'SCHEDULED' : 'OK'} size="small" color={s.status === 'due_soon' ? 'warning' : 'info'} />
+                    <Chip label={s.status === 'due_soon' ? 'DUE' : s.status === 'scheduled' ? 'SCHEDULED' : 'OK'} size="small" color={s.status === 'due_soon' ? 'warning' : 'default'} />
                     <IconButton size="small" onClick={() => openScheduleModal(s)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => confirmDeleteSchedule(s)}><DeleteIcon fontSize="small" /></IconButton>
                   </div>
@@ -325,8 +545,14 @@ const AssetDetail = () => {
             </Stack>
           </Paper>
 
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6">Performance Metrics</Typography>
+          <Paper sx={{ 
+            p: 2, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Performance Metrics</Typography>
             <div style={{ marginTop: 12 }}>
               <Typography variant="caption" color="text.secondary">Total Downtime</Typography>
               <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.totalDowntimeHours} hours</Typography>
@@ -336,52 +562,59 @@ const AssetDetail = () => {
               <Typography variant="caption" color="text.secondary">Maintenance Incidents</Typography>
               <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.maintenanceIncidents?.preventive} Preventive • {asset.performanceMetrics?.maintenanceIncidents?.corrective} Corrective</Typography>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1.5 }} />
 
               <Typography variant="caption" color="text.secondary">Avg Repair Time</Typography>
               <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.avgRepairTimeHrs} hrs</Typography>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1.5 }} />
 
               <Typography variant="caption" color="text.secondary">Total Maintenance Cost</Typography>
               <Typography sx={{ fontWeight: 700 }}>${asset.performanceMetrics?.totalMaintenanceCost}</Typography>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1.5 }} />
 
               <Typography variant="caption" color="text.secondary">Reliability Score</Typography>
               <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.reliabilityScore}%</Typography>
             </div>
           </Paper>
 
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6">Related Work Orders</Typography>
-            <Stack spacing={1} sx={{ mt: 2 }}>
+          <Paper sx={{ 
+            p: 2, 
+            mb: 3,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Related Work Orders</Typography>
+            <Stack spacing={1}>
               {relatedWOs.length > 0 ? relatedWOs.map(wo => (
-                <Paper key={wo.id} sx={{ p: 1.25 }} elevation={0}>
-                  <Typography sx={{ fontWeight: 700 }}>{wo.woNumber || wo.id}</Typography>
+                <Paper key={wo.id} sx={{ p: 1.5, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{wo.woNumber || wo.id}</Typography>
                   <Typography variant="caption" color="text.secondary">{wo.title || wo.description}</Typography>
                 </Paper>
               )) : <Typography variant="body2" color="text.secondary">No related work orders</Typography>}
             </Stack>
           </Paper>
 
-          <Paper sx={{ p: 2, mt: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">Parts & Components</Typography>
-              <Button startIcon={<AddIcon />} size="small" onClick={() => openPartModal(null)}>Add Part</Button>
+          <Paper sx={{ 
+            p: 2,
+            bgcolor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: 2
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Parts & Components</Typography>
+              <Button startIcon={<AddIcon />} size="small" onClick={() => openPartModal(null)}>Add</Button>
             </Box>
-            <Stack spacing={1} sx={{ mt: 2 }}>
+            <Stack spacing={1}>
               {asset.parts?.map(p => (
-                <Paper key={p.id} sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} elevation={0}>
+                <Paper key={p.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
                   <div>
-                    <Typography sx={{ fontWeight: 700 }}>{p.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">Last Replaced: {p.lastReplaced}</Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{p.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Stock: {p.inStock} / Min: {p.minLevel}</Typography>
                   </div>
-                  <div style={{ textAlign: 'right', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <div>
-                      <Typography>{p.inStock} in stock</Typography>
-                      <Typography variant="caption" color="text.secondary">Min Level: {p.minLevel}</Typography>
-                    </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <IconButton size="small" onClick={() => openPartModal(p)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => confirmDeletePart(p)}><DeleteIcon fontSize="small" /></IconButton>
                   </div>
@@ -391,6 +624,193 @@ const AssetDetail = () => {
           </Paper>
         </Grid>
       </Grid>
+      </Box>
+
+      {/* Edit Asset Modal */}
+      <Dialog 
+        open={editModalOpen} 
+        onClose={() => setEditModalOpen(false)}
+        fullWidth 
+        maxWidth="md"
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.3rem', pb: 0.5 }}>Edit Asset Details</DialogTitle>
+        <Box sx={{ px: 3, py: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1.1rem' }}>
+            {editForm.name || 'New Asset'}
+          </Typography>
+        </Box>
+        <DialogContent sx={{ pt: 2 }}>
+          <Grid container spacing={3}>
+            {/* Image Upload Section */}
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 2, bgcolor: '#f8fafc', textAlign: 'center', borderRadius: 2 }}>
+                <Box sx={{ mb: 2 }}>
+                  <AssetImage
+                    src={selectedImage}
+                    alt={editForm.name}
+                    style={{
+                      width: '100%',
+                      height: 180,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '1px solid #e2e8f0'
+                    }}
+                    imgProps={{ sizes: '(max-width: 640px) 100vw, 33vw' }}
+                  />
+                </Box>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUploadIcon />}
+                  fullWidth
+                  disabled={uploadingImage}
+                  sx={{ mb: 1 }}
+                >
+                  {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                  <input
+                    ref={imageInputRef}
+                    hidden
+                    accept="image/*"
+                    type="file"
+                    onChange={handleImageUpload}
+                  />
+                </Button>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Recommended: 16:9 aspect ratio
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Form Fields Section */}
+            <Grid item xs={12} md={8}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Asset Name" 
+                    fullWidth 
+                    value={editForm.name} 
+                    onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                    variant="outlined"
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        fontSize: '1.1rem',
+                        fontWeight: 600
+                      },
+                      '& .MuiOutlinedInput-input': {
+                        padding: '12px 14px'
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Short Description" 
+                    fullWidth 
+                    value={editForm.shortDescription} 
+                    onChange={(e) => setEditForm(f => ({ ...f, shortDescription: e.target.value }))}
+                    variant="outlined"
+                    placeholder="Brief summary of the asset"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Detailed Description" 
+                    fullWidth 
+                    multiline 
+                    rows={3}
+                    value={editForm.description} 
+                    onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Category" 
+                    fullWidth 
+                    value={editForm.category} 
+                    onChange={(e) => setEditForm(f => ({ ...f, category: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Type/Model" 
+                    fullWidth 
+                    value={editForm.type} 
+                    onChange={(e) => setEditForm(f => ({ ...f, type: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Manufacturer" 
+                    fullWidth 
+                    value={editForm.manufacturer} 
+                    onChange={(e) => setEditForm(f => ({ ...f, manufacturer: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Model Number" 
+                    fullWidth 
+                    value={editForm.model} 
+                    onChange={(e) => setEditForm(f => ({ ...f, model: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Serial Number" 
+                    fullWidth 
+                    value={editForm.serial} 
+                    onChange={(e) => setEditForm(f => ({ ...f, serial: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    label="Property Location" 
+                    fullWidth 
+                    value={editForm.propertyLocation} 
+                    onChange={(e) => setEditForm(f => ({ ...f, propertyLocation: e.target.value }))}
+                    variant="outlined"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Status" 
+                    fullWidth 
+                    select
+                    value={editForm.status} 
+                    onChange={(e) => setEditForm(f => ({ ...f, status: e.target.value }))}
+                    variant="outlined"
+                  >
+                    <MenuItem value="active">🟢 Active</MenuItem>
+                    <MenuItem value="inactive">⚪ Inactive</MenuItem>
+                    <MenuItem value="maintenance">🟡 Under Maintenance</MenuItem>
+                    <MenuItem value="retired">⚫ Retired</MenuItem>
+                  </TextField>
+                </Grid>
+              </Grid>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: '#f8fafc' }}>
+          <Button onClick={() => setEditModalOpen(false)} variant="outlined">Cancel</Button>
+          <Button onClick={saveAssetEdit} variant="contained" sx={{ fontWeight: 700 }}>Save Changes</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Schedule Edit Dialog */}
       <Dialog open={Boolean(scheduleModalOpen)} onClose={() => setScheduleModalOpen(false)} fullWidth maxWidth="sm">

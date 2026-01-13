@@ -6,6 +6,7 @@ export const getAssets = async (params = {}) => {
     const response = await axiosInstance.get('/assets', { params });
     return response.data;
   } catch (error) {
+    console.warn('Backend API error, falling back to mock service:', error.message);
     // Fallback to local mock service
     return await assetService.getAssets(params);
   }

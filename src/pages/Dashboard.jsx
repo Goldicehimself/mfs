@@ -1,28 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Grid,
-  Paper,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  Button,
-  Stack,
-  Chip,
-} from '@mui/material';
-import {
-  TrendingUp,
-  TrendingDown,
-  Assignment,
-  Warning,
-  CheckCircle,
-  Schedule,
-  Build,
-  Business,
-} from '@mui/icons-material';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { TrendingUp, TrendingDown, AlertCircle, Clock, BarChart3 } from 'lucide-react';
 
 // Components
 import KPICard from '../components/dashboard/KPICards';
@@ -32,35 +12,18 @@ import CostAnalysisChart from '../components/dashboard/Charts/CostAnalysisChart'
 
 // API
 import { getDashboardData, getRecentActivities } from '../api/dashboard';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [cssVars, setCssVars] = useState({ primary: '', border: '', card: '' });
-
-  useEffect(() => {
-    try {
-      const styles = getComputedStyle(document.documentElement);
-      setCssVars({
-        primary: styles.getPropertyValue('--primary').trim(),
-        border: styles.getPropertyValue('--border').trim(),
-        card: styles.getPropertyValue('--card').trim()
-      });
-      // helpful for browser console debugging
-      console.log('Theme CSS vars:', {
-        primary: styles.getPropertyValue('--primary').trim(),
-        border: styles.getPropertyValue('--border').trim(),
-        card: styles.getPropertyValue('--card').trim()
-      });
-    } catch (err) {
-      // ignore in non-browser environments
-    }
-  }, []);
   
   const { data: dashboardData, isLoading } = useQuery(
     'dashboard',
     getDashboardData,
     {
-      refetchInterval: 30000, // Refresh every 30 seconds
+      refetchInterval: 30000,
       onError: (error) => {
         toast.error('Failed to load dashboard data');
       },
@@ -74,9 +37,12 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Typography>Loading dashboard...</Typography>
-      </Box>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
     );
   }
 
@@ -86,7 +52,7 @@ const Dashboard = () => {
       value: dashboardData?.openWorkOrders || 0,
       change: '+12%',
       trend: 'up',
-      icon: <Assignment />,
+      icon: '📋',
       color: 'primary',
       link: '/work-orders?status=open',
     },
@@ -95,7 +61,7 @@ const Dashboard = () => {
       value: dashboardData?.overdueWorkOrders || 0,
       change: '-5%',
       trend: 'down',
-      icon: <Warning />,
+      icon: '⚠️',
       color: 'error',
       link: '/work-orders?status=overdue',
     },
@@ -104,7 +70,7 @@ const Dashboard = () => {
       value: `${dashboardData?.pmCompliance || 0}%`,
       change: '+8%',
       trend: 'up',
-      icon: <CheckCircle />,
+      icon: '✓',
       color: 'success',
       link: '/preventive-maintenance',
     },
@@ -113,7 +79,7 @@ const Dashboard = () => {
       value: dashboardData?.pendingRequests || 0,
       change: '+3%',
       trend: 'up',
-      icon: <Schedule />,
+      icon: '📝',
       color: 'warning',
       link: '/service-requests',
     },
@@ -122,7 +88,7 @@ const Dashboard = () => {
       value: dashboardData?.activeAssets || 0,
       change: '+2%',
       trend: 'up',
-      icon: <Business />,
+      icon: '🏭',
       color: 'info',
       link: '/assets',
     },
@@ -131,141 +97,164 @@ const Dashboard = () => {
       value: `${dashboardData?.vendorPerformance || 0}%`,
       change: '+4%',
       trend: 'up',
-      icon: <Build />,
+      icon: '👥',
       color: 'secondary',
       link: '/vendors',
     },
   ];
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-          Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Overview of your facility maintenance operations
-        </Typography>
-        {/* Debug: show computed theme vars in UI during development */}
-        {/* <div style={{ marginTop: 8 }} className="text-sm text-muted-foreground">
-          <strong>Theme vars:</strong> --primary: {cssVars.primary || '<unset>'} • --border: {cssVars.border || '<unset>'} • --card: {cssVars.card || '<unset>'}
-        </div> */}
-      </Box>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
+        <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">Dashboard</h1>
+        <p className="text-indigo-700 dark:text-indigo-300 mt-1">
+          Complete overview of your facility maintenance operations
+        </p>
+      </div>
 
-      {/* Quick Actions */}
-      <Paper sx={{ p: 3, mb: 4, backgroundColor: 'primary.light', color: 'white' }}>
-        <Grid container alignItems="center" spacing={2}>
-          <Grid item xs={12} md={8}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Need to report an issue?
-            </Typography>
-            <Typography variant="body2">
-              Quickly submit a maintenance request or create a new work order
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<Assignment />}
+      {/* Quick Actions Banner */}
+      <Card className="border-0 shadow-md bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold mb-1">Quick Actions</h2>
+              <p className="text-indigo-100">
+                Quickly submit a maintenance request or create a new work order
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button 
+                className="bg-white text-indigo-600 hover:bg-indigo-50 font-medium"
                 onClick={() => navigate('/service-requests/new')}
-                fullWidth
               >
-                New Request
+                📝 New Request
               </Button>
-              <Button
-                variant="outlined"
-                sx={{ color: 'white', borderColor: 'white' }}
-                startIcon={<Build />}
+              <Button 
+                variant="outline"
+                className="border-white text-white hover:bg-indigo-700"
                 onClick={() => navigate('/work-orders/new')}
-                fullWidth
               >
-                Create Work Order
+                🔧 Create Work Order
               </Button>
-            </Stack>
-          </Grid>
-        </Grid>
-      </Paper>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* KPIs Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {kpis.map((kpi, index) => (
-          <Grid item xs={12} sm={6} lg={4} key={index}>
-            <KPICard {...kpi} />
-          </Grid>
+          <KPICard key={index} {...kpi} />
         ))}
-      </Grid>
+      </div>
 
-      {/* Charts and Recent Activity */}
-      <Grid container spacing={3}>
-        {/* Left Column */}
-        <Grid item xs={12} lg={8}>
-          <Grid container spacing={3}>
-            {/* Compliance Chart */}
-            <Grid item xs={12}>
-              <Paper className="bg-card" sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Preventive Maintenance Compliance
-                </Typography>
-                <ComplianceChart data={dashboardData?.complianceTrend} />
-              </Paper>
-            </Grid>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Charts (Left) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Compliance Chart */}
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Preventive Maintenance Compliance
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Track PM compliance trends over time
+                  </p>
+                </div>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ComplianceChart data={dashboardData?.complianceTrend} />
+            </CardContent>
+          </Card>
 
-            {/* Cost Analysis */}
-            <Grid item xs={12}>
-              <Paper className="bg-card" sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Maintenance Cost Analysis
-                </Typography>
-                <CostAnalysisChart data={dashboardData?.costAnalysis} />
-              </Paper>
-            </Grid>
-          </Grid>
-        </Grid>
+          {/* Cost Analysis Chart */}
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Maintenance Cost Analysis
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Monthly maintenance expenses
+                  </p>
+                </div>
+                <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <CostAnalysisChart data={dashboardData?.costAnalysis} />
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Right Column - Recent Activity */}
-        <Grid item xs={12} lg={4}>
-          <Paper className="bg-card" sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Recent Activity
-            </Typography>
-            <RecentActivity activities={recentActivities} />
-          </Paper>
-        </Grid>
-      </Grid>
+        {/* Recent Activity (Right) */}
+        <div>
+          <Card className="border-0 shadow-md h-full">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                  Recent Activity
+                </h3>
+                <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-lg">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <RecentActivity activities={recentActivities} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* Service Category Summary */}
-      <Paper className="bg-card" sx={{ p: 3, mt: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Service Categories Summary
-        </Typography>
-        <Grid container spacing={2}>
-          {dashboardData?.serviceCategories?.map((category) => (
-            <Grid item xs={6} sm={4} md={2} key={category.name}>
-              <Card variant="outlined" className="bg-card">
-                <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h4" color="primary" sx={{ mb: 1 }}>
-                    {category.count}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {category.name}
-                  </Typography>
-                  <Chip
-                    label={category.trend}
-                    size="small"
-                    sx={{ mt: 1 }}
-                    color={category.trend === 'up' ? 'success' : 'error'}
-                    icon={category.trend === 'up' ? <TrendingUp /> : <TrendingDown />}
-                  />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-    </Box>
+      {/* Service Categories */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Service Categories
+            </h3>
+            <div className="p-2 bg-purple-50 dark:bg-purple-950 rounded-lg">
+              <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {dashboardData?.serviceCategories?.map((category) => (
+              <div key={category.name} className="text-center p-4 rounded-lg bg-gray-50 dark:bg-zinc-800 hover:shadow-md transition-shadow">
+                <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
+                  {category.count}
+                </div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  {category.name}
+                </p>
+                <Badge 
+                  variant={category.trend === 'up' ? 'default' : 'secondary'}
+                  className={category.trend === 'up' 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100' 
+                    : 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100'
+                  }
+                >
+                  {category.trend === 'up' ? '↑' : '↓'} {category.trend === 'up' ? 'Increasing' : 'Decreasing'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

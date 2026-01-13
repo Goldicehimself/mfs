@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Search, MoreHorizontal, Eye, Edit2, Trash2, Plus, Download, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Search, MoreHorizontal, Eye, Edit2, Trash2, Plus, Download, X, ArrowUp, ArrowDown, ArrowUpDown, AlertCircle, Clock, CheckCircle2, Zap } from 'lucide-react';
 import { getWorkOrders, deleteWorkOrder, bulkAssignWorkOrders } from '../../api/workOrders';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
@@ -14,16 +17,16 @@ export default function WorkOrders() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selected, setSelected] = useState([]);
-  const [selectAllMode, setSelectAllMode] = useState(false); // true when 'select all across pages' chosen
+  const [selectAllMode, setSelectAllMode] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [assigneeQuery, setAssigneeQuery] = useState('');
   const [assigneeSelected, setAssigneeSelected] = useState(null);
   const [confirmStep, setConfirmStep] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
-  const [dateRange, setDateRange] = useState('30'); // days
+  const [dateRange, setDateRange] = useState('30');
   const [locationFilter, setLocationFilter] = useState('all');
-  const [sortBy, setSortBy] = useState(null); // e.g., 'woNumber','title','priority','dueDate'
+  const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
 
   const { data: workOrders = [], isLoading } = useQuery(
@@ -57,14 +60,12 @@ export default function WorkOrders() {
     onError: () => toast.error('Bulk assign failed'),
   });
 
-  // local sorting before pagination
   const displayedWorkOrders = useMemo(() => {
     let arr = [...workOrders];
     if (sortBy) {
       arr.sort((a, b) => {
         let valA = a[sortBy];
         let valB = b[sortBy];
-        // handle nested fields
         if (sortBy === 'asset') {
           valA = a.asset?.name || '';
           valB = b.asset?.name || '';
@@ -116,7 +117,6 @@ export default function WorkOrders() {
     return { total, open, inProgress, completed, overdue };
   }, [workOrders]);
 
-  // derive categories, locations, and assignees for filter dropdowns
   const categories = useMemo(() => {
     const set = new Set();
     workOrders.forEach(w => w.category && set.add(w.category));
@@ -142,418 +142,393 @@ export default function WorkOrders() {
   }, [workOrders]);
 
   function priorityBadge(p) {
-    if (p === 'critical') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Critical</span>;
-    if (p === 'high') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">High</span>;
-    if (p === 'medium') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Medium</span>;
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Low</span>;
+    const variants = {
+      critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      high: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      medium: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      low: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+    };
+    const labels = { critical: '🔴', high: '🟠', medium: '🔵', low: '🟢' };
+    return <Badge className={`${variants[p] || variants.low} font-semibold`}>{labels[p]} {p}</Badge>;
   }
 
   function statusBadge(s) {
-    if (s === 'open') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Open</span>;
-    if (s === 'in_progress') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">In Progress</span>;
-    if (s === 'completed') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Completed</span>;
-    if (s === 'overdue') return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Overdue</span>;
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">{s}</span>;
+    const variants = {
+      open: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+      overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    };
+    const icons = { open: '📋', in_progress: '⚙️', completed: '✓', overdue: '⚠️' };
+    return <Badge className={`${variants[s] || variants.open} font-semibold`}>{icons[s]} {s.replace('_', ' ')}</Badge>;
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header + Breadcrumb */}
-      <div>
-        <nav className="text-sm text-gray-500 mb-2">Dashboard &gt; <span className="text-gray-700">All Work Orders</span></nav>
-        <h1 className="text-2xl font-semibold text-gray-900">All Work Orders</h1>
-        <p className="text-sm text-gray-500">Comprehensive view of all maintenance work orders in the system</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
+        <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">All Work Orders</h1>
+        <p className="text-indigo-700 dark:text-indigo-300 mt-1">
+          Comprehensive view of all maintenance work orders in the system
+        </p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-gray-500">Total Open</div>
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
-          </div>
-          <div className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded-full">+3</div>
-        </div>
-
-        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-gray-500">In Progress</div>
-            <div className="text-3xl font-bold text-gray-900">{stats.inProgress}</div>
-          </div>
-          <div className="text-sm text-yellow-700 bg-yellow-50 px-2 py-1 rounded-full">+2</div>
-        </div>
-
-        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-gray-500">Completed</div>
-            <div className="text-3xl font-bold text-gray-900">{stats.completed}</div>
-          </div>
-          <div className="text-sm text-green-700 bg-green-50 px-2 py-1 rounded-full">+12</div>
-        </div>
-
-        <div className="bg-card rounded-lg shadow p-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-gray-500">Overdue</div>
-            <div className="text-3xl font-bold text-gray-900">{stats.overdue}</div>
-          </div>
-          <div className="text-sm text-red-700 bg-red-50 px-2 py-1 rounded-full">+3</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard icon={<Zap className="h-5 w-5" />} label="Total" value={stats.total} color="indigo" />
+        <StatCard icon={<Clock className="h-5 w-5" />} label="Open" value={stats.open} color="amber" />
+        <StatCard icon={<AlertCircle className="h-5 w-5" />} label="In Progress" value={stats.inProgress} color="blue" />
+        <StatCard icon={<CheckCircle2 className="h-5 w-5" />} label="Completed" value={stats.completed} color="emerald" />
+        <StatCard icon={<AlertCircle className="h-5 w-5" />} label="Overdue" value={stats.overdue} color="rose" />
       </div>
 
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
-          <Search className="search-icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            className="w-full pl-10 pr-3 py-2 border rounded-md bg-gray-50"
-            type="text"
-            placeholder="Search work orders by ID or title"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          />
-        </div>
-
-        <select className="filter-select" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Status</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="overdue">Overdue</option>
-        </select>
-
-        <select className="filter-select" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-
-        <select className="filter-select" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Priorities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-
-        <select className="filter-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Technicians</option>
-          {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-
-        <select className="filter-select" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
-          <option value="7">Last 7 Days</option>
-          <option value="30">Last 30 Days</option>
-          <option value="90">Last 90 Days</option>
-        </select>
-
-        <select className="filter-select" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
-          <option value="all">All Locations</option>
-          {locations.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
-
-        <div className="sort-controls ml-auto">
-          <button className="px-3 py-1 border rounded-md text-sm" onClick={() => alert('Bulk assign')}>
-            Bulk Assign
-          </button>
-          <button className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm flex items-center gap-2" onClick={() => alert('Export CSV')}>
-            <Download size={14} /> Export CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-          <label className="inline-flex items-start sm:items-center gap-3 text-sm text-gray-700 w-full sm:w-auto">
-            <input
-              type="checkbox"
-              className="form-checkbox h-5 w-5 text-indigo-600"
-              checked={selectAllMode || (selected.length === displayedWorkOrders.length && displayedWorkOrders.length > 0)}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelected(displayedWorkOrders.map(w => w.id));
-                  setSelectAllMode(false);
-                } else {
-                  setSelected([]);
-                  setSelectAllMode(false);
-                }
-              }}
-            />
-            <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:gap-4">
-              <div>
-                <span className="font-medium">Select All ({displayedWorkOrders.length} items)</span>
-                <div className="text-xs text-gray-400 sm:ml-2">Select all work orders</div>
-              </div>
-              <div className="mt-2 sm:mt-0">
-                {selected.length > 0 && selected.length < workOrders.length && !selectAllMode && (
-                  <button className="text-xs text-indigo-600 underline" onClick={() => { setSelectAllMode(true); }}>Select all {workOrders.length} items</button>
-                )}
-                {selectAllMode && (
-                  <div className="text-xs text-gray-600">All <strong>{displayedWorkOrders.length}</strong> items selected</div>
-                )}
-              </div>
+      {/* Filters Card */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <input
+                className="w-full pl-9 pr-3 py-2 h-10 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg"
+                type="text"
+                placeholder="Search work orders by ID or title..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              />
             </div>
-          </label>
 
-          <div className="flex items-center gap-2">
-            <button className={`px-3 py-1 rounded-md text-sm ${selected.length === 0 && !selectAllMode ? 'opacity-50 cursor-not-allowed border' : 'btn-primary'}`} onClick={() => { if (selected.length === 0 && !selectAllMode) return; setBulkModalOpen(true); }}>
-              Bulk Assign
-            </button>
-            <button className="btn-primary px-3 py-1 rounded-md text-sm flex items-center gap-2" onClick={() => alert('Export CSV')}>
-              <Download size={14} /> Export CSV
-            </button>
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="overdue">Overdue</option>
+            </select>
+
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
+              <option value="all">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
+              <option value="all">All Categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
+              <option value="all">All Technicians</option>
+              {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2" onClick={() => navigate('/work-orders/new')}>
+              <Plus size={16} /> Create
+            </Button>
           </div>
-        </div>
 
-        <div className="overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3"><input type="checkbox" className="form-checkbox h-4 w-4" checked={selected.length === displayedWorkOrders.length && displayedWorkOrders.length > 0} onChange={(e) => { if (e.target.checked) setSelected(displayedWorkOrders.map(w => w.id)); else setSelected([]); }} /></th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer" onClick={() => toggleSort('woNumber')}>
-                  <div className="flex items-center gap-2">
-                    <span>Work Order ID</span>
-                    {sortBy === 'woNumber' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer" onClick={() => toggleSort('title')}>
-                  <div className="flex items-center gap-2">
-                    <span>Title</span>
-                    {sortBy === 'title' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell cursor-pointer" onClick={() => toggleSort('asset')}>
-                  <div className="flex items-center gap-2">
-                    <span>Asset</span>
-                    {sortBy === 'asset' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer" onClick={() => toggleSort('assignedTo')}>
-                  <div className="flex items-center gap-2">
-                    <span>Assigned To</span>
-                    {sortBy === 'assignedTo' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer" onClick={() => toggleSort('priority')}>
-                  <div className="flex items-center gap-2">
-                    <span>Priority</span>
-                    {sortBy === 'priority' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 cursor-pointer" onClick={() => toggleSort('status')}>
-                  <div className="flex items-center gap-2">
-                    <span>Status</span>
-                    {sortBy === 'status' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 hidden md:table-cell cursor-pointer" onClick={() => toggleSort('dueDate')}>
-                  <div className="flex items-center gap-2">
-                    <span>Due Date</span>
-                    {sortBy === 'dueDate' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-card divide-y divide-gray-100">
-              {isLoading && (
-                <tr><td colSpan={9} className="p-6 text-center">Loading...</td></tr>
-              )}
+          <div className="flex flex-wrap gap-2">
+            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
 
-              {!isLoading && displayedWorkOrders.length === 0 && (
-                <tr><td colSpan={9} className="p-6 text-center">No work orders found</td></tr>
-              )}
+            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
+              <option value="all">All Locations</option>
+              {locations.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
 
-              {!isLoading && displayedWorkOrders.length > 0 && (
-                displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((wo) => {
-                  const borderClass = (selected.includes(wo.id) || selectAllMode) ? 'border-left-selected' : (wo.priority === 'critical' || wo.priority === 'high' ? 'border-left-critical' : wo.priority === 'medium' ? 'border-left-medium' : 'border-left-low');
-                  return (
-                    <tr key={wo.id} className={`hover:bg-gray-50 py-2 sm:py-3 ${borderClass} ${selected.includes(wo.id) || selectAllMode ? 'selected-row' : ''}`}>
-                      <td className="px-4 sm:px-6 py-3">
-                        <input type="checkbox" className="form-checkbox h-5 w-5 text-indigo-600" checked={selectAllMode || selected.includes(wo.id)} onChange={() => {
-                          if (selectAllMode) {
-                            // switching off select-all across pages and selecting all page items except this one
-                            setSelectAllMode(false);
-                            const pageIds = displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(w => w.id);
-                            const newSelected = pageIds.filter(id => id !== wo.id);
-                            setSelected(newSelected);
-                          } else {
-                            setSelected(prev => prev.includes(wo.id) ? prev.filter(x => x !== wo.id) : [...prev, wo.id]);
-                          }
-                        }} />
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setBulkModalOpen(true)}>
+              Bulk Assign
+            </Button>
+
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2" size="sm" onClick={() => {
+              const csv = [
+                ['WO ID', 'Title', 'Asset', 'Assigned To', 'Priority', 'Status', 'Due Date'],
+                ...displayedWorkOrders.map(wo => [
+                  wo.woNumber,
+                  wo.title || wo.description,
+                  wo.asset?.name || wo.location?.name || '',
+                  wo.assignedTo?.name || 'Unassigned',
+                  wo.priority,
+                  wo.status,
+                  wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : ''
+                ])
+              ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `work-orders-${new Date().toLocaleDateString()}.csv`;
+              a.click();
+              window.URL.revokeObjectURL(url);
+            }}>
+              <Download size={14} /> Export CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table Card */}
+      <Card className="border-0 shadow-sm overflow-hidden">
+        {isLoading ? (
+          <div className="p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+            <p className="text-muted-foreground">Loading work orders...</p>
+          </div>
+        ) : displayedWorkOrders.length === 0 ? (
+          <div className="p-12 text-center">
+            <AlertCircle className="h-12 w-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+            <p className="text-muted-foreground">No work orders found</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left"><input type="checkbox" className="h-4 w-4" checked={selected.length === displayedWorkOrders.length && displayedWorkOrders.length > 0} onChange={(e) => { if (e.target.checked) setSelected(displayedWorkOrders.map(w => w.id)); else setSelected([]); }} /></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 cursor-pointer" onClick={() => toggleSort('woNumber')}>
+                      <div className="flex items-center gap-2">ID {sortBy === 'woNumber' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}</div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 cursor-pointer" onClick={() => toggleSort('title')}>
+                      <div className="flex items-center gap-2">Title {sortBy === 'title' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}</div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 hidden md:table-cell">Priority</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 hidden lg:table-cell">Assigned To</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 hidden lg:table-cell">Due Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
+                  {displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((wo) => (
+                    <tr key={wo.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors border-l-4" style={{borderLeftColor: wo.priority === 'critical' ? '#ef4444' : wo.priority === 'high' ? '#f97316' : wo.priority === 'medium' ? '#3b82f6' : '#10b981'}}>
+                      <td className="px-4 py-3"><input type="checkbox" className="h-4 w-4" checked={selectAllMode || selected.includes(wo.id)} onChange={() => {
+                        if (selectAllMode) {
+                          setSelectAllMode(false);
+                          const pageIds = displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(w => w.id);
+                          setSelected(pageIds.filter(id => id !== wo.id));
+                        } else {
+                          setSelected(prev => prev.includes(wo.id) ? prev.filter(x => x !== wo.id) : [...prev, wo.id]);
+                        }
+                      }} /></td>
+                      <td className="px-4 py-3"><span className="font-semibold text-sm text-indigo-600 dark:text-indigo-400">{wo.woNumber}</span></td>
+                      <td className="px-4 py-3"><span className="text-sm text-zinc-900 dark:text-zinc-100">{wo.title || wo.description}</span></td>
+                      <td className="px-4 py-3 hidden md:table-cell">{priorityBadge(wo.priority)}</td>
+                      <td className="px-4 py-3">{statusBadge(wo.status)}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          {wo.assignedTo ? (
+                            <>
+                              <img src={wo.assignedTo.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-6 h-6 rounded-full" />
+                              <span className="text-sm text-zinc-900 dark:text-zinc-100">{wo.assignedTo.name}</span>
+                            </>
+                          ) : (<span className="text-sm text-zinc-500">Unassigned</span>)}
+                        </div>
                       </td>
-
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{wo.woNumber}</div>
-                        <div className="text-xs text-gray-500">{wo.serviceType}</div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 truncate max-w-xs">{wo.title || wo.description}</div>
-                        <div className="text-xs text-gray-500">{wo.category}</div>
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-3 hidden md:table-cell">
-                        <div className="text-sm text-gray-900">{wo.asset?.name || wo.location?.name}</div>
-                        <div className="text-xs text-gray-500">{wo.location?.fullPath}</div>
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-3">
-                        {wo.assignedTo ? (
-                          <div className="flex items-center gap-2">
-                            <img src={wo.assignedTo.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-6 h-6 sm:w-8 sm:h-8 rounded-full" />
-                            <div className="text-sm text-gray-900">{wo.assignedTo.name}</div>
-                          </div>
-                        ) : (<div className="text-sm text-gray-500">Unassigned</div>)}
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-3">{priorityBadge(wo.priority)}</td>
-
-                      <td className="px-4 sm:px-6 py-3">{statusBadge(wo.status)}</td>
-
-                      <td className="px-4 sm:px-6 py-3 hidden md:table-cell">{wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : '—'}</td>
-
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-4 py-3 hidden lg:table-cell"><span className="text-sm text-zinc-600 dark:text-zinc-400">{wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : '—'}</span></td>
+                      <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="text-sm text-indigo-600 px-2 py-1 border rounded-md flex items-center gap-2" onClick={() => navigate(`/work-orders/${wo.id}`)}>
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`)} className="text-xs">
                             <Eye size={14} /> View
-                          </button>
-
-                          {wo.status === 'open' && <button className="text-sm bg-blue-600 text-white px-3 py-1 rounded-md">Start</button>}
-                          {wo.status === 'in_progress' && <button className="text-sm bg-green-600 text-white px-3 py-1 rounded-md">Complete</button>}
-                          {wo.status === 'completed' && <button className="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded-md">Completed</button>}
-                          {wo.status === 'overdue' && <button className="text-sm bg-red-600 text-white px-3 py-1 rounded-md">Overdue</button>}
-
-                          <button className="text-sm text-gray-600 p-2 rounded-md hover:bg-gray-100" onClick={() => deleteMutation.mutate(wo.id)}>
-                            <Trash2 size={14} />
-                          </button>
+                          </Button>
+                          {wo.status === 'open' && <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">Start</Button>}
+                          {wo.status === 'in_progress' && <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">Complete</Button>}
+                          {wo.status === 'completed' && <Button size="sm" variant="outline" className="text-xs">Completed</Button>}
+                          {wo.status === 'overdue' && <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs">Overdue</Button>}
                         </div>
                       </td>
                     </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="p-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">Showing {(page * rowsPerPage) + 1}-{Math.min((page + 1) * rowsPerPage, displayedWorkOrders.length)} of {displayedWorkOrders.length} work orders</div>
-          <div className="flex items-center gap-2">
-            <select className="border rounded p-1" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <div>
-              <button className="px-3 py-1 border rounded-l" onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
-              <button className="px-3 py-1 border rounded-r" onClick={() => setPage(p => p + 1)}>Next</button>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
-      </div>
+
+            {/* Pagination */}
+            <div className="p-4 border-t border-gray-200 dark:border-zinc-700 flex items-center justify-between flex-wrap gap-3">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(page * rowsPerPage) + 1}-{Math.min((page + 1) * rowsPerPage, displayedWorkOrders.length)} of {displayedWorkOrders.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <select className="h-8 px-2 text-sm border border-gray-200 dark:border-zinc-700 rounded" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={(page + 1) * rowsPerPage >= displayedWorkOrders.length}>Next</Button>
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
 
       {/* Bulk Assign Modal */}
       {bulkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black opacity-40" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }} />
-          <div className="bg-card rounded-lg shadow-lg p-6 z-10 w-full max-w-md">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">Bulk Assign Work Orders</h3>
-                <p className="text-sm text-gray-500 mt-1">Assign selected work orders to a technician.</p>
-              </div>
-              <button className="text-gray-400 hover:text-gray-600" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }} aria-label="Close">
-                <X />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6">
+              <h3 className="text-xl font-bold">
+                Assign {selectAllMode ? workOrders.length : selected.length} selected work order{selectAllMode || selected.length !== 1 ? 's' : ''} to a technician
+              </h3>
             </div>
 
-            {!confirmStep ? (
-              <>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700">Search technician</label>
-                  <input value={assigneeQuery} onChange={(e) => setAssigneeQuery(e.target.value)} placeholder="Search by name or email" className="mt-1 block w-full border rounded-md p-2" />
-                </div>
-
-                <div className="mt-3 max-h-40 overflow-auto border rounded-md p-2">
-                  {assignees.length === 0 ? (
-                    <div className="text-sm text-gray-500">No technicians found</div>
-                  ) : (
-                    <ul className="space-y-2">
-                      {assignees.map((u) => (
-                        <li key={u.id} className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${assigneeSelected && assigneeSelected.id === u.id ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50'}`} onClick={() => setAssigneeSelected(u)}>
-                          <img src={u.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-8 h-8 rounded-full" />
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900">{u.name}</div>
-                            <div className="text-xs text-gray-500">{u.email || ''}</div>
-                          </div>
-                          <div className="ml-auto text-xs text-gray-400">{workOrders.filter(w => w.assignedTo && w.assignedTo.id === u.id).length} assigned</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="mt-4 text-sm text-gray-700">
-                  {selectAllMode ? (
-                    <div>Assigning <strong>{workOrders.length}</strong> work orders (all matching current filters).</div>
-                  ) : (
-                    <div>Assigning <strong>{selected.length}</strong> work orders.</div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-end gap-2 mt-6">
-                  <button className="px-3 py-1 border rounded-md" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }}>Cancel</button>
-                  <button className={`px-3 py-1 rounded-md ${assigneeSelected ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600 cursor-not-allowed'}`} onClick={() => {
-                    if (!assigneeSelected) { toast.error('Please select a technician'); return; }
-                    setConfirmStep(true);
-                  }} disabled={!assigneeSelected}>{assigneeSelected ? `Assign to ${assigneeSelected.name}` : 'Assign'}</button>
-                </div>
-              </>
-            ) : (
-              <div className="mt-6">
-                <div className="flex items-center gap-3">
-                  <img src={assigneeSelected.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-10 h-10 rounded-full" />
-                  <div>
-                    <div className="font-medium text-gray-900">{assigneeSelected.name}</div>
-                    <div className="text-sm text-gray-500">{assigneeSelected.email || ''}</div>
+            <div className="p-6 space-y-5">
+              {!confirmStep ? (
+                <>
+                  {/* Summary */}
+                  <div className="p-4 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-indigo-900 dark:text-indigo-100 text-sm">
+                          {selectAllMode ? `${workOrders.length} work orders` : `${selected.length} work order${selected.length !== 1 ? 's' : ''}`} ready to assign
+                        </p>
+                        <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">Select a technician below</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-4 text-sm text-gray-700 modal-confirm">{selectAllMode ? (
-                  <div>You are about to assign <strong>{workOrders.length}</strong> work orders to <strong>{assigneeSelected.name}</strong>.</div>
-                ) : (
-                  <div>You are about to assign <strong>{selected.length}</strong> work orders to <strong>{assigneeSelected.name}</strong>.</div>
-                )}</div>
+                  {/* Search */}
+                  <div>
+                    <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Select Technician</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                      <input 
+                        value={assigneeQuery} 
+                        onChange={(e) => setAssigneeQuery(e.target.value)} 
+                        placeholder="Search by name or email..." 
+                        className="w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all text-sm" 
+                      />
+                    </div>
+                  </div>
 
-                <div className="flex items-center justify-end gap-2 mt-6">
-                  <button className="px-3 py-1 border rounded-md" onClick={() => setConfirmStep(false)}>Back</button>
-                  <button className={`px-3 py-1 rounded-md bg-red-600 text-white`} onClick={() => {
-                    const assignee = assigneeSelected;
-                    if (selectAllMode) {
-                      bulkAssignMutation.mutate({ ids: null, assignee, filters: { status: statusFilter, priority: priorityFilter, search } });
-                    } else {
-                      bulkAssignMutation.mutate({ ids: selected, assignee, filters: {} });
-                    }
-                  }} disabled={bulkAssignMutation.isLoading}>{bulkAssignMutation.isLoading ? 'Assigning...' : `Confirm and Assign`}</button>
-                </div>
-              </div>
-            )}
+                  {/* Technician List */}
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-zinc-700">
+                    {assignees.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No technicians found</p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
+                        {assignees.map((u) => (
+                          <li 
+                            key={u.id} 
+                            onClick={() => setAssigneeSelected(u)}
+                            className={`p-4 cursor-pointer transition-all ${assigneeSelected && assigneeSelected.id === u.id 
+                              ? 'bg-indigo-50 dark:bg-indigo-950/30' 
+                              : 'hover:bg-gray-50 dark:hover:bg-zinc-800'}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex-shrink-0">
+                                <img src={u.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-10 h-10 rounded-full" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{u.name}</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{u.email || 'No email'}</p>
+                              </div>
+                              {assigneeSelected && assigneeSelected.id === u.id && (
+                                <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-zinc-700">
+                    <Button variant="outline" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }}>
+                      Cancel
+                    </Button>
+                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
+                      if (!assigneeSelected) { toast.error('Please select a technician'); return; }
+                      setConfirmStep(true);
+                    }} disabled={!assigneeSelected}>
+                      Continue
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Confirmation */}
+                  <div className="space-y-4">
+                    {/* Selected Technician Card */}
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg">
+                      <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Assigning to</p>
+                      <div className="flex items-center gap-4">
+                        <img src={assigneeSelected.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-12 h-12 rounded-full" />
+                        <div className="flex-1">
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{assigneeSelected.name}</p>
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400">{assigneeSelected.email || 'No email'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+                      <p className="text-sm text-amber-900 dark:text-amber-100">
+                        You are about to assign <strong>{selectAllMode ? workOrders.length : selected.length} work order{selectAllMode || selected.length !== 1 ? 's' : ''}</strong> to <strong>{assigneeSelected.name}</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Confirmation Buttons */}
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-zinc-700">
+                    <Button variant="outline" onClick={() => setConfirmStep(false)}>
+                      Back
+                    </Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => {
+                      if (selectAllMode) {
+                        bulkAssignMutation.mutate({ ids: null, assignee: assigneeSelected, filters: { status: statusFilter, priority: priorityFilter, search } });
+                      } else {
+                        bulkAssignMutation.mutate({ ids: selected, assignee: assigneeSelected, filters: {} });
+                      }
+                    }} disabled={bulkAssignMutation.isLoading}>
+                      {bulkAssignMutation.isLoading ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Assigning...
+                        </>
+                      ) : (
+                        'Confirm & Assign'
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="py-2">
-        <div className="grid grid-cols-4 gap-4">
-          <button className="bg-indigo-600 text-white rounded-md px-4 py-2 flex items-center gap-2" onClick={() => navigate('/work-orders/new')}>
-            <Plus size={16} /> Create Work Order
-          </button>
-          <button className="border rounded-md px-4 py-2">Bulk Assign</button>
-          <button className="border rounded-md px-4 py-2">Export CSV</button>
-          <div />
-        </div>
-      </div>
     </div>
+  );
+}
+
+function StatCard({ icon, label, value, color }) {
+  const colors = {
+    indigo: 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+    amber: 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+    blue: 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+    emerald: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+    rose: 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+  };
+  return (
+    <Card className={`border ${colors[color]}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-semibold opacity-70 uppercase">{label}</p>
+            <p className="text-2xl font-bold mt-1">{value}</p>
+          </div>
+          <div className="opacity-40">{icon}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

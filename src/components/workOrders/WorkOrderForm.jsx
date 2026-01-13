@@ -1,27 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Grid,
-  Paper,
-  Typography,
-  TextField,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Box,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
-  Divider,
-  IconButton,
-  Autocomplete,
-  CircularProgress,
-  Avatar,
-  Stack,
-} from '@mui/material';
-import { Plus, Delete } from 'lucide-react';
+import { Plus, Delete, ArrowLeft, Upload } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -29,14 +7,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createWorkOrder } from '../../services/workOrderService';
 import { useQuery } from 'react-query';
 import { getAssets } from '../../api/assets';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export default function WorkOrderForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { handleSubmit, control, watch, reset } = useForm({
+  const { handleSubmit, control, watch } = useForm({
     defaultValues: {
       title: '',
-      priority: 'low',
+      priority: 'medium',
       serviceCategory: '',
       asset: '',
       location: '',
@@ -55,7 +36,6 @@ export default function WorkOrderForm() {
   const [files, setFiles] = useState([]);
   const [assetQuery, setAssetQuery] = useState('');
 
-  // fetch assets for autocomplete, gracefully handle backend offline by returning []
   const { data: assets = [], isLoading: assetsLoading } = useQuery(
     ['assets', assetQuery],
     async () => {
@@ -72,12 +52,8 @@ export default function WorkOrderForm() {
   const onSubmit = async (data) => {
     const payload = { ...data, parts, attachments: files };
     try {
-      // mock service will resolve
       await createWorkOrder(payload);
-      toast.success('Work order created');
-      reset();
-      setParts([]);
-      setFiles([]);
+      toast.success('Work order created successfully');
       navigate('/work-orders');
     } catch (err) {
       toast.error('Failed to create work order');
@@ -100,251 +76,337 @@ export default function WorkOrderForm() {
     setFiles(Array.from(e.target.files));
   };
 
+  const priority = watch('priority');
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-              Create New Work Order
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Fill out the form below to create a new work order for facility maintenance
-            </Typography>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
+        <div className="flex items-center justify-between">
+          <div>
+            <button 
+              type="button"
+              onClick={() => navigate('/work-orders')}
+              className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 mb-3"
+            >
+              <ArrowLeft size={18} /> Back to Work Orders
+            </button>
+            <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">Create Work Order</h1>
+            <p className="text-indigo-700 dark:text-indigo-300 mt-1">Fill in the details to create a new maintenance work order</p>
+          </div>
+        </div>
+      </div>
 
-            {/* Basic Information */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Basic Information</Typography>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Information */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Basic Information</h2>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Work Order Title *</label>
+                <Controller
+                  name="title"
+                  control={control}
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <input 
+                      {...field}
+                      placeholder="e.g., Fix HVAC unit in Building A"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
+                />
+              </div>
 
-              <Controller
-                name="title"
-                control={control}
-                render={({ field }) => (
-                  <TextField {...field} label="Work Order Title" fullWidth placeholder="Enter work order title..." sx={{ mb: 2 }} />
-                )}
-              />
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" color="text.secondary">Priority Level</Typography>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Priority Level *</label>
                   <Controller
                     name="priority"
                     control={control}
                     render={({ field }) => (
-                      <RadioGroup row {...field}>
-                        <FormControlLabel value="low" control={<Radio />} label={<Box component="span" sx={{ color: 'success.main' }}>Low</Box>} />
-                        <FormControlLabel value="medium" control={<Radio />} label={<Box component="span" sx={{ color: 'warning.main' }}>Medium</Box>} />
-                        <FormControlLabel value="high" control={<Radio />} label={<Box component="span" sx={{ color: 'error.main' }}>High</Box>} />
-                        <FormControlLabel value="critical" control={<Radio />} label={<Box component="span" sx={{ color: 'error.dark' }}>Critical</Box>} />
-                      </RadioGroup>
+                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="low">🟢 Low</option>
+                        <option value="medium">🔵 Medium</option>
+                        <option value="high">🟠 High</option>
+                        <option value="critical">🔴 Critical</option>
+                      </select>
                     )}
                   />
-                </Grid>
+                </div>
 
-                <Grid item xs={12} md={6}>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Service Category *</label>
                   <Controller
                     name="serviceCategory"
                     control={control}
                     render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>Service Category</InputLabel>
-                        <Select {...field} label="Service Category">
-                          <MenuItem value="electrical">Electrical</MenuItem>
-                          <MenuItem value="plumbing">Plumbing</MenuItem>
-                          <MenuItem value="hvac">HVAC</MenuItem>
-                          <MenuItem value="general">General</MenuItem>
-                        </Select>
-                      </FormControl>
+                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Select category...</option>
+                        <option value="electrical">⚡ Electrical</option>
+                        <option value="plumbing">💧 Plumbing</option>
+                        <option value="hvac">❄️ HVAC</option>
+                        <option value="general">🔧 General</option>
+                      </select>
                     )}
                   />
-                </Grid>
-              </Grid>
-            </Paper>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Asset & Location */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Asset & Location</Typography>
-
-              <Controller
-                name="asset"
-                control={control}
-                render={({ field }) => {
-                  // determine currently selected asset object
-                  const current = (assets || []).find(a => a.id === field.value) || null;
-                  return (
-                    <Autocomplete
-                      value={current}
-                      onChange={(e, value) => field.onChange(value ? value.id : '')}
-                      options={assets || []}
-                      getOptionLabel={(opt) => opt.name || ''}
-                      isOptionEqualToValue={(o, v) => o.id === v.id}
-                      loading={assetsLoading}
-                      renderOption={(props, option) => (
-                        <Box component="li" {...props} key={option.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                          <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.light', color: 'primary.main', fontSize: 12 }}>{(option.name || 'A')[0]}</Avatar>
-                          <Box>
-                            <Typography variant="body2">{option.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">{option.tagline || option.model || option.asset_code}</Typography>
-                          </Box>
-                        </Box>
-                      )}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Asset Selection"
-                          placeholder="Search and select asset..."
-                          InputProps={{
-                            ...params.InputProps,
-                            endAdornment: (
-                              <>
-                                {assetsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                                {params.InputProps.endAdornment}
-                              </>
-                            ),
-                          }}
-                          sx={{ mb: 2 }}
-                        />
-                      )}
-                        onInputChange={(e, v, reason) => {
-                          if (reason === 'input') setAssetQuery(v);
-                        }}
+          {/* Asset & Location */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Asset & Location</h2>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Select Asset</label>
+                <Controller
+                  name="asset"
+                  control={control}
+                  render={({ field }) => (
+                    <input 
+                      type="text"
+                      placeholder="Search for asset..."
+                      onChange={(e) => setAssetQuery(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
-                  );
-                }}
-              />
-
-              <Controller
-                name="location"
-                control={control}
-                render={({ field }) => (
-                  <TextField {...field} fullWidth placeholder="Enter specific location details..." />
-                )}
-              />
-            </Paper>
-
-            {/* Problem Description */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Problem Description</Typography>
-
-              <Controller
-                name="description"
-                control={control}
-                render={({ field }) => (
-                  <TextField {...field} fullWidth multiline rows={4} placeholder="Describe the problem in detail..." sx={{ mb: 2 }} />
-                )}
-              />
-
-              <Controller
-                name="instructions"
-                control={control}
-                render={({ field }) => (
-                  <TextField {...field} fullWidth multiline rows={2} placeholder="Any special instructions or notes..." />
-                )}
-              />
-            </Paper>
-
-            {/* Required Parts & Materials */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mb: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Required Parts & Materials</Typography>
-                <Button size="small" startIcon={<Plus size={14} />} onClick={addPart}>Add Item</Button>
-              </Box>
-
-              {parts.map((part, idx) => (
-                <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <TextField placeholder="Part/Material name" value={part.name} onChange={(e) => updatePart(idx, 'name', e.target.value)} fullWidth />
-                  <TextField placeholder="Quantity" value={part.qty} onChange={(e) => updatePart(idx, 'qty', e.target.value)} sx={{ width: 120 }} />
-                  <IconButton onClick={() => removePart(idx)}><Delete size={16} /></IconButton>
-                </Box>
-              ))}
-            </Paper>
-
-            {/* Attach Photos & Documents */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Attach Photos & Documents</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Drag and drop files here or <Button variant="text" size="small" component="label">browse<input hidden type="file" multiple onChange={onFilesChange} /></Button></Typography>
-
-              <Box sx={{ border: '1px dashed #d1d5db', borderRadius: 1, p: 3, minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {files.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">Drop files here or click Browse to select files. Supports: JPG, PNG, PDF (Max 10MB)</Typography>
-                ) : (
-                  <Stack spacing={1} sx={{ width: '100%' }}>
-                    {files.map((f, i) => (
-                      <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2">{f.name}</Typography>
-                        <IconButton onClick={() => setFiles(files.filter((_, idx) => idx !== i))}><Delete size={14} /></IconButton>
-                      </Box>
+                  )}
+                />
+                {assets.length > 0 && (
+                  <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                    {assets.map(asset => (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        onClick={() => {
+                          document.querySelector('input[name="asset"]')?.setAttribute('value', asset.id);
+                          setAssetQuery('');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                      >
+                        <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{asset.name}</p>
+                        <p className="text-xs text-zinc-500">{asset.category || asset.model}</p>
+                      </button>
                     ))}
-                  </Stack>
+                  </div>
                 )}
-              </Box>
-            </Paper>
-          </Paper>
-        </Grid>
+              </div>
 
-        <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 2, borderRadius: 2, mb: 2, position: 'sticky', top: 88 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Assignment & Scheduling</Typography>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Location Details</label>
+                <Controller
+                  name="location"
+                  control={control}
+                  render={({ field }) => (
+                    <input 
+                      {...field}
+                      placeholder="Building, Floor, Room (e.g., Building A, 3rd Floor, Room 301)"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Controller
-              name="requestedBy"
-              control={control}
-              render={({ field }) => (
-                <TextField {...field} label="Requested By" fullWidth sx={{ mb: 2 }} />
+          {/* Problem Description */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Problem Description</h2>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Describe the Issue *</label>
+                <Controller
+                  name="description"
+                  control={control}
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <textarea 
+                      {...field}
+                      rows={4}
+                      placeholder="Provide detailed information about the problem..."
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Special Instructions</label>
+                <Controller
+                  name="instructions"
+                  control={control}
+                  render={({ field }) => (
+                    <textarea 
+                      {...field}
+                      rows={2}
+                      placeholder="Any special notes or safety instructions..."
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Required Parts */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Required Parts & Materials</h2>
+              <Button size="sm" onClick={addPart} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1">
+                <Plus size={14} /> Add Item
+              </Button>
+            </CardHeader>
+            <CardContent className="p-6">
+              {parts.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No items added yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {parts.map((part, idx) => (
+                    <div key={idx} className="flex gap-3">
+                      <input 
+                        placeholder="Part name" 
+                        value={part.name} 
+                        onChange={(e) => updatePart(idx, 'name', e.target.value)} 
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm"
+                      />
+                      <input 
+                        placeholder="Qty" 
+                        value={part.qty} 
+                        onChange={(e) => updatePart(idx, 'qty', e.target.value)}
+                        className="w-24 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm"
+                      />
+                      <button type="button" onClick={() => removePart(idx)} className="text-red-600 hover:text-red-700 p-2">
+                        <Delete size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
-            />
+            </CardContent>
+          </Card>
 
-            <Controller
-              name="assignTo"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Assign to Technician</InputLabel>
-                  <Select {...field} label="Assign to Technician">
-                    <MenuItem value="tech1">John Doe</MenuItem>
-                    <MenuItem value="tech2">Jane Smith</MenuItem>
-                  </Select>
-                </FormControl>
+          {/* Attachments */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Attachments</h2>
+            </CardHeader>
+            <CardContent className="p-6">
+              <label className="block">
+                <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Drop files here or click to browse</p>
+                  <p className="text-xs text-gray-500 mt-1">Supports: JPG, PNG, PDF (Max 10MB each)</p>
+                  <input type="file" multiple onChange={onFilesChange} className="hidden" />
+                </div>
+              </label>
+              {files.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                      <span className="text-sm text-zinc-900 dark:text-zinc-100">{f.name}</span>
+                      <button type="button" onClick={() => setFiles(files.filter((_, idx) => idx !== i))} className="text-red-600 hover:text-red-700">
+                        <Delete size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
-            />
+            </CardContent>
+          </Card>
+        </div>
 
-            <Controller
-              name="scheduledDate"
-              control={control}
-              render={({ field }) => (
-                <TextField {...field} type="date" label="Scheduled Date" InputLabelProps={{ shrink: true }} fullWidth sx={{ mb: 2 }} />
-              )}
-            />
+        {/* Sidebar */}
+        <div className="lg:col-span-1">
+          <Card className="border-0 shadow-sm sticky top-24">
+            <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Assignment</h2>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Requested By</label>
+                <Controller
+                  name="requestedBy"
+                  control={control}
+                  render={({ field }) => (
+                    <input 
+                      {...field}
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
+                />
+              </div>
 
-            <Controller
-              name="estimatedDuration"
-              control={control}
-              render={({ field }) => (
-                <TextField {...field} label="Estimated Duration" placeholder="e.g., 2 hours" fullWidth sx={{ mb: 2 }} />
-              )}
-            />
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Assign to Technician</label>
+                <Controller
+                  name="assignTo"
+                  control={control}
+                  render={({ field }) => (
+                    <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                      <option value="">Unassigned</option>
+                      <option value="tech1">John Doe</option>
+                      <option value="tech2">Jane Smith</option>
+                    </select>
+                  )}
+                />
+              </div>
 
-            <Divider sx={{ my: 2 }} />
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Scheduled Date</label>
+                <Controller
+                  name="scheduledDate"
+                  control={control}
+                  render={({ field }) => (
+                    <input {...field} type="date" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  )}
+                />
+              </div>
 
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Maintenance Options</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="body2">Recurring Maintenance</Typography>
-              <Controller
-                name="recurring"
-                control={control}
-                render={({ field }) => (
-                  <Switch {...field} checked={field.value} />
-                )}
-              />
-            </Box>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Estimated Duration</label>
+                <Controller
+                  name="estimatedDuration"
+                  control={control}
+                  render={({ field }) => (
+                    <input {...field} placeholder="e.g., 2 hours" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  )}
+                />
+              </div>
 
-            <Box sx={{ mt: 3 }}>
-              <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mb: 1, py: 1.2, fontWeight: 600 }}>Create Work Order</Button>
-              <Button variant="outlined" color="primary" fullWidth onClick={() => toast.info('Saved as draft (local)')} sx={{ py: 1 }}>Save as Draft</Button>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+              <div className="border-t border-gray-200 dark:border-zinc-700 pt-4">
+                <label className="flex items-center gap-3">
+                  <Controller
+                    name="recurring"
+                    control={control}
+                    render={({ field }) => (
+                      <input {...field} type="checkbox" className="w-4 h-4 rounded border-gray-200" />
+                    )}
+                  />
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Recurring Maintenance</span>
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                  Create Order
+                </Button>
+                <Button type="button" variant="outline" onClick={() => navigate('/work-orders')} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </form>
   );
 }

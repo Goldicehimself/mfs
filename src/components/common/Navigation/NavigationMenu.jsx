@@ -1,129 +1,158 @@
 import React from 'react';
 import {
+  Box,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Collapse,
-  Box,
   Typography,
+  Divider,
 } from '@mui/material';
-import { LayoutDashboard, Wrench, ClipboardList, Calendar, Building, Users, Boxes, BarChart, Settings2, ChevronUp, ChevronDown, PlusCircle, List as IconList } from 'lucide-react';
-// styles migrated to Tailwind - NavigationMenu.css will be removed after verification
+import {
+  LayoutDashboard,
+  Wrench,
+  ClipboardList,
+  Calendar,
+  Building,
+  Users,
+  Boxes,
+  BarChart,
+  Settings2,
+  ChevronUp,
+  ChevronDown,
+  PlusCircle,
+  List as IconList,
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 
-const NavigationMenu = () => {
+// This component now only renders the menu content.
+// The layout (Drawer / aside) is controlled by the parent (MainLayout).
+const NavigationMenu = ({ onCloseMobile = () => {} }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  // Debug: log user to help diagnose missing menu items
-  if (process.env.NODE_ENV !== 'production') console.debug('NavigationMenu user:', user);
-  
-  const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
-  const [openAssets, setOpenAssets] = React.useState(false);
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const [openAssets, setOpenAssets] = React.useState(false);
+  const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
+
+  // Auto-open based on current route
+  React.useEffect(() => {
+    if (location.pathname.startsWith('/assets')) setOpenAssets(true);
+    if (location.pathname.startsWith('/work-orders')) setOpenWorkOrders(true);
+  }, [location.pathname]);
+
+  const isActive = (path) =>
+    location.pathname === path ||
+    location.pathname.startsWith(path + '/');
 
   const menuItems = [
     {
       title: 'Dashboard',
-      icon: <LayoutDashboard size={18} />,
+      icon: <LayoutDashboard />,
       path: '/dashboard',
       roles: ['facility_manager', 'admin'],
     },
     {
       title: 'Assets',
-      icon: <Building size={18} />,
-      children: [
-        { title: 'Asset List', path: '/assets', icon: <IconList size={16} /> },
-        { title: 'Add New Asset', path: '/assets/new', icon: <PlusCircle size={16} /> },
-      ],
+      icon: <Building />,
       roles: ['facility_manager', 'admin', 'technician'],
+      children: [
+        { title: 'Asset List', path: '/assets', icon: <IconList /> },
+        { title: 'Add New Asset', path: '/assets/new', icon: <PlusCircle /> },
+      ],
     },
     {
       title: 'Work Orders',
-      icon: <ClipboardList size={18} />,
-      children: [
-        { title: 'All Work Orders', path: '/work-orders', icon: <IconList size={16} /> },
-        { title: 'Create New', path: '/work-orders/new', icon: <PlusCircle size={16} /> },
-        { title: 'My Assignments', path: '/work-orders/my-assignments', icon: <Wrench size={16} /> },
-      ],
+      icon: <ClipboardList />,
       roles: ['facility_manager', 'admin', 'technician', 'vendor'],
+      children: [
+        { title: 'All Work Orders', path: '/work-orders', icon: <IconList /> },
+        { title: 'Create New', path: '/work-orders/new', icon: <PlusCircle /> },
+        { title: 'My Assignments', path: '/work-orders/my-assignments', icon: <Wrench /> },
+      ],
     },
     {
       title: 'Preventive Maintenance',
-      icon: <Calendar size={18} />,
+      icon: <Calendar />,
       path: '/preventive-maintenance',
       roles: ['facility_manager', 'admin'],
     },
     {
       title: 'Service Requests',
-      icon: <PlusCircle size={18} />,
+      icon: <PlusCircle />,
       path: '/service-requests',
       roles: ['facility_manager', 'admin', 'staff'],
     },
     {
       title: 'Vendors',
-      icon: <Users size={18} />,
+      icon: <Users />,
       path: '/vendors',
       roles: ['facility_manager', 'admin', 'procurement'],
     },
     {
       title: 'Inventory',
-      icon: <Boxes size={18} />,
+      icon: <Boxes />,
       path: '/inventory',
       roles: ['facility_manager', 'admin', 'technician'],
     },
     {
       title: 'Reports',
-      icon: <BarChart size={18} />,
+      icon: <BarChart />,
       path: '/reports',
       roles: ['facility_manager', 'admin', 'finance'],
     },
     {
       title: 'Settings',
-      icon: <Settings2 size={18} />,
+      icon: <Settings2 />,
       path: '/settings',
       roles: ['facility_manager', 'admin'],
     },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
-    item.roles.includes(user?.role) || user?.role === 'admin'
+  if (!user) return null;
+
+  const filteredMenu = menuItems.filter(
+    (item) => !item.roles || item.roles.includes(user.role)
   );
 
-  // Debug: log filtered menu items for troubleshooting
-  if (process.env.NODE_ENV !== 'production') console.debug('NavigationMenu filtered items:', filteredMenuItems);
-
   const renderMenuItem = (item) => {
-    if (item.children) {
-      const open = item.title === 'Work Orders' ? openWorkOrders : openAssets;
-      const setOpen = item.title === 'Work Orders' ? setOpenWorkOrders : setOpenAssets;
+    const isAssets = item.title === 'Assets';
+    const isWorkOrders = item.title === 'Work Orders';
+    const open = isAssets ? openAssets : isWorkOrders ? openWorkOrders : false;
+    const toggle = isAssets
+      ? () => setOpenAssets(!openAssets)
+      : () => setOpenWorkOrders(!openWorkOrders);
 
+    if (item.children) {
       return (
         <React.Fragment key={item.title}>
           <ListItem disablePadding>
-            <ListItemButton onClick={() => setOpen(!open)}>
-              <ListItemIcon sx={{ color: 'text.secondary' }}>
-                {item.icon}
+            <ListItemButton onClick={toggle} className={`mp-nav-item ${open ? 'open' : ''}`}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                {React.cloneElement(item.icon, { size: 18, className: 'icon' })}
               </ListItemIcon>
               <ListItemText primary={item.title} />
-              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} /> }
+              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </ListItemButton>
           </ListItem>
+
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding>
+            <List disablePadding>
               {item.children.map((child) => (
                 <ListItem key={child.title} disablePadding>
                   <ListItemButton
                     sx={{ pl: 4 }}
-                    onClick={() => navigate(child.path)}
-                    selected={isActive(child.path)}
+                    className={`mp-nav-item ${isActive(child.path) ? 'active' : ''}`}
+                    onClick={() => {
+                      navigate(child.path);
+                      onCloseMobile();
+                    }}
                   >
-                    <ListItemIcon sx={{ color: 'text.secondary', minWidth: 40 }}>
-                      {child.icon}
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      {React.cloneElement(child.icon, { size: 16, className: 'icon' })}
                     </ListItemIcon>
                     <ListItemText primary={child.title} />
                   </ListItemButton>
@@ -138,11 +167,14 @@ const NavigationMenu = () => {
     return (
       <ListItem key={item.title} disablePadding>
         <ListItemButton
-          onClick={() => navigate(item.path)}
-          selected={isActive(item.path)}
+          className={`mp-nav-item ${isActive(item.path) ? 'active' : ''}`}
+          onClick={() => {
+            navigate(item.path);
+            onCloseMobile();
+          }}
         >
-          <ListItemIcon sx={{ color: 'text.secondary' }}>
-            {item.icon}
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            {React.cloneElement(item.icon, { size: 18, className: 'icon' })}
           </ListItemIcon>
           <ListItemText primary={item.title} />
         </ListItemButton>
@@ -150,59 +182,43 @@ const NavigationMenu = () => {
     );
   };
 
-  return (
-    <Box className="w-60 h-screen overflow-auto bg-card border-r p-4">
-      {/* Logo */}
-      <Box className="mb-3 border-b pb-3">
-        <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
-          SMMP
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Facility Maintenance Platform
-        </Typography>
+  const drawerContent = (
+    <Box className="h-full">
+      <Box className="mp-sidebar-header">
+        <Typography className="mp-sidebar-header-title">SMMP</Typography>
+        <Typography className="mp-sidebar-header-subtitle">Facility Maintenance</Typography>
       </Box>
 
-      {/* Menu Items */}
-      <List>
-        {filteredMenuItems.map(renderMenuItem)}
-      </List>
+      <List>{filteredMenu.map(renderMenuItem)}</List>
 
-      {filteredMenuItems.length === 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ p: 2 }}>
-          No menu items available — check user role and AuthContext
-        </Typography>
-      )}
-
-      {/* Quick Actions for Technicians */}
-      {user?.role === 'technician' && (
-        <Box sx={{ p: 2, mt: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-            Quick Actions
-          </Typography>
-          <List>
-            <ListItem disablePadding>
-              <ListItemButton
-                sx={{
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  borderRadius: 1,
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                }}
-                onClick={() => navigate('/work-orders/new')}
-              >
-                <ListItemIcon sx={{ color: 'white' }}>
-                  <PlusCircle size={18} />
-                </ListItemIcon>
-                <ListItemText primary="Report Issue" />
-              </ListItemButton>
-            </ListItem>
-          </List>
-        </Box>
+      {user.role === 'technician' && (
+        <>
+          <Divider />
+          <Box className="p-3">
+            <ListItemButton
+              sx={{
+                backgroundColor: 'primary.main',
+                color: 'white',
+                borderRadius: 1,
+                '&:hover': { backgroundColor: 'primary.dark' },
+              }}
+              onClick={() => {
+                navigate('/work-orders/new');
+                onCloseMobile();
+              }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}>
+                <PlusCircle size={18} />
+              </ListItemIcon>
+              <ListItemText primary="Report Issue" />
+            </ListItemButton>
+          </Box>
+        </>
       )}
     </Box>
   );
+
+  return drawerContent;
 };
 
 export default NavigationMenu;

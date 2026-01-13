@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Modal from '../common/Modal';
-import { X } from 'lucide-react';
+import { X, Camera, Upload, AlertCircle, CheckCircle } from 'lucide-react';
 
-export default function AssetQRScanner({ open = false, onClose = () => {}, onScan = () => {} }) {
+export default function AssetQRScanner({ open = false, onClose = () => {}, onScan = () => {}, onAssetScanned = () => {} }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [error, setError] = useState('');
@@ -11,6 +10,7 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
   const [result, setResult] = useState(null);
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -22,16 +22,22 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
   const init = async () => {
     setError('');
     setResult(null);
+    setIsLoading(true);
+    console.log('Scanner initializing...');
 
     // Check BarcodeDetector support
     if ('BarcodeDetector' in window && window.BarcodeDetector.getSupportedFormats) {
       try {
         const supported = await window.BarcodeDetector.getSupportedFormats();
-        setDetectorAvailable(supported.includes('qr_code'));
+        const isQrSupported = supported.includes('qr_code');
+        setDetectorAvailable(isQrSupported);
+        console.log('BarcodeDetector available:', isQrSupported);
       } catch (err) {
+        console.warn('BarcodeDetector check failed:', err);
         setDetectorAvailable(false);
       }
     } else {
+      console.warn('BarcodeDetector not available in this browser');
       setDetectorAvailable(false);
     }
 
@@ -49,6 +55,7 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
 
     // start camera
     startCamera();
+    setIsLoading(false);
   };
 
   const startCamera = async () => {
@@ -57,16 +64,18 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
       const constraints = {
         video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : { facingMode: 'environment' }
       };
+      console.log('Starting camera with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        console.log('Camera started successfully');
       }
       setScanning(true);
       tick();
     } catch (err) {
-      console.error('Camera error', err);
-      setError('Unable to access camera. Please allow camera access or upload an image.');
+      console.error('Camera error:', err);
+      setError('Unable to access camera. Please allow camera access or try uploading an image.');
     }
   };
 
@@ -104,14 +113,16 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
             const codes = await detector.detect(bitmap);
             if (codes && codes.length > 0) {
               const raw = codes[0].rawValue || codes[0].rawText || (codes[0].rawValue && String(codes[0].rawValue));
+              console.log('✓ QR Code detected:', raw);
               setResult(raw);
               onScan(raw);
+              onAssetScanned(raw);
               stopCamera();
               return;
             }
           } catch (err) {
             // ignore detection errors and continue
-            // console.warn('detection err', err);
+            console.warn('Detection error:', err);
           }
         }
       }
@@ -135,6 +146,7 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
             const raw = codes[0].rawValue || codes[0].rawText || (codes[0].rawValue && String(codes[0].rawValue));
             setResult(raw);
             onScan(raw);
+            onAssetScanned(raw);
             return;
           }
         } catch (err) {
@@ -156,46 +168,122 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
   if (!open) return null;
 
   return (
-    <Modal>
-      <div className="max-w-3xl w-[95vw] bg-card p-4 rounded-lg">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold">Scan QR Code</h3>
-          <button className="p-2 rounded hover:bg-gray-100 text-gray-600" onClick={handleClose}><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-w-2xl w-[95vw] bg-white rounded-lg shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Camera className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Scan QR Code</h3>
+          </div>
+          <button 
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            onClick={handleClose}
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <div className="flex gap-4 flex-wrap">
-          <div className="flex-1 min-h-[320px] bg-black rounded-md overflow-hidden relative">
-            <video ref={videoRef} muted playsInline className="w-full h-full object-cover block" />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 px-3 py-1 rounded font-semibold">Align QR code inside the frame</div>
-          </div>
+        {/* Content */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Video Area */}
+            <div className="md:col-span-2">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video 
+                  ref={videoRef} 
+                  muted 
+                  playsInline 
+                  className="w-full h-96 object-cover" 
+                />
+                <canvas ref={canvasRef} style={{ display: 'none' }} />
+                
+                {/* Scanner Frame Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-56 h-56 border-2 border-green-400 rounded-lg relative">
+                    {/* Corner markers */}
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-green-400"></div>
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-green-400"></div>
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-green-400"></div>
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-green-400"></div>
+                  </div>
+                </div>
 
-          <div className="w-72 flex flex-col gap-3">
-            <div>
-              {devices.length > 0 && (
-                <select value={selectedDeviceId || ''} onChange={(e) => setSelectedDeviceId(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-card">
-                  {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || d.deviceId}</option>)}
-                </select>
+                {/* Status Text */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-black/60 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    {isLoading ? 'Initializing...' : result ? '✓ Scanned' : 'Align QR code'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls Sidebar */}
+            <div className="flex flex-col gap-4">
+              {/* Camera Selection */}
+              {devices.length > 1 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Camera</label>
+                  <select 
+                    value={selectedDeviceId || ''} 
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Camera'}</option>)}
+                  </select>
+                </div>
               )}
-            </div>
 
-            <div>
-              <label className="text-sm block mb-1">Or upload an image</label>
-              <input type="file" accept="image/*" onChange={handleFile} className="block w-full text-sm" />
-            </div>
+              {/* File Upload */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload Image
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFile}
+                  className="block w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
+                />
+              </div>
 
-            <div className="space-y-2">
-              {error && <div className="text-red-600 font-semibold">{error}</div>}
-              {result && <div className="text-green-700 font-bold">Scanned: <strong>{result}</strong></div>}
-              {!result && !detectorAvailable && <div className="text-amber-700 font-semibold">QR scanning not supported in your browser. Try uploading an image or use a Chrome-based browser.</div>}
-            </div>
+              {/* Status Messages */}
+              {error && (
+                <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
 
-            <div className="mt-auto flex">
-              <button className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50" onClick={handleClose}>Close</button>
+              {result && (
+                <div className="flex gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="text-green-900 font-medium">Scanned Successfully</p>
+                    <p className="text-green-700 text-xs mt-1 break-all">{result}</p>
+                  </div>
+                </div>
+              )}
+
+              {!detectorAvailable && (
+                <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-700">QR scanning unavailable. Try uploading an image or use Chrome.</p>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <button 
+                className="w-full mt-auto px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium rounded-lg transition-colors"
+                onClick={handleClose}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 }
