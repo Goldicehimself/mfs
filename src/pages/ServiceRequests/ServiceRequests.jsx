@@ -18,8 +18,24 @@ import {
   Avatar,
   Pagination,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  Alert,
+  IconButton,
 } from '@mui/material';
-import { Search, Plus, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  TrendingUp,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const ServiceRequests = () => {
   const [currentTab, setCurrentTab] = useState('all');
@@ -27,6 +43,18 @@ const ServiceRequests = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    location: '',
+    priority: 'medium',
+    asset: '',
+  });
 
   // KPI Data with better structure
   const kpiData = [
@@ -127,14 +155,38 @@ const ServiceRequests = () => {
     },
   ];
 
-  // Filter requests
-  const filteredRequests =
+  // Filter requests by tab
+  let filteredRequests =
     currentTab === 'all'
       ? allRequests
       : allRequests.filter((r) => r.status === currentTab);
 
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-  const displayedRequests = filteredRequests.slice(
+  // Apply search filter
+  if (searchQuery) {
+    filteredRequests = filteredRequests.filter((request) =>
+      request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      request.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      request.requester.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+
+  // Apply sorting
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortBy === 'date') {
+      // Sort by ID descending (assuming higher ID is newer)
+      return parseInt(b.id.replace('#', '')) - parseInt(a.id.replace('#', ''));
+    } else if (sortBy === 'priority') {
+      const priorityOrder = { low: 1, medium: 2, high: 3 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    } else if (sortBy === 'status') {
+      const statusOrder = { pending: 1, assigned: 2, 'in-progress': 3, completed: 4 };
+      return statusOrder[a.status] - statusOrder[b.status];
+    }
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const displayedRequests = sortedRequests.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -164,6 +216,56 @@ const ServiceRequests = () => {
       completed: { bg: '#dcfce7', text: '#166534', border: '#bbf7d0', label: 'Completed' },
     };
     return colors[status] || { bg: '#f3f4f6', text: '#6b7280', border: '#e5e7eb' };
+  };
+
+  // Modal handlers
+  const handleModalOpen = () => {
+    setModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setFormData({
+      title: '',
+      description: '',
+      category: '',
+      location: '',
+      priority: 'medium',
+      asset: '',
+    });
+  };
+
+  const handleFormInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.category) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      // In a real app, this would call an API to create the service request
+      console.log('Creating service request:', formData);
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      toast.success('Service request submitted successfully!');
+      handleModalClose();
+    } catch (error) {
+      toast.error('Failed to submit service request');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -359,6 +461,7 @@ const ServiceRequests = () => {
               <Button
                 variant="contained"
                 startIcon={<Plus size={18} />}
+                onClick={handleModalOpen}
                 sx={{
                   background: '#3b82f6',
                   color: '#fff',
@@ -558,6 +661,156 @@ const ServiceRequests = () => {
           />
         </Box>
       </Paper>
+
+      {/* New Request Modal */}
+      <Dialog
+        open={modalOpen}
+        onClose={handleModalClose}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            borderRadius: '16px',
+            p: 0,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: '20px',
+            color: '#0f172a',
+            pb: 1,
+          }}
+        >
+          Create New Service Request
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <form onSubmit={handleFormSubmit}>
+            <Grid container spacing={3}>
+              {/* Title */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Request Title"
+                  placeholder="Brief description of the issue"
+                  value={formData.title}
+                  onChange={(e) => handleFormInputChange('title', e.target.value)}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Description */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Detailed Description"
+                  placeholder="Provide more details about the issue"
+                  value={formData.description}
+                  onChange={(e) => handleFormInputChange('description', e.target.value)}
+                  required
+                  multiline
+                  rows={4}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Category and Priority */}
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    value={formData.category}
+                    onChange={(e) => handleFormInputChange('category', e.target.value)}
+                    label="Category"
+                    sx={{
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <MenuItem value="HVAC">HVAC</MenuItem>
+                    <MenuItem value="Electrical">Electrical</MenuItem>
+                    <MenuItem value="Plumbing">Plumbing</MenuItem>
+                    <MenuItem value="Other">Other</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Priority</InputLabel>
+                  <Select
+                    value={formData.priority}
+                    onChange={(e) => handleFormInputChange('priority', e.target.value)}
+                    label="Priority"
+                    sx={{
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <MenuItem value="low">Low</MenuItem>
+                    <MenuItem value="medium">Medium</MenuItem>
+                    <MenuItem value="high">High</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Location */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Location"
+                  placeholder="Where is the issue located?"
+                  value={formData.location}
+                  onChange={(e) => handleFormInputChange('location', e.target.value)}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button
+            onClick={handleModalClose}
+            sx={{
+              color: '#64748b',
+              fontWeight: 600,
+              textTransform: 'none',
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleFormSubmit}
+            variant="contained"
+            disabled={loading}
+            sx={{
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: '8px',
+              fontWeight: 600,
+              textTransform: 'none',
+              px: 3,
+              '&:hover': {
+                background: '#2563eb',
+              },
+            }}
+          >
+            {loading ? 'Submitting...' : 'Submit Request'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

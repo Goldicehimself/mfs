@@ -69,7 +69,7 @@ const MainLayout = ({ children }) => {
 
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-md bg-[#1e3a8a] flex items-center justify-center text-white font-semibold overflow-hidden">
+              <div className="h-10 w-10 rounded-md flex items-center justify-center text-white font-semibold overflow-hidden" style={{ backgroundColor: 'var(--mp-brand)' }}>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
@@ -80,7 +80,7 @@ const MainLayout = ({ children }) => {
               </div>
 
               <div>
-                <div className="text-sm font-semibold text-[#1e3a8a]">FacilityPro</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--mp-brand)' }}>FacilityPro</div>
                 <div className="text-xs text-slate-500">Asset & Maintenance</div>
               </div>
             </div>
@@ -104,8 +104,8 @@ const MainLayout = ({ children }) => {
                 px-1
                 rounded-full
                 text-[11px]
-                bg-[#1e3a8a] text-white
               "
+              style={{ backgroundColor: 'var(--mp-brand)', color: '#ffffff' }}
               aria-label="4 unread notifications"
             >
               4
@@ -128,7 +128,7 @@ const MainLayout = ({ children }) => {
                     src={user?.avatar}
                     alt={user?.name || "User avatar"}
                   />
-                  <AvatarFallback className="bg-[#e6eefc] text-[#1e3a8a] font-semibold text-xs">
+                  <AvatarFallback className="bg-[#e6eefc] font-semibold text-xs" style={{ color: 'var(--mp-brand)' }}>
                     {user?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -204,7 +204,6 @@ const MainLayout = ({ children }) => {
         className={`
           fixed left-0 top-0 z-40
           h-screen w-72
-          pt-16
           bg-white border-r border-slate-200 shadow-sm
           overflow-y-auto
           transition-transform duration-300

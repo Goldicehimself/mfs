@@ -326,7 +326,7 @@ export default function WorkOrderForm() {
 
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <Card className="border-0 shadow-sm sticky top-24">
+          <Card className="border-0 shadow-sm lg:sticky lg:top-24">
             <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Assignment</h2>
             </CardHeader>

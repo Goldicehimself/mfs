@@ -61,12 +61,12 @@ const ForgotPassword = () => {
         type="submit"
         fullWidth
         variant="contained"
-        sx={{ mt: 3, mb: 2 }}
+        sx={{ mt: 3, mb: 2, backgroundColor: 'var(--mp-brand)', color: '#ffffff', '&:hover': { backgroundColor: 'var(--mp-brand-dark)' } }}
       >
         Send Reset Link
       </Button>
       <Box textAlign="center">
-        <Link href="/login" variant="body2">
+        <Link href="/login" variant="body2" sx={{ color: 'var(--mp-brand)', '&:hover': { color: 'var(--mp-brand-dark)' } }}>
           Back to login
         </Link>
       </Box>

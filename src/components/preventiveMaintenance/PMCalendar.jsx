@@ -7,7 +7,11 @@ import {
   Divider,
   Button,
   Popover,
+  Paper,
 } from '@mui/material';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   ChevronLeft,
   ChevronRight,
@@ -150,199 +154,40 @@ export default function PMCalendar() {
      Render
   ========================= */
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: 3,
-        flexDirection: { xs: 'column', md: 'row' },
-        width: '100%',
-      }}
-    >
-      {/* ================= Calendar ================= */}
-      <Box sx={{ flex: 1 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 1,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton size="small" onClick={prevMonth}>
-              <ChevronLeft size={16} />
-            </IconButton>
-            <IconButton size="small" onClick={nextMonth}>
-              <ChevronRight size={16} />
-            </IconButton>
-            <Typography variant="subtitle1" fontWeight={700} ml={1}>
-              {format(currentMonth, 'MMMM yyyy')}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              size="small"
-              startIcon={<Clock size={12} />}
-              onClick={goToday}
-              sx={{ textTransform: 'none' }}
-            >
-              Today
-            </Button>
-            <Button
-              size="small"
-              startIcon={<CalendarIcon size={12} />}
-              sx={{ textTransform: 'none' }}
-            >
-              This Month
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Weekdays */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            borderTop: '1px solid #eef2f7',
-            borderBottom: '1px solid #eef2f7',
-            mb: 1,
-          }}
-        >
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <Box key={d} sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="caption" fontWeight={700} color="#64748b">
-                {d}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-
-        {/* Days grid */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: 1,
-          }}
-        >
-          {monthMatrix.flat().map((day, idx) => {
-            const dayEvents = eventsForDay(day);
-            const inMonth = isSameMonth(day, currentMonth);
-
-            return (
-              <Box
-                key={idx}
-                tabIndex={0}
-                onClick={() => setSelectedDate(day)}
-                onKeyDown={(e) =>
-                  e.key === 'Enter' && setSelectedDate(day)
-                }
-                sx={{
-                  p: 1,
-                  minHeight: 104,
-                  borderRadius: 1,
-                  cursor: 'pointer',
-                  border: '1px solid',
-                  borderColor: isSameDay(day, selectedDate)
-                    ? '#c7d2fe'
-                    : 'transparent',
-                  backgroundColor: isSameDay(day, selectedDate)
-                    ? '#e0e7ff'
-                    : isToday(day)
-                    ? '#eef2ff'
-                    : 'transparent',
-                  '&:hover': {
-                    backgroundColor: '#fafafa',
-                    borderColor: '#e6eef8',
-                  },
-                }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Typography
-                    fontWeight={700}
-                    color={inMonth ? '#111827' : '#9ca3af'}
-                  >
-                    {format(day, 'd')}
-                  </Typography>
-                  {dayEvents.length > 0 && (
-                    <Chip
-                      label={dayEvents.length}
-                      size="small"
-                      sx={{
-                        bgcolor: '#eef2ff',
-                        color: '#1e3a8a',
-                        fontWeight: 700,
-                      }}
-                    />
-                  )}
-                </Box>
-
-                <Box mt={0.5}>
-                  {dayEvents.slice(0, 2).map((ev) => (
-                    <Box
-                      key={ev.id}
-                      onMouseEnter={(e) =>
-                        openPopover(e.currentTarget, ev)
-                      }
-                      onMouseLeave={closePopover}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleView(ev);
-                      }}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 0.5,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 99,
-                          bgcolor:
-                            PRIORITY_COLOR[ev.priority] || '#64748b',
-                        }}
-                      />
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {ev.title}
-                      </Typography>
-                    </Box>
-                  ))}
-                  {dayEvents.length > 2 && (
-                    <Typography variant="caption" color="#94a3b8">
-                      +{dayEvents.length - 2} more
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-      </Box>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 3,
+          flexDirection: { xs: 'column', md: 'row' },
+          width: '100%',
+        }}
+      >
+        {/* ================= Calendar ================= */}
+        <Paper sx={{ flex: 1, p: 2 }}>
+          <DateCalendar
+            value={selectedDate}
+            onChange={(newValue) => setSelectedDate(newValue)}
+            sx={{
+              '& .MuiPickersCalendarHeader-root': {
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 2,
+              },
+              '& .MuiDayCalendar-root': {
+                width: '100%',
+              },
+            }}
+          />
+        </Paper>
 
       {/* ================= Details Panel ================= */}
       <Box
         sx={{
           width: { xs: '100%', md: 360 },
-          position: 'sticky',
-          top: 16,
+          position: { md: 'sticky' },
+          top: { md: 16 },
           alignSelf: 'flex-start',
         }}
       >
@@ -424,5 +269,6 @@ export default function PMCalendar() {
         )}
       </Popover>
     </Box>
+    </LocalizationProvider>
   );
 }

@@ -169,7 +169,7 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-w-2xl w-[95vw] bg-white rounded-lg shadow-xl overflow-hidden">
+      <div className="w-[95vw] md:w-auto max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -194,13 +194,13 @@ export default function AssetQRScanner({ open = false, onClose = () => {}, onSca
                   ref={videoRef} 
                   muted 
                   playsInline 
-                  className="w-full h-96 object-cover" 
+                  className="w-full h-56 md:h-96 object-cover" 
                 />
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
                 
                 {/* Scanner Frame Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-56 h-56 border-2 border-green-400 rounded-lg relative">
+                  <div className="w-44 h-44 md:w-56 md:h-56 border-2 border-green-400 rounded-lg relative">
                     {/* Corner markers */}
                     <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-green-400"></div>
                     <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-green-400"></div>

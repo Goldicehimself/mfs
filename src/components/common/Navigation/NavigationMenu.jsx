@@ -191,7 +191,7 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box sx={{ width: 40, height: 40, borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', boxShadow: '0 1px 4px rgba(30,58,138,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 9, ease: 'linear', repeat: Infinity }} style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Wrench size={18} color="#1e3a8a" />
+              <Wrench size={18} color="var(--mp-brand)" />
             </motion.div>
           </Box>
 

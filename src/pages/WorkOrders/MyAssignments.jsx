@@ -117,7 +117,7 @@ export default function MyAssignments() {
             </div>
 
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger className="w-full lg:w-[180px] h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700">
+              <SelectTrigger className="w-full md:w-[180px] h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700">
                 <SelectValue placeholder="Filter by Priority" />
               </SelectTrigger>
               <SelectContent>

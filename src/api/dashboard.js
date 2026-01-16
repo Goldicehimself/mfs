@@ -13,7 +13,14 @@ export const getDashboardData = async () => {
       pendingRequests: 12,
       activeAssets: 156,
       vendorPerformance: 92,
-      complianceTrend: [],
+      complianceTrend: [
+        { month: 'Jan', compliance: 78, target: 85, completed: 45, pending: 12 },
+        { month: 'Feb', compliance: 82, target: 85, completed: 52, pending: 8 },
+        { month: 'Mar', compliance: 80, target: 85, completed: 48, pending: 10 },
+        { month: 'Apr', compliance: 85, target: 85, completed: 56, pending: 6 },
+        { month: 'May', compliance: 88, target: 85, completed: 62, pending: 5 },
+        { month: 'Jun', compliance: 87, target: 85, completed: 59, pending: 4 },
+      ],
       costAnalysis: [],
       serviceCategories: [
         { name: 'HVAC', count: 45, trend: 'up' },

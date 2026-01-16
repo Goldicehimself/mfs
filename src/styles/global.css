@@ -7,6 +7,8 @@
   --mp-card: #ffffff;
   --mp-muted: #6b7280;
   --mp-primary: #2563eb; /* indigo-600 */
+  --mp-brand: #1e3a8a; /* facilitypro brand */
+  --mp-brand-dark: #162e6b;
   --mp-accent-green: #10b981; /* emerald-500 */
   --mp-accent-red: #ef4444; /* red-500 */
   --mp-chip-bg: #f1f5f9;
@@ -159,7 +161,7 @@ body {
 }
 .mp-sidebar .mp-nav-item .icon { color: #6b7280; }
 .mp-sidebar .mp-nav-item.active { background: #eef2ff; border-radius: 6px; }
-.mp-sidebar .mp-nav-item.active .icon { color: #1e3a8a; }
+.mp-sidebar .mp-nav-item.active .icon { color: var(--mp-brand); }
 
 /* Sidebar scrollbar - subtle */
 .mp-sidebar ::-webkit-scrollbar { width: 8px; }

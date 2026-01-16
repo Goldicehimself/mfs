@@ -167,7 +167,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     delete axiosInstance.defaults.headers.common['Authorization'];
     setUser(null);
-    navigate('/login');
+    navigate('/');
     toast.info('Logged out successfully');
   };
 

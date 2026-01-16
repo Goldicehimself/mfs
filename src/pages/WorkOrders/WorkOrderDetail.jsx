@@ -15,8 +15,8 @@ import {
   ListItemText,
   Chip,
 } from '@mui/material';
+import { ArrowBack, CloudUpload } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowBack } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { toast } from 'react-toastify';
 
@@ -102,144 +102,164 @@ const WorkOrderDetail = () => {
   };
 
   return (
-    <Box className="p-6 space-y-4">
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper className="bg-card p-4">
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <div className="flex items-center gap-3">
-                  <Button variant="text" startIcon={<ArrowBack />} onClick={() => navigate(-1)}>Back</Button>
-                  <div>
-                    <Typography variant="h5">{workOrder.title || workOrder.woNumber}</Typography>
-                    <Typography variant="body2" color="text.secondary">WO#: {workOrder.woNumber}</Typography>
-                  </div>
-                </div>
-
-              <div>
-                <Chip label={workOrder.status} color={workOrder.status === 'completed' ? 'success' : workOrder.status === 'open' ? 'warning' : 'default'} />
-              </div>
-            </Stack>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>Description</Typography>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{workOrder.description || '—'}</Typography>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Grid container spacing={2}>
-              <Grid item xs={6} sm={4}>
-                <Typography variant="caption" color="text.secondary">Priority</Typography>
-                <Typography>{workOrder.priority || '—'}</Typography>
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <Typography variant="caption" color="text.secondary">Asset</Typography>
-                <Typography>{workOrder.asset?.name || workOrder.location?.name || '—'}</Typography>
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <Typography variant="caption" color="text.secondary">Due</Typography>
-                <Typography>{workOrder.dueDate ? new Date(workOrder.dueDate).toLocaleString() : '—'}</Typography>
-              </Grid>
-            </Grid>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Attachments</Typography>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {(workOrder.photos || []).map((p, i) => (
-                <img key={i} src={p.url || p} alt={`photo-${i}`} className="w-full h-24 object-cover rounded" />
-              ))}
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', pb: 4 }}>
+      {/* Header Bar */}
+      <Box sx={{ bgcolor: 'white', borderBottom: '1px solid #e2e8f0', py: 2, px: 3, mb: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button variant="text" startIcon={<ArrowBack />} onClick={() => navigate(-1)} sx={{ color: '#4f46e5' }}>Back</Button>
+            <div>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>{workOrder.title || workOrder.woNumber}</Typography>
+              <Typography variant="body2" color="text.secondary">WO#: {workOrder.woNumber} • {workOrder.asset?.name || workOrder.location?.name || '—'}</Typography>
             </div>
+          </Box>
 
-            <div className="flex gap-2 items-center mb-3">
-              <input
-                id="wo-photo-input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files && e.target.files[0];
-                  if (file) photoMut.mutate(file);
-                }}
-              />
-              {photoMut.isLoading && <div className="text-sm">Uploading...</div>}
-            </div>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip label={workOrder.status?.toUpperCase()} sx={{ fontWeight: 700 }} color={workOrder.status === 'completed' ? 'success' : workOrder.status === 'open' ? 'warning' : 'default'} />
+            <Button variant="outlined" startIcon={<ArrowBack sx={{ transform: 'rotate(180deg)' }} />} onClick={() => handleChangeStatus('in_progress')}>Start</Button>
+            <Button variant="contained" color="success" onClick={() => handleChangeStatus('completed')}>Complete</Button>
+          </Stack>
+        </Box>
+      </Box>
 
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Comments</Typography>
-            <List dense>
-              {(workOrder.comments || []).map((c, i) => (
-                <ListItem key={i} alignItems="flex-start">
-                  <Avatar src={c.user?.avatar || ''} sx={{ width: 32, height: 32, mr: 2 }}>{(!c.user?.avatar && c.user?.name) ? c.user.name[0] : 'U'}</Avatar>
-                  <ListItemText primary={c.text} secondary={c.createdAt ? new Date(c.createdAt).toLocaleString() : ''} />
-                </ListItem>
-              ))}
-            </List>
+      <Box sx={{ px: 3 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={8}>
+            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700, color: '#0f172a' }}>Description</Typography>
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>{workOrder.description || '—'}</Typography>
 
-            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <TextField fullWidth placeholder="Add a comment" value={comment} onChange={(e) => setComment(e.target.value)} />
-              <Button variant="contained" onClick={handleAddComment} disabled={commentMut.isLoading}>Add</Button>
-            </Stack>
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={6} sm={4}>
+                  <Typography variant="caption" color="text.secondary">Priority</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{workOrder.priority || '—'}</Typography>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <Typography variant="caption" color="text.secondary">Due</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{workOrder.dueDate ? new Date(workOrder.dueDate).toLocaleString() : '—'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="caption" color="text.secondary">Reported By</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{workOrder.reportedBy?.name || '—'}</Typography>
+                </Grid>
+              </Grid>
 
-            <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Activity</Typography>
-            <div className="space-y-2">
-              {(
-                (workOrder.activities && workOrder.activities.length > 0)
-                  ? workOrder.activities
-                  : [
-                      ...(workOrder.comments || []).map((c) => ({ type: 'comment', ts: c.createdAt, text: c.text, user: c.user })),
-                      { type: 'status', ts: workOrder.updatedAt || workOrder.createdAt, text: `Status: ${workOrder.status}`, user: workOrder.updatedBy },
-                    ]
-              ).sort((a,b) => new Date(b.ts) - new Date(a.ts)).map((a, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs">{a.user?.name ? a.user.name[0] : (a.type === 'status' ? 'S' : 'U')}</div>
-                  <div>
-                    <div className="text-sm">{a.text}</div>
-                    <div className="text-xs text-gray-500">{a.ts ? new Date(a.ts).toLocaleString() : ''}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper className="bg-card p-4 space-y-3">
-            <Typography variant="subtitle1">Actions</Typography>
-
-            <Stack spacing={1}>
-              <Button variant="contained" color="primary" onClick={() => handleChangeStatus('in_progress')} disabled={statusMut.isLoading}>Start</Button>
-              <Button variant="contained" color="success" onClick={() => handleChangeStatus('completed')} disabled={statusMut.isLoading}>Complete</Button>
-              <Button variant="outlined" color="error" onClick={() => handleChangeStatus('cancelled')}>Cancel</Button>
-            </Stack>
-
-            <Divider sx={{ my: 1 }} />
-
-            <Typography variant="subtitle2">Assign</Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <TextField select size="small" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={{ minWidth: 160 }}>
-                <MenuItem value="">Select technician</MenuItem>
-                {(workOrder.potentialAssignees || []).map((u) => (
-                  <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>Attachments</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 2, mb: 2 }}>
+                {(workOrder.photos || []).map((p, i) => (
+                  <Paper key={i} sx={{ overflow: 'hidden', borderRadius: 1, border: '1px solid #e6edf3' }} elevation={0}>
+                    {/* Use existing AssetImage for fallback + lazy */}
+                    <img src={p.url || p} alt={`photo-${i}`} style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                  </Paper>
                 ))}
-              </TextField>
-              <Button variant="contained" onClick={handleAssign} disabled={assignMut.isLoading}>Assign</Button>
-            </Stack>
+                {((workOrder.photos || []).length === 0) && (
+                  <Paper sx={{ p: 3, textAlign: 'center', color: '#94a3b8' }}>No attachments</Paper>
+                )}
+              </Box>
 
-            <Divider sx={{ my: 1 }} />
+              <Button variant="outlined" component="label" startIcon={<CloudUpload />}>
+                Upload Photo
+                <input
+                  hidden
+                  accept="image/*"
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (file) photoMut.mutate(file);
+                  }}
+                />
+              </Button>
+              {photoMut.isLoading && <Typography variant="caption" sx={{ ml: 2 }}>Uploading...</Typography>}
 
-            <Typography variant="subtitle2">Details</Typography>
-            <div>
-              <Typography variant="caption" color="text.secondary">Created</Typography>
-              <Typography>{workOrder.createdAt ? new Date(workOrder.createdAt).toLocaleString() : '—'}</Typography>
-            </div>
-            <div>
-              <Typography variant="caption" color="text.secondary">Reported By</Typography>
-              <Typography>{workOrder.reportedBy?.name || '—'}</Typography>
-            </div>
-          </Paper>
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>Comments</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {(workOrder.comments || []).map((c, i) => (
+                  <Paper key={i} sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }} elevation={0}>
+                    <Avatar src={c.user?.avatar || ''} sx={{ width: 40, height: 40 }}>{(!c.user?.avatar && c.user?.name) ? c.user.name[0] : 'U'}</Avatar>
+                    <div>
+                      <Typography sx={{ fontWeight: 700 }}>{c.user?.name || 'Unknown'}</Typography>
+                      <Typography variant="body2" sx={{ color: '#334155' }}>{c.text}</Typography>
+                      <Typography variant="caption" color="text.secondary">{c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}</Typography>
+                    </div>
+                  </Paper>
+                ))}
+
+                <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                  <TextField fullWidth placeholder="Add a comment" value={comment} onChange={(e) => setComment(e.target.value)} />
+                  <Button variant="contained" onClick={handleAddComment} disabled={commentMut.isLoading}>Add</Button>
+                </Stack>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 700 }}>Activity</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {(
+                  (workOrder.activities && workOrder.activities.length > 0)
+                    ? workOrder.activities
+                    : [
+                        ...(workOrder.comments || []).map((c) => ({ type: 'comment', ts: c.createdAt, text: c.text, user: c.user })),
+                        { type: 'status', ts: workOrder.updatedAt || workOrder.createdAt, text: `Status: ${workOrder.status}`, user: workOrder.updatedBy },
+                      ]
+                ).sort((a,b) => new Date(b.ts) - new Date(a.ts)).map((a, i) => (
+                  <Box key={i} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{a.user?.name ? a.user.name[0] : (a.type === 'status' ? 'S' : 'U')}</Box>
+                    <div>
+                      <Typography sx={{ fontWeight: 700 }}>{a.text}</Typography>
+                      <Typography variant="caption" color="text.secondary">{a.ts ? new Date(a.ts).toLocaleString() : ''}</Typography>
+                    </div>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0', position: { md: 'sticky' }, top: { md: 96 } }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Quick Actions</Typography>
+              <Stack spacing={1} sx={{ mb: 2 }}>
+                <Button variant="contained" color="primary" onClick={() => handleChangeStatus('in_progress')} disabled={statusMut.isLoading}>Start</Button>
+                <Button variant="contained" color="success" onClick={() => handleChangeStatus('completed')} disabled={statusMut.isLoading}>Complete</Button>
+                <Button variant="outlined" color="error" onClick={() => handleChangeStatus('cancelled')}>Cancel</Button>
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Assign</Typography>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                <TextField select size="small" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={{ minWidth: 160 }}>
+                  <MenuItem value="">Select technician</MenuItem>
+                  {(workOrder.potentialAssignees || []).map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </TextField>
+                <Button variant="contained" onClick={handleAssign} disabled={assignMut.isLoading}>Assign</Button>
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle2" color="text.secondary">Details</Typography>
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary">Created</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{workOrder.createdAt ? new Date(workOrder.createdAt).toLocaleString() : '—'}</Typography>
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>Asset</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{workOrder.asset?.name || '—'}</Typography>
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>Priority</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{workOrder.priority || '—'}</Typography>
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>Due</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{workOrder.dueDate ? new Date(workOrder.dueDate).toLocaleString() : '—'}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
     </Box>
   );
 };

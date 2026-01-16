@@ -276,7 +276,7 @@ export default function AssetForm() {
   if (loading) {
     return (
       <div className="space-y-6 pb-8">
-        <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="min-h-[50vh] md:min-h-[60vh] flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             <p className="text-gray-600 dark:text-gray-400 mt-3">Loading asset...</p>
@@ -319,7 +319,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📋 Basic Information</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField
                     label="Asset Name"
@@ -386,7 +386,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📍 Location & Details</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SelectField
                     label="Location"
@@ -437,7 +437,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">🔧 Technical Specifications</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField
                     label="Manufacturer"
@@ -485,7 +485,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📅 Installation & Warranty</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField
                     type="date"
@@ -521,7 +521,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">⚙️ Maintenance Schedule</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField
                     type="date"
@@ -571,7 +571,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">💰 Financial Information</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField
                     type="number"
@@ -612,7 +612,7 @@ export default function AssetForm() {
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">📝 Status & Notes</h2>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <SelectField
                   label="Status"
                   name="status"
@@ -641,14 +641,14 @@ export default function AssetForm() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Image Upload */}
-            <Card className="border-0 shadow-sm sticky top-24">
+            <Card className="border-0 shadow-sm lg:sticky lg:top-24">
               <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">🖼️ Asset Image</h2>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 {imagePreview ? (
                   <div className="space-y-3">
-                    <img src={imagePreview} alt="Asset preview" className="w-full rounded-lg object-cover aspect-square" />
+                    <img src={imagePreview} alt="Asset preview" className="w-full rounded-lg object-cover aspect-square max-h-60 md:max-h-[32rem]" />
                     <Button
                       type="button"
                       variant="outline"
@@ -693,7 +693,7 @@ export default function AssetForm() {
             </Card>
 
             {/* Form Actions */}
-            <div className="space-y-2 sticky top-96">
+            <div className="space-y-2 lg:sticky lg:top-96">
               <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2" disabled={saving}>
                 <Save className="h-4 w-4" />
                 {saving ? 'Saving...' : isEditMode ? 'Update Asset' : 'Create Asset'}

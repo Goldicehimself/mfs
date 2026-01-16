@@ -13,6 +13,7 @@ import {
   IconButton,
   Tooltip,
   Divider,
+  Container,
 } from '@mui/material';
 import { Plus, Calendar, TrendingUp, AlertCircle, DownloadCloud, FilePlus, Clock, ChevronRight } from 'lucide-react';
 import PMCalendar from '../../components/preventiveMaintenance/PMCalendar';
@@ -49,7 +50,7 @@ const PreventiveMaintenance = () => {
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', p: 4 }}>
+    <Container maxWidth="xl" sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
@@ -118,7 +119,7 @@ const PreventiveMaintenance = () => {
       {/* Calendar and Compliance */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         {/* Calendar */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={8}>
           <Card sx={{ height: '100%', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <CardContent sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -144,7 +145,7 @@ const PreventiveMaintenance = () => {
         </Grid>
 
         {/* Compliance Overview */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card sx={{ height: '100%', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <CardContent sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -294,7 +295,7 @@ const PreventiveMaintenance = () => {
           </Card>
         </Grid>
       </Grid>
-    </Box>
+    </Container>
   );
 };
 

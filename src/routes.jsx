@@ -11,6 +11,11 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 
+// Landing / Public pages
+import LandingPage from './pages/Landing/LandingPage';
+import Pricing from './pages/Pricing/Pricing';
+import Demo from './pages/Demo/Demo';
+
 // Main Pages
 import Dashboard from './pages/Dashboard';
 import Assets from './pages/Assets/Assets';
@@ -24,6 +29,7 @@ import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaint
 import Vendors from './pages/Vendors/Vendors';
 import VendorPortal from './pages/Vendors/VendorPortal';
 import ServiceRequests from './pages/ServiceRequests/ServiceRequests';
+import ServiceRequestForm from './pages/ServiceRequests/ServiceRequestForm';
 import Inventory from './pages/Inventory/Inventory';
 import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
@@ -60,12 +66,12 @@ const AppRoutes = () => {
       <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
       
-      {/* Protected Routes */}
-      <Route path="/" element={
-        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
-          <MainLayout><Dashboard /></MainLayout>
-        </ProtectedRoute>
-      } />
+      {/* Public landing page */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/demo" element={<Demo />} />
+
+      {/* Protected Routes (dashboard accessible at /dashboard) */}
       
       <Route path="/dashboard" element={
         <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
@@ -144,6 +150,12 @@ const AppRoutes = () => {
           <MainLayout><ServiceRequests /></MainLayout>
         </ProtectedRoute>
       } />
+
+      <Route path="/service-requests/new" element={
+        <ProtectedRoute>
+          <MainLayout><ServiceRequestForm /></MainLayout>
+        </ProtectedRoute>
+      } />
       
       <Route path="/inventory" element={
         <ProtectedRoute allowedRoles={["facility_manager", "admin", "technician"]}>
@@ -170,7 +182,7 @@ const AppRoutes = () => {
       } />
       
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
