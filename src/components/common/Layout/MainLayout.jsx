@@ -52,16 +52,18 @@ const MainLayout = ({ children }) => {
           flex items-center justify-between
           px-6
           md:ml-72
-          bg-white/95 backdrop-blur
           border-b border-slate-200
+          bg-white
         "
+        style={{ fontFamily: '"Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif' }}
       >
+
         {/* Left: Mobile menu + Brand */}
         <div className="flex items-center gap-4 flex-1">
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden hover:bg-slate-100 transition"
+            className="md:hidden hover:bg-slate-100 transition text-slate-700"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
           >
@@ -69,11 +71,11 @@ const MainLayout = ({ children }) => {
           </Button>
 
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-md flex items-center justify-center text-white font-semibold overflow-hidden" style={{ backgroundColor: 'var(--mp-brand)' }}>
+            <div className="flex items-center gap-4">
+              <div className="relative h-10 w-10 rounded-xl flex items-center justify-center text-white font-semibold overflow-hidden shadow-lg" style={{ backgroundColor: "var(--mp-brand)", boxShadow: "0 10px 15px -3px rgba(30, 58, 138, 0.4)" }}>
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
+                  transition={{ duration: 12, ease: 'linear', repeat: Infinity }}
                   style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: 'center' }}
                 >
                   <Wrench size={20} color="#fff" />
@@ -81,34 +83,36 @@ const MainLayout = ({ children }) => {
               </div>
 
               <div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--mp-brand)' }}>FacilityPro</div>
-                <div className="text-xs text-slate-500">Asset & Maintenance</div>
+                <div className="text-base font-semibold tracking-tight text-slate-900">
+                  FacilityPro
+                </div>
+                <div className="text-xs text-slate-500">Maintenance Made Simple</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Right: Notifications + User */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative">
           {/* Notifications */}
           <NotificationDropdown />
 
           {/* Divider */}
-          <div className="hidden sm:block h-6 w-px bg-border" />
+          <div className="hidden sm:block h-6 w-px bg-slate-300" />
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 px-2 hover:bg-slate-100 transition"
+                className="flex items-center gap-2 px-2 hover:bg-slate-100 transition text-slate-900"
               >
-                <Avatar className="h-8 w-8 border border-border bg-blue-50">
+                <Avatar className="h-8 w-8 border border-white/70 bg-white shadow-sm">
                   <AvatarImage
                     src={user?.avatar}
                     alt={user?.name || "User avatar"}
                   />
-                  <AvatarFallback className="bg-[#e6eefc] font-semibold text-xs" style={{ color: 'var(--mp-brand)' }}>
+                  <AvatarFallback className="bg-slate-200 font-semibold text-xs text-slate-700">
                     {user?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -117,7 +121,7 @@ const MainLayout = ({ children }) => {
                   <span className="text-sm font-semibold text-slate-900">
                     {user?.name || "User"}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-600">
                     {getRoleDisplay(user?.role)}
                   </span>
                 </div>

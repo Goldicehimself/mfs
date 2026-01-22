@@ -7,21 +7,29 @@ import {
   Alert,
   Link,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { requestPasswordReset } from '@/api/auth';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-    
-    // TODO: Implement password reset logic
-    setMessage('If an account exists with this email, a password reset link has been sent.');
+
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+
+    try {
+      await requestPasswordReset(email.trim());
+      setMessage('If an account exists with this email, a password reset link has been sent.');
+    } catch (err) {
+      setError(err?.message || 'Unable to process password reset. Please try again.');
+    }
   };
 
   return (

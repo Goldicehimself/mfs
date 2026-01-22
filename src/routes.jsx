@@ -155,6 +155,12 @@ const AppRoutes = () => {
           <MainLayout><VendorForm /></MainLayout>
         </ProtectedRoute>
       } />
+
+      <Route path="/vendors/:id" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "procurement"]}>
+          <MainLayout><VendorForm /></MainLayout>
+        </ProtectedRoute>
+      } />
       
       <Route path="/vendors/import" element={
         <ProtectedRoute allowedRoles={["facility_manager", "admin", "procurement"]}>

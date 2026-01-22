@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from 'react-query';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, DollarSign, CheckCircle2, Clock, AlertCircle, FileText, MessageSquare, Download, Eye, Calendar, Plus, LogOut } from 'lucide-react';
+import { TrendingUp, DollarSign, CheckCircle2, Clock, AlertCircle, FileText, MessageSquare, Download, Eye, Calendar, Plus, LogOut, Star, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 // Mock data - Replace with actual API calls
@@ -160,6 +159,19 @@ const mockDocuments = [
 
 const VendorPortal = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [workOrders, setWorkOrders] = useState(mockWorkOrders);
+  const [serviceRequests, setServiceRequests] = useState(mockServiceRequests);
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [statusValue, setStatusValue] = useState('open');
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    estimatedCost: '',
+  });
   const navigate = useNavigate();
   
   let logout = null;
@@ -191,9 +203,138 @@ const VendorPortal = () => {
       in_progress: 'In Progress',
       completed: 'Completed',
       pending: 'Pending',
+      submitted: 'Submitted',
+      approved: 'Approved',
+      rejected: 'Rejected',
       paid: 'Paid',
     };
     return labels[status] || status;
+  };
+
+  const handleOpenDetails = (wo) => {
+    setSelectedWorkOrder(wo);
+    setDetailsOpen(true);
+  };
+
+  const handleOpenStatus = (wo) => {
+    setSelectedWorkOrder(wo);
+    setStatusValue(wo.status);
+    setStatusOpen(true);
+  };
+
+  const handleSaveStatus = () => {
+    if (!selectedWorkOrder) return;
+    setWorkOrders((prev) =>
+      prev.map((wo) =>
+        wo.id === selectedWorkOrder.id
+          ? {
+              ...wo,
+              status: statusValue,
+              completedDate: statusValue === 'completed'
+                ? new Date().toISOString().slice(0, 10)
+                : wo.completedDate,
+            }
+          : wo
+      )
+    );
+    setStatusOpen(false);
+    setSelectedWorkOrder(null);
+  };
+
+  const handleRequestChange = (field, value) => {
+    setRequestForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmitRequest = (e) => {
+    e.preventDefault();
+    if (!requestForm.title.trim() || !requestForm.description.trim()) {
+      return;
+    }
+
+    const nextId = `SR-${new Date().getFullYear()}-${String(serviceRequests.length + 1).padStart(3, '0')}`;
+    const newRequest = {
+      id: nextId,
+      title: requestForm.title.trim(),
+      description: requestForm.description.trim(),
+      status: 'submitted',
+      priority: requestForm.priority,
+      requestDate: new Date().toISOString().slice(0, 10),
+      estimatedCost: requestForm.estimatedCost ? Number(requestForm.estimatedCost) : null,
+      attachments: 0,
+    };
+
+    setServiceRequests((prev) => [newRequest, ...prev]);
+    setRequestForm({ title: '', description: '', priority: 'medium', estimatedCost: '' });
+    setRequestOpen(false);
+  };
+
+  const buildInvoicePdf = (lines) => {
+    const escapePdfText = (value) =>
+      String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+
+    const contentLines = lines.map((line, index) => {
+      const prefix = index === 0 ? '' : '0 -18 Td ';
+      return `${prefix}(${escapePdfText(line)}) Tj`;
+    });
+
+    const contentStream = [
+      'BT',
+      '/F1 12 Tf',
+      '72 740 Td',
+      ...contentLines,
+      'ET',
+    ].join('\n');
+
+    const header = '%PDF-1.4';
+    const objects = [
+      '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+      '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+      '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+      `4 0 obj << /Length ${contentStream.length} >> stream\n${contentStream}\nendstream\nendobj`,
+      '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    ];
+
+    const offsets = [];
+    let currentOffset = header.length + 1;
+    const body = objects
+      .map((obj) => {
+        offsets.push(currentOffset);
+        currentOffset += obj.length + 1;
+        return obj;
+      })
+      .join('\n');
+
+    const xrefStart = currentOffset;
+    const xrefLines = ['xref', `0 ${objects.length + 1}`, '0000000000 65535 f '];
+    offsets.forEach((offset) => {
+      xrefLines.push(String(offset).padStart(10, '0') + ' 00000 n ');
+    });
+    const xref = xrefLines.join('\n');
+    const trailer = `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+    return `${header}\n${body}\n${xref}\n${trailer}`;
+  };
+
+  const downloadInvoice = (invoice) => {
+    const lines = [
+      `Invoice: ${invoice.id}`,
+      `Vendor: ${mockVendorData.name}`,
+      `Issue Date: ${invoice.date}`,
+      `Due Date: ${invoice.dueDate}`,
+      `Amount: $${invoice.amount}`,
+      `Status: ${getStatusLabel(invoice.status)}`,
+      `Description: ${invoice.description}`,
+    ];
+    const pdfContent = buildInvoicePdf(lines);
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${invoice.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -214,7 +355,7 @@ const VendorPortal = () => {
                 <span className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
                   {mockVendorData.rating}
                 </span>
-                <span className="text-xl">⭐</span>
+                <Star className="h-5 w-5 text-amber-500" />
               </div>
             </div>
           </div>
@@ -299,7 +440,7 @@ const VendorPortal = () => {
                     </p>
                   </div>
                 </div>
-                {mockWorkOrders.map((wo) => (
+                {workOrders.map((wo) => (
                   <div
                     key={wo.id}
                     className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
@@ -349,17 +490,26 @@ const VendorPortal = () => {
                           </div>
                         </div>
                         <div className="flex gap-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span>📝 {wo.notesCount} notes</span>
-                          <span>•</span>
-                          <span>📎 {wo.attachmentsCount} attachments</span>
+                          <span>{wo.notesCount} notes</span>
+                          <span>|</span>
+                          <span>{wo.attachmentsCount} attachments</span>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Button variant="outline" size="sm" className="whitespace-nowrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="whitespace-nowrap"
+                          onClick={() => handleOpenDetails(wo)}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap" size="sm">
+                        <Button
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap"
+                          size="sm"
+                          onClick={() => handleOpenStatus(wo)}
+                        >
                           Update Status
                         </Button>
                       </div>
@@ -382,17 +532,20 @@ const VendorPortal = () => {
                       </p>
                     </div>
                   </div>
-                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap ml-4">
+                  <Button
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap ml-4"
+                    onClick={() => setRequestOpen(true)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     New Request
                   </Button>
                 </div>
 
-                {mockServiceRequests.map((req) => (
+                {serviceRequests.map((req) => (
                   <div
                     key={req.id}
                     className={`p-4 border rounded-lg transition-colors ${
-                      req.status === 'pending'
+                      req.status === 'pending' || req.status === 'submitted'
                         ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20'
                         : req.status === 'approved'
                         ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20'
@@ -406,7 +559,7 @@ const VendorPortal = () => {
                       </div>
                       <Badge
                         className={
-                          req.status === 'pending'
+                          req.status === 'pending' || req.status === 'submitted'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100'
                             : req.status === 'approved'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100'
@@ -448,7 +601,7 @@ const VendorPortal = () => {
                     )}
                     {req.status === 'approved' && (
                       <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-3">
-                        ✓ Approved on {new Date(req.approvedDate).toLocaleDateString()} - Work order will be created
+                        Approved on {new Date(req.approvedDate).toLocaleDateString()} - Work order will be created
                       </p>
                     )}
                   </div>
@@ -494,7 +647,7 @@ const VendorPortal = () => {
                           </div>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => downloadInvoice(invoice)}>
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </Button>
@@ -520,9 +673,9 @@ const VendorPortal = () => {
                         <h3 className="font-semibold text-gray-900 dark:text-white">{doc.name}</h3>
                         <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
                           <span>{doc.type}</span>
-                          <span>•</span>
+                          <span>|</span>
                           <span>{new Date(doc.uploadDate).toLocaleDateString()}</span>
-                          <span>•</span>
+                          <span>|</span>
                           <span>{doc.size}</span>
                         </div>
                       </div>
@@ -671,6 +824,176 @@ const VendorPortal = () => {
         </CardContent>
       </Card>
 
+      {detailsOpen && selectedWorkOrder && (
+        <ModalShell title="Work Order Details" onClose={() => setDetailsOpen(false)}>
+          <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Title</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{selectedWorkOrder.title}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+                <p className="font-medium text-gray-900 dark:text-white">{getStatusLabel(selectedWorkOrder.status)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Priority</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {selectedWorkOrder.priority.charAt(0).toUpperCase() + selectedWorkOrder.priority.slice(1)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Location</p>
+                <p className="font-medium text-gray-900 dark:text-white">{selectedWorkOrder.location}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Assigned To</p>
+                <p className="font-medium text-gray-900 dark:text-white">{selectedWorkOrder.assignedTech}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Scheduled</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {new Date(selectedWorkOrder.scheduledDate).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Est. Hours</p>
+                <p className="font-medium text-gray-900 dark:text-white">{selectedWorkOrder.estimatedHours}h</p>
+              </div>
+            </div>
+            {selectedWorkOrder.completedDate && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Completed Date</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {new Date(selectedWorkOrder.completedDate).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Description</p>
+              <p className="text-gray-700 dark:text-gray-300">{selectedWorkOrder.description}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+                Close
+              </Button>
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  handleOpenStatus(selectedWorkOrder);
+                }}
+              >
+                Update Status
+              </Button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {statusOpen && selectedWorkOrder && (
+        <ModalShell title="Update Status" onClose={() => setStatusOpen(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Status
+              </label>
+              <select
+                value={statusValue}
+                onChange={(e) => setStatusValue(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStatusOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSaveStatus}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {requestOpen && (
+        <ModalShell title="New Service Request" onClose={() => setRequestOpen(false)}>
+          <form className="space-y-4" onSubmit={handleSubmitRequest}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title
+              </label>
+              <input
+                value={requestForm.title}
+                onChange={(e) => handleRequestChange('title', e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Enter a short request title"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Description
+              </label>
+              <textarea
+                value={requestForm.description}
+                onChange={(e) => handleRequestChange('description', e.target.value)}
+                rows={4}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Describe the work needed"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={requestForm.priority}
+                  onChange={(e) => handleRequestChange('priority', e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Estimated Cost (optional)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={requestForm.estimatedCost}
+                  onChange={(e) => handleRequestChange('estimatedCost', e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setRequestOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={!requestForm.title.trim() || !requestForm.description.trim()}
+              >
+                Submit Request
+              </Button>
+            </div>
+          </form>
+        </ModalShell>
+      )}
+
       {/* Logout Button */}
       <div className="flex justify-end">
         <Button
@@ -720,5 +1043,24 @@ const KPICard = ({ icon, title, value, subtext, color = 'indigo' }) => {
   );
 };
 
+const ModalShell = ({ title, onClose, children }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-900 shadow-xl">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+        <button
+          onClick={onClose}
+          className="rounded p-1 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="px-6 py-4">{children}</div>
+    </div>
+  </div>
+);
+
 export default VendorPortal;
+
 

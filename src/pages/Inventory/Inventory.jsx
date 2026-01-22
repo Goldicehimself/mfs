@@ -26,7 +26,7 @@ const Inventory = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [editForm, setEditForm] = useState({});
 
-  const inventoryData = [
+  const [inventoryItems, setInventoryItems] = useState([
     {
       id: 1,
       item: "Air Filter - HVAC",
@@ -87,22 +87,22 @@ const Inventory = () => {
       usage30d: "6 units",
       status: "in-stock"
     }
-  ];
+  ]);
 
   // Get unique categories and locations for filters
   const categories = useMemo(() => {
-    const uniqueCategories = [...new Set(inventoryData.map(item => item.category))];
+    const uniqueCategories = [...new Set(inventoryItems.map(item => item.category))];
     return uniqueCategories;
-  }, [inventoryData]);
+  }, [inventoryItems]);
 
   const locations = useMemo(() => {
-    const uniqueLocations = [...new Set(inventoryData.map(item => item.location))];
+    const uniqueLocations = [...new Set(inventoryItems.map(item => item.location))];
     return uniqueLocations;
-  }, [inventoryData]);
+  }, [inventoryItems]);
 
   // Filtering and pagination logic
   const filteredData = useMemo(() => {
-    return inventoryData.filter((item) => {
+    return inventoryItems.filter((item) => {
       const matchesSearch = item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            item.partNumber.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
@@ -110,7 +110,7 @@ const Inventory = () => {
       const matchesLocation = locationFilter === 'all' || item.location === locationFilter;
       return matchesSearch && matchesStatus && matchesCategory && matchesLocation;
     });
-  }, [inventoryData, searchTerm, statusFilter, categoryFilter, locationFilter]);
+  }, [inventoryItems, searchTerm, statusFilter, categoryFilter, locationFilter]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -140,8 +140,23 @@ const Inventory = () => {
   };
 
   const handleSaveEdit = () => {
-    console.log('Saving edited item:', editForm);
-    // TODO: Implement save functionality
+    if (!selectedItem) return;
+    setInventoryItems((prev) =>
+      prev.map((item) =>
+        item.id === selectedItem.id
+          ? {
+              ...item,
+              item: editForm.item || item.item,
+              partNumber: editForm.partNumber || item.partNumber,
+              category: editForm.category || item.category,
+              location: editForm.location || item.location,
+              currentStock: Number(editForm.currentStock) || 0,
+              reorderPoint: Number(editForm.reorderPoint) || 0,
+              unitCost: Number(editForm.unitCost) || 0,
+            }
+          : item
+      )
+    );
     setEditModalOpen(false);
     setSelectedItem(null);
     setEditForm({});

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { ArrowLeft, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { importVendors } from '@/api/vendors';
 
 const VendorImport = () => {
   const navigate = useNavigate();
@@ -109,19 +110,32 @@ const VendorImport = () => {
         }
       }
 
-      // TODO: Make API call to import vendors
-      // const response = await axios.post('/api/vendors/import', { vendors });
+      if (vendors.length === 0) {
+        setImportResults({
+          successful: 0,
+          failed: errors.length,
+          errors,
+        });
+        toast.error('No valid vendors found to import.');
+        return;
+      }
+
+      const response = await importVendors(vendors);
+      const apiErrors = Array.isArray(response?.errors) ? response.errors : [];
+      const successfulCount = response?.successful ?? vendors.length;
+      const failedCount = (response?.failed ?? 0) + errors.length;
+      const combinedErrors = [...errors, ...apiErrors];
 
       setImportResults({
-        successful: vendors.length,
-        failed: errors.length,
-        errors,
+        successful: successfulCount,
+        failed: failedCount,
+        errors: combinedErrors,
       });
 
-      if (errors.length === 0) {
-        toast.success(`Successfully imported ${vendors.length} vendors!`);
+      if (combinedErrors.length === 0) {
+        toast.success(`Successfully imported ${successfulCount} vendors!`);
       } else {
-        toast.warning(`Imported ${vendors.length} vendors with ${errors.length} errors`);
+        toast.warning(`Imported ${successfulCount} vendors with ${combinedErrors.length} errors`);
       }
     } catch (error) {
       toast.error(`Import failed: ${error.message}`);

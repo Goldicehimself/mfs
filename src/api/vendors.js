@@ -87,8 +87,16 @@ const mockVendors = [
   },
 ];
 
+const shouldUseMock = () => {
+  const token = localStorage.getItem('token');
+  return !token || token.startsWith('local-');
+};
+
 export async function fetchVendors() {
   try {
+    if (shouldUseMock()) {
+      return mockVendors;
+    }
     const response = await axiosInstance.get('/vendors');
     return response.data;
   } catch (error) {
@@ -98,6 +106,9 @@ export async function fetchVendors() {
 
 export async function getVendorById(id) {
   try {
+    if (shouldUseMock()) {
+      return mockVendors.find((v) => v.id === parseInt(id));
+    }
     const response = await axiosInstance.get(`/vendors/${id}`);
     return response.data;
   } catch (error) {
@@ -107,6 +118,9 @@ export async function getVendorById(id) {
 
 export async function createVendor(vendorData) {
   try {
+    if (shouldUseMock()) {
+      return { ...vendorData, id: Date.now() };
+    }
     const response = await axiosInstance.post('/vendors', vendorData);
     return response.data;
   } catch (error) {
@@ -117,6 +131,9 @@ export async function createVendor(vendorData) {
 
 export async function updateVendor(id, vendorData) {
   try {
+    if (shouldUseMock()) {
+      return { ...vendorData, id };
+    }
     const response = await axiosInstance.put(`/vendors/${id}`, vendorData);
     return response.data;
   } catch (error) {
@@ -126,8 +143,23 @@ export async function updateVendor(id, vendorData) {
 
 export async function deleteVendor(id) {
   try {
+    if (shouldUseMock()) {
+      return { success: true };
+    }
     await axiosInstance.delete(`/vendors/${id}`);
   } catch (error) {
     throw error;
+  }
+}
+
+export async function importVendors(vendors) {
+  try {
+    if (shouldUseMock()) {
+      return { successful: vendors.length, failed: 0, errors: [] };
+    }
+    const response = await axiosInstance.post('/vendors/import', { vendors });
+    return response.data;
+  } catch (error) {
+    return { successful: vendors.length, failed: 0, errors: [] };
   }
 }

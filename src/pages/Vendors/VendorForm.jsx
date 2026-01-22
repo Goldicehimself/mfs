@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { createVendor, getVendorById, updateVendor } from '@/api/vendors';
 
 const VendorForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEdit = !!id;
+  const isView = isEdit && !location.pathname.endsWith('/edit');
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,11 +51,41 @@ const VendorForm = () => {
   const statuses = ['active', 'inactive', 'suspended'];
 
   useEffect(() => {
-    if (isEdit) {
-      // Load vendor data if editing
-      // fetchVendor(id);
-      toast.info('Loading vendor data...');
-    }
+    if (!isEdit) return;
+
+    let isActive = true;
+    const loadVendor = async () => {
+      try {
+        const vendor = await getVendorById(id);
+        if (!vendor || !isActive) return;
+        setFormData((prev) => ({
+          ...prev,
+          name: vendor.name || '',
+          category: vendor.category || '',
+          email: vendor.email || '',
+          phone: vendor.phone || '',
+          address: vendor.address || '',
+          city: vendor.city || '',
+          state: vendor.state || '',
+          zipCode: vendor.zipCode || '',
+          contactPerson: vendor.contactPerson || '',
+          contractStartDate: vendor.contractStartDate || '',
+          contractEndDate: vendor.contractEndDate || '',
+          rating: typeof vendor.rating === 'number' ? vendor.rating : 0,
+          monthlySpend: typeof vendor.monthlySpend === 'number' ? vendor.monthlySpend : 0,
+          status: vendor.status || 'active',
+          notes: vendor.notes || '',
+        }));
+        setServices(Array.isArray(vendor.services) ? vendor.services : []);
+      } catch (error) {
+        toast.error('Failed to load vendor details.');
+      }
+    };
+
+    loadVendor();
+    return () => {
+      isActive = false;
+    };
   }, [id, isEdit]);
 
   const handleInputChange = (e) => {
@@ -83,7 +116,7 @@ const VendorForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (isView) return;
 
     try {
       // Validate form
@@ -100,10 +133,13 @@ const VendorForm = () => {
         return;
       }
 
-      // TODO: Make API call to create/update vendor
-      // const endpoint = isEdit ? `/api/vendors/${id}` : '/api/vendors';
-      // const method = isEdit ? 'PUT' : 'POST';
-      // const response = await axios[method](endpoint, { ...formData, services });
+      setLoading(true);
+      const payload = { ...formData, services };
+      if (isEdit) {
+        await updateVendor(id, payload);
+      } else {
+        await createVendor(payload);
+      }
 
       toast.success(`Vendor ${isEdit ? 'updated' : 'created'} successfully!`);
       navigate('/vendors');
@@ -113,6 +149,14 @@ const VendorForm = () => {
       setLoading(false);
     }
   };
+
+  const displayValue = (value) => {
+    if (value === null || value === undefined || value === '') return 'N/A';
+    return value;
+  };
+
+  const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : 'N/A');
+  const formatCurrency = (value) => (Number.isFinite(value) ? `$${value.toLocaleString()}` : 'N/A');
 
   return (
     <div className="space-y-6">
@@ -127,18 +171,127 @@ const VendorForm = () => {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {isEdit ? 'Edit Vendor' : 'Add New Vendor'}
+            {isView ? 'Vendor Details' : isEdit ? 'Edit Vendor' : 'Add New Vendor'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {isEdit ? 'Update vendor information and settings' : 'Create a new vendor in the system'}
+            {isView
+              ? 'Review vendor information and performance details'
+              : isEdit
+              ? 'Update vendor information and settings'
+              : 'Create a new vendor in the system'}
           </p>
         </div>
       </div>
 
-      {/* Form Card */}
-      <Card className="border-0 shadow-md">
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      {isView ? (
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Vendor Name</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{displayValue(formData.name)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Category</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{displayValue(formData.category)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                <p className="text-gray-900 dark:text-white">{displayValue(formData.email)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Phone</p>
+                <p className="text-gray-900 dark:text-white">{displayValue(formData.phone)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Contact Person</p>
+                <p className="text-gray-900 dark:text-white">{displayValue(formData.contactPerson)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                  {displayValue(formData.status)}
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Address</h3>
+              <p className="text-gray-900 dark:text-white">
+                {displayValue(formData.address)}
+              </p>
+              <p className="text-gray-600 dark:text-gray-400">
+                {displayValue(formData.city)}{formData.city && formData.state ? ', ' : ''}{displayValue(formData.state)} {displayValue(formData.zipCode)}
+              </p>
+            </div>
+
+            <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Contract Start</p>
+                <p className="text-gray-900 dark:text-white">{formatDate(formData.contractStartDate)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Contract End</p>
+                <p className="text-gray-900 dark:text-white">{formatDate(formData.contractEndDate)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Monthly Spend</p>
+                <p className="text-gray-900 dark:text-white">{formatCurrency(formData.monthlySpend)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Rating</p>
+                <p className="text-gray-900 dark:text-white">{displayValue(formData.rating)} / 5</p>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Services Offered</h3>
+              {services.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {services.map((service, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-3 py-1 rounded-full text-sm"
+                    >
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">No services listed.</p>
+              )}
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Notes</h3>
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                {displayValue(formData.notes)}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/vendors')}
+                className="flex-1"
+              >
+                Back to Vendors
+              </Button>
+              <Button
+                type="button"
+                onClick={() => navigate(`/vendors/${id}/edit`)}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Edit Vendor
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Basic Information</h3>
@@ -154,6 +307,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="Enter vendor name"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -161,7 +315,7 @@ const VendorForm = () => {
                     Category *
                   </label>
                   <Select value={formData.category} onValueChange={(value) => handleSelectChange('category', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full" disabled={isView}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -187,6 +341,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="vendor@example.com"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -200,6 +355,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="(555) 123-4567"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
               </div>
@@ -219,6 +375,7 @@ const VendorForm = () => {
                   onChange={handleInputChange}
                   placeholder="John Doe"
                   className="w-full"
+                  disabled={isView}
                 />
               </div>
 
@@ -234,6 +391,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="123 Business St"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -247,6 +405,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="New York"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
               </div>
@@ -263,6 +422,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="NY"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -276,6 +436,7 @@ const VendorForm = () => {
                     onChange={handleInputChange}
                     placeholder="10001"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
               </div>
@@ -292,14 +453,17 @@ const VendorForm = () => {
                   placeholder="Enter service (e.g., Maintenance, Installation)"
                   className="flex-1"
                   onKeyPress={(e) => e.key === 'Enter' && handleAddService()}
+                  disabled={isView}
                 />
-                <Button
-                  type="button"
-                  onClick={handleAddService}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {!isView && (
+                  <Button
+                    type="button"
+                    onClick={handleAddService}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               {services.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -309,13 +473,15 @@ const VendorForm = () => {
                       className="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-3 py-1 rounded-full flex items-center gap-2 text-sm"
                     >
                       {service}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveService(idx)}
-                        className="hover:text-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                      {!isView && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveService(idx)}
+                          className="hover:text-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -336,6 +502,7 @@ const VendorForm = () => {
                     value={formData.contractStartDate}
                     onChange={handleInputChange}
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -348,6 +515,7 @@ const VendorForm = () => {
                     value={formData.contractEndDate}
                     onChange={handleInputChange}
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
               </div>
@@ -366,6 +534,7 @@ const VendorForm = () => {
                     min="0"
                     step="0.01"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
                 <div>
@@ -381,6 +550,7 @@ const VendorForm = () => {
                     max="5"
                     step="0.5"
                     className="w-full"
+                    disabled={isView}
                   />
                 </div>
               </div>
@@ -394,7 +564,7 @@ const VendorForm = () => {
                   Status
                 </label>
                 <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" disabled={isView}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -418,6 +588,7 @@ const VendorForm = () => {
                   placeholder="Additional notes about this vendor..."
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={isView}
                 />
               </div>
             </div>
@@ -432,17 +603,28 @@ const VendorForm = () => {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                {loading ? 'Saving...' : isEdit ? 'Update Vendor' : 'Create Vendor'}
-              </Button>
+              {isView ? (
+                <Button
+                  type="button"
+                  onClick={() => navigate(`/vendors/${id}/edit`)}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  Edit Vendor
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  {loading ? 'Saving...' : isEdit ? 'Update Vendor' : 'Create Vendor'}
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };
