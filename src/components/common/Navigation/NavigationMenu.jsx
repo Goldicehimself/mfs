@@ -27,6 +27,8 @@ import {
   ChevronDown,
   PlusCircle,
   List as IconList,
+  Users2,
+  DollarSign,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -53,6 +55,18 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
 
   const menuItems = [
     {
+      title: 'Technician Portal',
+      icon: <Wrench />,
+      path: '/technician-portal',
+      roles: ['technician'],
+    },
+    {
+      title: 'My Assignments',
+      icon: <ClipboardList />,
+      path: '/work-orders/my-assignments',
+      roles: ['technician'],
+    },
+    {
       title: 'Dashboard',
       icon: <LayoutDashboard />,
       path: '/dashboard',
@@ -61,7 +75,7 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
     {
       title: 'Assets',
       icon: <Building />,
-      roles: ['facility_manager', 'admin', 'technician'],
+      roles: ['facility_manager', 'admin'],
       children: [
         { title: 'Asset List', path: '/assets', icon: <IconList /> },
         { title: 'Add New Asset', path: '/assets/new', icon: <PlusCircle /> },
@@ -70,12 +84,30 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
     {
       title: 'Work Orders',
       icon: <ClipboardList />,
-      roles: ['facility_manager', 'admin', 'technician', 'vendor'],
+      roles: ['facility_manager', 'admin'],
       children: [
         { title: 'All Work Orders', path: '/work-orders', icon: <IconList /> },
         { title: 'Create New', path: '/work-orders/new', icon: <PlusCircle /> },
         { title: 'My Assignments', path: '/work-orders/my-assignments', icon: <Wrench /> },
       ],
+    },
+    {
+      title: 'Vendor Portal',
+      icon: <Users />,
+      path: '/vendor-portal',
+      roles: ['vendor'],
+    },
+    {
+      title: 'Staff Portal',
+      icon: <Users2 />,
+      path: '/staff-portal',
+      roles: ['facility_manager', 'admin', 'staff'],
+    },
+    {
+      title: 'Finance Portal',
+      icon: <DollarSign />,
+      path: '/finance-portal',
+      roles: ['facility_manager', 'admin', 'finance'],
     },
     {
       title: 'Preventive Maintenance',
@@ -99,7 +131,7 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
       title: 'Inventory',
       icon: <Boxes />,
       path: '/inventory',
-      roles: ['facility_manager', 'admin', 'technician'],
+      roles: ['facility_manager', 'admin'],
     },
     {
       title: 'Reports',
@@ -212,31 +244,6 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
       </Box>
 
       <List sx={{ mt: 1 }}>{filteredMenu.map(renderMenuItem)}</List>
-
-      {user.role === 'technician' && (
-        <>
-          <Divider />
-          <Box className="p-3">
-            <ListItemButton
-              sx={{
-                backgroundColor: 'primary.main',
-                color: 'white',
-                borderRadius: 1,
-                '&:hover': { backgroundColor: 'primary.dark' },
-              }}
-              onClick={() => {
-                navigate('/work-orders/new');
-                onCloseMobile();
-              }}
-            >
-              <ListItemIcon sx={{ color: 'white' }}>
-                <PlusCircle size={18} />
-              </ListItemIcon>
-              <ListItemText primary="Report Issue" />
-            </ListItemButton>
-          </Box>
-        </>
-      )}
     </Box>
   );
 

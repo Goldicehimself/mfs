@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   List,
   ListItem,
@@ -8,11 +8,15 @@ import {
   Typography,
   Box,
   Divider,
+  Chip,
 } from '@mui/material';
-import { FileText, CheckCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useActivity } from '../../contexts/ActivityContext';
 
-const RecentActivity = ({ activities = [] }) => {
+const RecentActivity = ({ activities: propActivities = null }) => {
+  const { activities: contextActivities } = useActivity();
+  const activities = propActivities || contextActivities;
+
   if (!activities || activities.length === 0) {
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
@@ -23,68 +27,89 @@ const RecentActivity = ({ activities = [] }) => {
     );
   }
 
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'work_order':
-        return <FileText size={16} />;
+  const getStatusColor = (status) => {
+    switch (status) {
       case 'completed':
-        return <CheckCircle size={16} />;
+      case 'active':
+        return '#10b981';
+      case 'pending':
+        return '#f59e0b';
+      case 'in_progress':
+        return '#3b82f6';
       case 'overdue':
-        return <AlertTriangle size={16} />;
-      case 'maintenance':
-        return <Wrench size={16} />;
+        return '#ef4444';
       default:
-        return <FileText size={16} />;
-    }
-  };
-
-  const getActivityColor = (type) => {
-    switch (type) {
-      case 'completed':
-        return 'success';
-      case 'overdue':
-        return 'error';
-      case 'work_order':
-        return 'primary';
-      default:
-        return 'default';
+        return '#6b7280';
     }
   };
 
   return (
-    <List>
-      {activities.map((activity, index) => (
+    <Box>
+      {activities.slice(0, 10).map((activity, index) => (
         <React.Fragment key={activity.id || index}>
-          <ListItem alignItems="flex-start">
+          <ListItem alignItems="flex-start" sx={{ pb: 2, pt: 2 }}>
             <ListItemAvatar>
-              <Avatar sx={{ bgcolor: `${getActivityColor(activity.type)}.light`, color: `${getActivityColor(activity.type)}.main` }}>
-                {getActivityIcon(activity.type)}
+              <Avatar
+                sx={{
+                  bgcolor: getStatusColor(activity.status) + '20',
+                  color: getStatusColor(activity.status),
+                  fontSize: '1.2rem',
+                }}
+              >
+                {activity.icon}
               </Avatar>
             </ListItemAvatar>
             <ListItemText
-              primary={activity.title || activity.message}
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1f2937' }}>
+                    {activity.title}
+                  </Typography>
+                  {activity.status && (
+                    <Chip
+                      label={activity.status.replace(/_/g, ' ')}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.7rem',
+                        backgroundColor: getStatusColor(activity.status) + '30',
+                        color: getStatusColor(activity.status),
+                        fontWeight: 600,
+                      }}
+                    />
+                  )}
+                </Box>
+              }
               secondary={
                 <React.Fragment>
                   <Typography
                     component="span"
                     variant="body2"
-                    color="text.primary"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 0.5 }}
                   >
-                    {activity.description || activity.message}
+                    {activity.description}
                   </Typography>
-                  {activity.timestamp && (
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
-                    </Typography>
-                  )}
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                    {activity.user && (
+                      <Typography variant="caption" color="text.secondary">
+                        👤 {activity.user}
+                      </Typography>
+                    )}
+                    {activity.timestamp && (
+                      <Typography variant="caption" color="text.secondary">
+                        🕒 {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                      </Typography>
+                    )}
+                  </Box>
                 </React.Fragment>
               }
             />
           </ListItem>
-          {index < activities.length - 1 && <Divider variant="inset" component="li" />}
+          {index < Math.min(10, activities.length) - 1 && <Divider sx={{ my: 1 }} />}
         </React.Fragment>
       ))}
-    </List>
+    </Box>
   );
 };
 

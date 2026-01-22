@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, Bell, LogOut, Settings, User, Wrench } from "lucide-react";
+import { Menu, LogOut, Settings, User, Wrench } from "lucide-react";
 import { motion } from 'framer-motion';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 
 import NavigationMenu from "../Navigation/NavigationMenu";
+import NotificationDropdown from "../Notifications/NotificationDropdown";
+import NotificationTester from "../Notifications/NotificationTester";
 
 const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -90,28 +91,7 @@ const MainLayout = ({ children }) => {
         {/* Right: Notifications + User */}
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-slate-100 transition"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Badge
-              className="
-                absolute -top-1 -right-1
-                h-5 min-w-[1.25rem]
-                px-1
-                rounded-full
-                text-[11px]
-              "
-              style={{ backgroundColor: 'var(--mp-brand)', color: '#ffffff' }}
-              aria-label="4 unread notifications"
-            >
-              4
-            </Badge>
-            <Bell className="h-5 w-5" />
-          </Button>
+          <NotificationDropdown />
 
           {/* Divider */}
           <div className="hidden sm:block h-6 w-px bg-border" />
@@ -188,7 +168,9 @@ const MainLayout = ({ children }) => {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={async () => await logout?.()}
+                onClick={() => {
+                  logout();
+                }}
                 className="cursor-pointer gap-2 text-red-600 focus:text-red-600"
               >
                 <LogOut className="h-4 w-4" />
@@ -226,6 +208,9 @@ const MainLayout = ({ children }) => {
       <main className="p-4 md:p-6 md:ml-72">
         {children}
       </main>
+
+      {/* Notification Tester */}
+      <NotificationTester />
     </div>
   );
 };

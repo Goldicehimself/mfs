@@ -83,6 +83,39 @@ export const NotificationProvider = ({ children }) => {
     setUnreadCount(0);
   };
 
+  const addNotification = (data) => {
+    const newNotification = {
+      id: Date.now(),
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      actionUrl: data.actionUrl,
+    };
+    
+    setNotifications(prev => [newNotification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    
+    // Show toast based on notification type
+    switch (data.type) {
+      case 'work_order_assigned':
+        toast.info(`New work order assigned: ${data.title}`);
+        break;
+      case 'work_order_overdue':
+        toast.error(`Work order overdue: ${data.title}`);
+        break;
+      case 'pm_due':
+        toast.warning(`Preventive maintenance due: ${data.title}`);
+        break;
+      case 'work_order_completed':
+        toast.success(`Task completed: ${data.title}`);
+        break;
+      default:
+        toast.info(data.message);
+    }
+  };
+
   const value = {
     notifications,
     unreadCount,
@@ -90,6 +123,7 @@ export const NotificationProvider = ({ children }) => {
     markAllAsRead,
     clearNotification,
     clearAll,
+    addNotification,
   };
 
   return (

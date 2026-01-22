@@ -7,6 +7,7 @@ import {
   updateAsset,
   uploadAssetImage,
 } from '../../api/assets';
+import { useActivity } from '../../contexts/ActivityContext';
 
 import {
   AlertCircle,
@@ -59,6 +60,7 @@ const STATUSES = ['active', 'inactive', 'maintenance', 'retired'];
 ========================= */
 export default function AssetList() {
   const navigate = useNavigate();
+  const { addActivity } = useActivity();
 
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,15 +184,15 @@ export default function AssetList() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-8">
 
         {/* ================= HEADER ================= */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
+          <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">
             Assets Management
           </h1>
-          <p className="text-base text-slate-600 dark:text-slate-400">
+          <p className="text-indigo-700 dark:text-indigo-300 mt-1">
             Manage and monitor your facility assets across all locations
           </p>
         </div>
@@ -454,22 +456,70 @@ export default function AssetList() {
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+          <button 
+            onClick={() => {
+              addActivity({
+                type: 'system',
+                action: 'opened',
+                title: 'Bulk Operations Accessed',
+                description: 'User opened bulk asset operations interface',
+                user: 'Current User',
+                status: 'in_progress',
+              });
+              alert('Opening bulk operations interface...');
+            }}
+            className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📦</div>
             <p className="font-semibold text-slate-900 dark:text-white">Bulk Operations</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Update multiple assets</p>
           </button>
-          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+          <button 
+            onClick={() => {
+              addActivity({
+                type: 'pm_scheduled',
+                action: 'navigated',
+                title: 'PM Scheduling Opened',
+                description: 'User accessed preventive maintenance scheduling',
+                user: 'Current User',
+                status: 'in_progress',
+              });
+              navigate('/preventive-maintenance');
+            }}
+            className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📅</div>
             <p className="font-semibold text-slate-900 dark:text-white">Schedule PM</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Preventive maintenance</p>
           </button>
-          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+          <button 
+            onClick={() => {
+              addActivity({
+                type: 'system',
+                action: 'opened',
+                title: 'Bulk Status Update Accessed',
+                description: 'User opened bulk status update interface',
+                user: 'Current User',
+                status: 'in_progress',
+              });
+              alert('Opening bulk status update interface...');
+            }}
+            className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">🔄</div>
             <p className="font-semibold text-slate-900 dark:text-white">Update Status</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Bulk status changes</p>
           </button>
-          <button className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group">
+          <button 
+            onClick={() => {
+              addActivity({
+                type: 'report_generated',
+                action: 'navigated',
+                title: 'Asset Report Accessed',
+                description: 'User generated asset analytics report',
+                user: 'Current User',
+                status: 'active',
+              });
+              navigate('/reports?type=assets');
+            }}
+            className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📊</div>
             <p className="font-semibold text-slate-900 dark:text-white">Generate Report</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Asset analytics</p>

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Search, MoreHorizontal, Eye, Edit2, Trash2, Plus, Download, X, ArrowUp, ArrowDown, ArrowUpDown, AlertCircle, Clock, CheckCircle2, Zap } from 'lucide-react';
 import { getWorkOrders, deleteWorkOrder, bulkAssignWorkOrders } from '../../api/workOrders';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 export default function WorkOrders() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -28,6 +29,18 @@ export default function WorkOrders() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
+
+  // Read URL search params and apply filters
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+    const priorityParam = searchParams.get('priority');
+    if (priorityParam) {
+      setPriorityFilter(priorityParam);
+    }
+  }, [searchParams]);
 
   const { data: workOrders = [], isLoading } = useQuery(
     ['workOrders', { statusFilter, priorityFilter, search, categoryFilter, assigneeFilter, dateRange, locationFilter }],
@@ -335,8 +348,24 @@ export default function WorkOrders() {
                           <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`)} className="text-xs">
                             <Eye size={14} /> View
                           </Button>
-                          {wo.status === 'open' && <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">Start</Button>}
-                          {wo.status === 'in_progress' && <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">Complete</Button>}
+                          {wo.status === 'open' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                              onClick={() => alert(`Starting work order ${wo.id}...`)}
+                            >
+                              Start
+                            </Button>
+                          )}
+                          {wo.status === 'in_progress' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                              onClick={() => alert(`Completing work order ${wo.id}...`)}
+                            >
+                              Complete
+                            </Button>
+                          )}
                           {wo.status === 'completed' && <Button size="sm" variant="outline" className="text-xs">Completed</Button>}
                           {wo.status === 'overdue' && <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs">Overdue</Button>}
                         </div>
@@ -483,7 +512,7 @@ export default function WorkOrders() {
                     <Button variant="outline" onClick={() => setConfirmStep(false)}>
                       Back
                     </Button>
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => {
+                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
                       if (selectAllMode) {
                         bulkAssignMutation.mutate({ ids: null, assignee: assigneeSelected, filters: { status: statusFilter, priority: priorityFilter, search } });
                       } else {

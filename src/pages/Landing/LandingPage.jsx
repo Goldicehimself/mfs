@@ -179,13 +179,10 @@ const LandingPage = () => {
               {/* Dashboard (responsive) */}
               <motion.div
                 style={{ x: dashboardX, y: dashboardY }}
-                whileHover={!reduceMotion ? { y: -6, boxShadow: '0 18px 40px rgba(2,6,23,0.14)' } : undefined} // ✅ ADDED
+                whileHover={!reduceMotion ? { y: -6, boxShadow: '0 18px 40px rgba(2,6,23,0.14)' } : undefined}
                 className="relative w-full max-w-[540px] aspect-[16/10] rounded-2xl border border-slate-200 bg-white p-4 shadow-md mx-auto"
               >
-                <picture>
-                  <source srcSet={DashboardWebpSrcSet} type="image/webp" />
-                  <img src={DashboardPngFallback} sizes="(min-width: 1024px) 540px, (min-width: 640px) 420px, 100vw" className="w-full h-full object-cover rounded-md" />
-                </picture>
+                <img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm14dDdtajczbDU0YXE3cGswdzZ6eWpqcm5kYjJteTc0aHgzOGMxaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IADVYsKtGIGmvxvXeY/giphy.gif" alt="Product demo" className="w-full h-full object-cover rounded-md" />
               </motion.div>
 
               {/* Work order (hidden on small screens) */}
@@ -425,10 +422,7 @@ const LandingPage = () => {
                 whileHover={!reduceMotion ? { y: -6, boxShadow: '0 18px 40px rgba(2,6,23,0.14)' } : undefined}
                 className="relative w-full aspect-[16/10] rounded-2xl border border-slate-200 bg-white p-4 shadow-lg mx-auto"
               >
-                <picture>
-                  <source srcSet={DashboardWebpSrcSet} type="image/webp" />
-                  <img src={DashboardPngFallback} className="w-full h-full object-cover rounded-md" />
-                </picture>
+                <img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExMm14dDdtajczbDU0YXE3cGswdzZ6eWpqcm5kYjJteTc0aHgzOGMxaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IADVYsKtGIGmvxvXeY/giphy.gif" alt="Product demo" className="w-full h-full object-cover rounded-md" />
               </motion.div>
             </motion.div>
           </div>

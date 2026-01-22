@@ -27,7 +27,12 @@ import WorkOrderDetail from './pages/WorkOrders/WorkOrderDetail';
 import WorkOrderCreate from './pages/WorkOrders/WorkOrderCreate';
 import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaintenance';
 import Vendors from './pages/Vendors/Vendors';
+import VendorForm from './pages/Vendors/VendorForm';
+import VendorImport from './pages/Vendors/VendorImport';
 import VendorPortal from './pages/Vendors/VendorPortal';
+import TechnicianPortal from './pages/Technicians/TechnicianPortal';
+import StaffPortal from './pages/Staff/StaffPortal';
+import FinancePortal from './pages/Finance/FinancePortal';
 import ServiceRequests from './pages/ServiceRequests/ServiceRequests';
 import ServiceRequestForm from './pages/ServiceRequests/ServiceRequestForm';
 import Inventory from './pages/Inventory/Inventory';
@@ -139,9 +144,45 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      <Route path="/vendors/new" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "procurement"]}>
+          <MainLayout><VendorForm /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/vendors/:id/edit" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "procurement"]}>
+          <MainLayout><VendorForm /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/vendors/import" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "procurement"]}>
+          <MainLayout><VendorImport /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
       <Route path="/vendor-portal" element={
         <ProtectedRoute allowedRoles={["vendor"]}>
           <MainLayout><VendorPortal /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/technician-portal" element={
+        <ProtectedRoute allowedRoles={["technician", "admin"]}>
+          <MainLayout><TechnicianPortal /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/staff-portal" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "staff"]}>
+          <MainLayout><StaffPortal /></MainLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/finance-portal" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin", "finance"]}>
+          <MainLayout><FinancePortal /></MainLayout>
         </ProtectedRoute>
       } />
       
@@ -179,6 +220,18 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <MainLayout><Profile /></MainLayout>
         </ProtectedRoute>
+      } />
+      
+      <Route path="/unauthorized" element={
+        <AuthLayout>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Access Denied</h1>
+            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#666' }}>You don't have permission to access this page.</p>
+            <button onClick={() => window.location.href = '/dashboard'} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#4F46E5', color: 'white', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem', border: 'none' }}>
+              Go to Dashboard
+            </button>
+          </div>
+        </AuthLayout>
       } />
       
       {/* Fallback */}

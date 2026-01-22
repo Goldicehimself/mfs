@@ -99,7 +99,13 @@ const ReportsPage = () => {
               <MenuItem value="Last Year">Last Year</MenuItem>
             </Select>
           </FormControl>
-          <Button variant="contained" size="small" startIcon={<Download size={14} />} sx={{ fontWeight: 600, textTransform: 'none', fontSize: '0.85rem' }}>
+          <Button 
+            variant="contained" 
+            size="small" 
+            startIcon={<Download size={14} />} 
+            onClick={() => alert(`Exporting report for ${timeRange}...`)}
+            sx={{ fontWeight: 600, textTransform: 'none', fontSize: '0.85rem' }}
+          >
             Export Report
           </Button>
         </Box>
@@ -257,7 +263,14 @@ const ReportsPage = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Work Order Trends</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>View Details</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing work order trends details...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  View Details
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <ResponsiveContainer width="100%" height={300}>
@@ -293,7 +306,14 @@ const ReportsPage = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Cost Breakdown</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>View Details</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing cost breakdown details...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  View Details
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <ResponsiveContainer width="100%" height={300}>
@@ -344,7 +364,14 @@ const ReportsPage = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Asset Performance</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>View All</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing all asset performance details...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  View All
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

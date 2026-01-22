@@ -263,23 +263,40 @@ function WorkOrderCard({ wo }) {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-200 dark:border-zinc-700">
           {wo.overdue ? (
-            <Button className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-medium">
+            <Button 
+              className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-medium"
+              onClick={() => alert(`Starting overdue work order ${wo.id}...`)}
+            >
               ⚠️ Start Now
             </Button>
           ) : wo.status === "in_progress" ? (
-            <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-medium">
+            <Button 
+              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-medium"
+              onClick={() => alert(`Continuing work order ${wo.id}...`)}
+            >
               ▶ Continue
             </Button>
           ) : wo.status === "to_do" ? (
-            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+            <Button 
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+              onClick={() => alert(`Starting work order ${wo.id}...`)}
+            >
               ▶ Start
             </Button>
           ) : (
-            <Button variant="outline" className="flex-1">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => alert(`Viewing details for work order ${wo.id}...`)}
+            >
               ✓ View Details
             </Button>
           )}
-          <Button variant="outline" className="flex-1">
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onClick={() => alert(`Viewing details for work order ${wo.id}...`)}
+          >
             Details
           </Button>
         </div>

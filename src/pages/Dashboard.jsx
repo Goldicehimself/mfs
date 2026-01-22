@@ -15,9 +15,11 @@ import { getDashboardData, getRecentActivities } from '../api/dashboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useActivity } from '../contexts/ActivityContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { addActivity } = useActivity();
   
   const { data: dashboardData, isLoading } = useQuery(
     'dashboard',
@@ -126,14 +128,34 @@ const Dashboard = () => {
             <div className="flex flex-col sm:flex-row gap-2">
               <Button 
                 className="bg-white text-indigo-600 hover:bg-indigo-50 font-medium"
-                onClick={() => navigate('/service-requests/new')}
+                onClick={() => {
+                  addActivity({
+                    type: 'user_action',
+                    action: 'created',
+                    title: 'New Service Request Initiated',
+                    description: 'User started creating a new maintenance request',
+                    user: 'Current User',
+                    status: 'pending',
+                  });
+                  navigate('/service-requests/new');
+                }}
               >
                 📝 New Request
               </Button>
               <Button 
                 variant="outline"
                 className="border-white text-white hover:bg-indigo-700"
-                onClick={() => navigate('/work-orders/new')}
+                onClick={() => {
+                  addActivity({
+                    type: 'work_order',
+                    action: 'created',
+                    title: 'New Work Order Created',
+                    description: 'User initiated work order creation',
+                    user: 'Current User',
+                    status: 'pending',
+                  });
+                  navigate('/work-orders/new');
+                }}
               >
                 🔧 Create Work Order
               </Button>

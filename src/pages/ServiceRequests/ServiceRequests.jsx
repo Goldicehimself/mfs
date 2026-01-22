@@ -63,8 +63,8 @@ const ServiceRequests = () => {
       value: '247',
       trend: '+8%',
       icon: Clock,
-      color: '#3b82f6',
-      bgColor: '#eff6ff',
+      color: '#4f46e5',
+      bgColor: '#eef2ff',
       description: 'Total service requests',
     },
     {
@@ -269,21 +269,21 @@ const ServiceRequests = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, background: '#f8fafc', minHeight: '100vh' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, minHeight: '100vh' }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 4, p: 3, background: 'linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(79, 70, 229, 0.05))', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: 2 }}>
         <Typography
           variant="h4"
           sx={{
             fontWeight: 700,
             mb: 0.5,
-            color: '#0f172a',
+            color: '#4f46e5',
             fontSize: { xs: '28px', md: '32px' },
           }}
         >
           Service Requests
         </Typography>
-        <Typography variant="body2" color="#64748b" sx={{ fontSize: '15px' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '15px', color: '#3f4a5a' }}>
           Manage and track maintenance service requests across your facility
         </Typography>
       </Box>

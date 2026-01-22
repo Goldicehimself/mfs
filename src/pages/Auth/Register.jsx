@@ -21,9 +21,11 @@ import {
 } from '@mui/material';
 import { Eye, EyeOff, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInvitations } from '../../contexts/InvitationContext';
 import { useForm } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
@@ -42,6 +44,11 @@ const schema = yup.object({
 
 const Register = () => {
   const { register: registerUser } = useAuth();
+  const { isTokenValid, getInvitationByToken, acceptInvitation } = useInvitations();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('invite');
+  const isAdminInvitation = invitationToken && isTokenValid(invitationToken);
+  
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,9 +58,13 @@ const Register = () => {
     register,
     handleSubmit,
     formState: { errors },
+    control,
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { role: 'technician', gender: 'male' },
+    defaultValues: { 
+      role: isAdminInvitation ? 'admin' : 'technician', 
+      gender: 'male' 
+    },
   });
 
   const onSubmit = async (data) => {
@@ -66,6 +77,9 @@ const Register = () => {
     setLoading(false);
     if (!result.success) {
       setServerError('Registration failed.');
+    } else if (isAdminInvitation) {
+      // Accept the invitation
+      acceptInvitation(invitationToken, result.userId);
     }
   };
 
@@ -182,15 +196,21 @@ const Register = () => {
 
           <FormControl component="fieldset" margin="normal" error={!!errors.gender}>
             <FormLabel component="legend">Gender</FormLabel>
-            <RadioGroup
-              row
-              defaultValue="male"
-              {...register('gender')}
-            >
-              <FormControlLabel value="male" control={<Radio />} label="Male" />
-              <FormControlLabel value="female" control={<Radio />} label="Female" />
-              <FormControlLabel value="other" control={<Radio />} label="Other" />
-            </RadioGroup>
+            <Controller
+              name="gender"
+              control={control}
+              rules={{ required: 'Gender is required' }}
+              render={({ field }) => (
+                <RadioGroup
+                  row
+                  {...field}
+                >
+                  <FormControlLabel value="male" control={<Radio />} label="Male" />
+                  <FormControlLabel value="female" control={<Radio />} label="Female" />
+                  <FormControlLabel value="other" control={<Radio />} label="Other" />
+                </RadioGroup>
+              )}
+            />
             {errors.gender && (
               <Typography variant="caption" color="error">
                 {errors.gender.message}
@@ -242,13 +262,21 @@ const Register = () => {
 
           <FormControl fullWidth margin="normal" error={!!errors.role}>
             <InputLabel>Role</InputLabel>
-            <Select label="Role" defaultValue="technician" {...register('role')}>
-              <MenuItem value="facility_manager">Facility Manager</MenuItem>
-              <MenuItem value="technician">Maintenance Technician</MenuItem>
-              <MenuItem value="vendor">Vendor</MenuItem>
-              <MenuItem value="staff">Staff</MenuItem>
-              <MenuItem value="finance">Finance</MenuItem>
-            </Select>
+            <Controller
+              name="role"
+              control={control}
+              rules={{ required: 'Role is required' }}
+              render={({ field }) => (
+                <Select label="Role" {...field} disabled={isAdminInvitation}>
+                  {isAdminInvitation && <MenuItem value="admin">Administrator (Invited)</MenuItem>}
+                  <MenuItem value="facility_manager">Facility Manager</MenuItem>
+                  <MenuItem value="technician">Maintenance Technician</MenuItem>
+                  <MenuItem value="vendor">Vendor</MenuItem>
+                  <MenuItem value="staff">Staff</MenuItem>
+                  <MenuItem value="finance">Finance</MenuItem>
+                </Select>
+              )}
+            />
             {errors.role && (
               <Typography variant="caption" color="error">
                 {errors.role.message}

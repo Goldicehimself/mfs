@@ -19,6 +19,23 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Initialize default admin if no admin exists
+    const existingUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
+    const adminExists = existingUsers.some(u => u.role === 'admin');
+    
+    if (!adminExists) {
+      const defaultAdmin = {
+        id: 'admin-system',
+        name: 'System Administrator',
+        email: 'admin@facilitypro.com',
+        password: 'Admin@123456', // Development only
+        role: 'admin',
+        createdAt: new Date('2024-01-01').toISOString(),
+      };
+      const updatedUsers = [...existingUsers, defaultAdmin];
+      localStorage.setItem('local_users', JSON.stringify(updatedUsers));
+    }
+
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
@@ -48,16 +65,23 @@ export const AuthProvider = ({ children }) => {
       // Redirect based on role
       switch (user.role) {
         case 'facility_manager':
+        case 'admin':
           navigate('/dashboard');
           break;
         case 'technician':
-          navigate('/work-orders');
+          navigate('/technician-portal');
           break;
         case 'vendor':
           navigate('/vendor-portal');
           break;
+        case 'finance':
+          navigate('/finance-portal');
+          break;
+        case 'staff':
+          navigate('/staff-portal');
+          break;
         default:
-          navigate('/service-requests');
+          navigate('/dashboard');
       }
       
       return { success: true };
@@ -65,7 +89,7 @@ export const AuthProvider = ({ children }) => {
       // Fallback to localStorage users when API is unavailable or registration API isn't set up
       try {
         const users = getLocalUsers();
-        const found = users.find(u => u.email === email);
+        const found = users.find(u => u.email?.toLowerCase() === email?.toLowerCase());
         if (found && found.password === password) {
           const token = `local-${Date.now()}`;
           localStorage.setItem('token', token);
@@ -77,16 +101,23 @@ export const AuthProvider = ({ children }) => {
           // Redirect based on role
           switch (found.role) {
             case 'facility_manager':
+            case 'admin':
               navigate('/dashboard');
               break;
             case 'technician':
-              navigate('/work-orders');
+              navigate('/technician-portal');
               break;
             case 'vendor':
               navigate('/vendor-portal');
               break;
+            case 'finance':
+              navigate('/finance-portal');
+              break;
+            case 'staff':
+              navigate('/staff-portal');
+              break;
             default:
-              navigate('/service-requests');
+              navigate('/dashboard');
           }
 
           return { success: true };
@@ -97,7 +128,7 @@ export const AuthProvider = ({ children }) => {
 
       // Show a short, generic message only (do not display server-provided messages).
       toast.error('Login failed');
-      return { success: false, error: error.message };
+      throw new Error('Login failed');
     }
   };
 

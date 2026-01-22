@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Typography,
   Box,
@@ -18,8 +19,11 @@ import {
 import { Plus, Calendar, TrendingUp, AlertCircle, DownloadCloud, FilePlus, Clock, ChevronRight } from 'lucide-react';
 import PMCalendar from '../../components/preventiveMaintenance/PMCalendar';
 import ComplianceChart from '../../components/preventiveMaintenance/ComplianceChart';
+import { useActivity } from '../../contexts/ActivityContext';
 
 const PreventiveMaintenance = () => {
+  const navigate = useNavigate();
+  const { addActivity } = useActivity();
   const [currentMonth] = useState(new Date(2024, 11)); // December 2024
 
   const kpiData = [
@@ -50,32 +54,15 @@ const PreventiveMaintenance = () => {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', py: 4 }}>
+    <Container maxWidth="xl" sx={{ minHeight: '100vh', py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, color: '#1f2937' }}>
-            Preventive Maintenance
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400 }}>
-            Real-time monitoring of scheduled tasks, compliance metrics, and maintenance schedules
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title="Export Data">
-            <IconButton size="small" sx={{ color: '#6b7280', '&:hover': { bgcolor: '#ffffff', color: '#4f46e5' } }}>
-              <DownloadCloud size={16} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Advanced Filters">
-            <IconButton size="small" sx={{ color: '#6b7280', '&:hover': { bgcolor: '#ffffff', color: '#4f46e5' } }}>
-              <ChevronRight size={16} />
-            </IconButton>
-          </Tooltip>
-          <Button variant="contained" size="small" startIcon={<Plus size={14} />} sx={{ fontWeight: 600, textTransform: 'none', fontSize: '0.85rem' }}>
-            New Task
-          </Button>
-        </Box>
+      <Box sx={{ mb: 4, p: 3, background: 'linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(59, 130, 246, 0.05))', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, color: '#1e3a8a' }}>
+          Preventive Maintenance
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400, color: '#3f4a5a' }}>
+          Real-time monitoring of scheduled tasks, compliance metrics, and maintenance schedules
+        </Typography>
       </Box>
 
       {/* KPI Cards */}
@@ -155,7 +142,14 @@ const PreventiveMaintenance = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Compliance Overview</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>Details</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing compliance details...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  Details
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <Stack spacing={2.5}>
@@ -202,7 +196,14 @@ const PreventiveMaintenance = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Maintenance Trends</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>View Report</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing maintenance trends report...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  View Report
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <ComplianceChart />
@@ -224,35 +225,89 @@ const PreventiveMaintenance = () => {
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <Stack spacing={1}>
-                {quickActions.map((action, idx) => (
-                  <Button
-                    key={idx}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      justifyContent: 'flex-start',
-                      p: 1,
-                      borderColor: '#e5e7eb',
-                      color: '#111827',
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        bgcolor: `${action.color}10`,
-                        borderColor: action.color,
-                        color: action.color,
-                      }
-                    }}
-                  >
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: `${action.color}20`, color: action.color, mr: 1, fontSize: '0.75rem' }}>
-                      {action.icon}
-                    </Avatar>
-                    <span style={{ textAlign: 'left', fontSize: '0.85rem' }}>{action.label}</span>
-                  </Button>
-                ))}
+                {quickActions.map((action, idx) => {
+                  const getActionHandler = () => {
+                    const handlers = {
+                      0: () => {
+                        addActivity({
+                          type: 'pm_scheduled',
+                          action: 'created',
+                          title: 'New PM Task Created',
+                          description: 'User initiated PM task creation',
+                          user: 'Current User',
+                          status: 'pending',
+                        });
+                        navigate('/preventive-maintenance/new');
+                      },
+                      1: () => {
+                        addActivity({
+                          type: 'system',
+                          action: 'viewed',
+                          title: 'Asset Schedule Viewed',
+                          description: 'User accessed asset maintenance schedule',
+                          user: 'Current User',
+                          status: 'in_progress',
+                        });
+                        navigate('/assets?view=schedule');
+                      },
+                      2: () => {
+                        addActivity({
+                          type: 'report_generated',
+                          action: 'viewed',
+                          title: 'Compliance Report Viewed',
+                          description: 'User checked compliance metrics',
+                          user: 'Current User',
+                          status: 'active',
+                        });
+                        navigate('/preventive-maintenance/compliance');
+                      },
+                      3: () => {
+                        addActivity({
+                          type: 'alert',
+                          action: 'viewed',
+                          title: 'Overdue Tasks Reviewed',
+                          description: 'User checked overdue maintenance tasks',
+                          user: 'Current User',
+                          status: 'pending',
+                        });
+                        alert('Viewing overdue tasks...');
+                      },
+                    };
+                    return handlers[idx] || (() => {});
+                  };
+                  
+                  return (
+                    <Button
+                      key={idx}
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      onClick={getActionHandler()}
+                      sx={{
+                        justifyContent: 'flex-start',
+                        p: 1,
+                        borderColor: '#e5e7eb',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: `${action.color}10`,
+                          borderColor: action.color,
+                          color: action.color,
+                        }
+                      }}
+                    >
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: `${action.color}20`, color: action.color, mr: 1, fontSize: '0.75rem' }}>
+                        {action.icon}
+                      </Avatar>
+                      <span style={{ textAlign: 'left', fontSize: '0.85rem' }}>{action.label}</span>
+                    </Button>
+                  );
+                })}
               </Stack>
             </CardContent>
           </Card>
@@ -271,7 +326,14 @@ const PreventiveMaintenance = () => {
                   </Avatar>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Upcoming Deadlines</Typography>
                 </Box>
-                <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>View All</Button>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  onClick={() => alert('Viewing all upcoming deadlines...')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  View All
+                </Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <Stack spacing={0}>
