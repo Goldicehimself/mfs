@@ -366,7 +366,7 @@ export default function FinancePortal() {
                 </Select>
 
                 <Button 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white h-10"
+                  className="bg-blue-700 hover:bg-blue-800 text-white h-10"
                   onClick={() => alert(`Exporting invoice report...`)}
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -428,7 +428,7 @@ export default function FinancePortal() {
                 </Select>
 
                 <Button 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white h-10"
+                  className="bg-blue-700 hover:bg-blue-800 text-white h-10"
                   onClick={() => setNewExpenseModalOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -719,7 +719,7 @@ export default function FinancePortal() {
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                   onClick={() => handleAddExpense()}
                 >
                   Add Expense
@@ -732,3 +732,4 @@ export default function FinancePortal() {
     </div>
   );
 }
+

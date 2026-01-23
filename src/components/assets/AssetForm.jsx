@@ -694,7 +694,7 @@ export default function AssetForm() {
 
             {/* Form Actions */}
             <div className="space-y-2 lg:sticky lg:top-96">
-              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2" disabled={saving}>
+              <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 text-white flex items-center justify-center gap-2" disabled={saving}>
                 <Save className="h-4 w-4" />
                 {saving ? 'Saving...' : isEditMode ? 'Update Asset' : 'Create Asset'}
               </Button>

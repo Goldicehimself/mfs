@@ -42,6 +42,7 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
 
   const [openAssets, setOpenAssets] = React.useState(false);
   const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
+  const pendingLeaveCount = user?.role === 'staff' ? 1 : 0;
 
   // Auto-open based on current route
   React.useEffect(() => {
@@ -101,7 +102,19 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
       title: 'Staff Portal',
       icon: <Users2 />,
       path: '/staff-portal',
-      roles: ['facility_manager', 'admin', 'staff'],
+      roles: ['staff'],
+    },
+    {
+      title: 'Staff Management',
+      icon: <Users2 />,
+      path: '/staff-management',
+      roles: ['facility_manager', 'admin'],
+    },
+    {
+      title: 'Leave Center',
+      icon: <Calendar />,
+      path: '/leave-center',
+      roles: ['staff'],
     },
     {
       title: 'Finance Portal',
@@ -160,6 +173,7 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
     const toggle = isAssets
       ? () => setOpenAssets(!openAssets)
       : () => setOpenWorkOrders(!openWorkOrders);
+    const showLeaveCount = item.path === '/leave-center' && pendingLeaveCount > 0;
 
     if (item.children) {
       return (
@@ -211,7 +225,34 @@ const NavigationMenu = ({ onCloseMobile = () => {} }) => {
           <ListItemIcon sx={{ minWidth: 36 }}>
             {React.cloneElement(item.icon, { size: 18, className: 'icon' })}
           </ListItemIcon>
-          <ListItemText primary={item.title} />
+          <ListItemText
+            primary={
+              showLeaveCount ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{item.title}</span>
+                  <Box
+                    sx={{
+                      minWidth: 20,
+                      height: 20,
+                      borderRadius: '999px',
+                      bgcolor: '#ef4444',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      px: 0.5,
+                    }}
+                  >
+                    {pendingLeaveCount}
+                  </Box>
+                </Box>
+              ) : (
+                item.title
+              )
+            }
+          />
         </ListItemButton>
       </ListItem>
     );

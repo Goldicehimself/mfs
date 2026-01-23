@@ -230,7 +230,7 @@ const Inventory = () => {
               onClick={() => navigate(item.path)}
               className={`px-4 py-2 rounded-lg font-medium cursor-pointer transition-all duration-200 ${
                 item.label === 'Inventory'
-                  ? 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700 hover:shadow-lg active:scale-95'
+                  ? 'bg-blue-700 text-white shadow-md hover:bg-blue-800 hover:shadow-lg active:scale-95'
                   : 'bg-white text-gray-700 hover:bg-indigo-50 border border-gray-300 hover:border-indigo-400 active:scale-95'
               }`}
             >
@@ -440,7 +440,7 @@ const Inventory = () => {
                     onClick={() => handlePageChange(pageNum)}
                     className={`px-3 py-1 border rounded cursor-pointer transition-all duration-200 ${
                       currentPage === pageNum
-                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        ? 'bg-blue-700 text-white border-indigo-600'
                         : 'bg-white border-gray-300 hover:bg-indigo-50 hover:border-indigo-400 active:scale-95'
                     }`}
                   >
@@ -455,7 +455,7 @@ const Inventory = () => {
                     onClick={() => handlePageChange(totalPages)}
                     className={`px-3 py-1 border rounded cursor-pointer transition-all duration-200 ${
                       currentPage === totalPages
-                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        ? 'bg-blue-700 text-white border-indigo-600'
                         : 'bg-white border-gray-300 hover:bg-indigo-50 hover:border-indigo-400 active:scale-95'
                     }`}
                   >
@@ -479,3 +479,4 @@ const Inventory = () => {
 };
 
 export default Inventory;
+

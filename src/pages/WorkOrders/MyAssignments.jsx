@@ -141,7 +141,7 @@ export default function MyAssignments() {
                 variant={status === s.value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatus(s.value)}
-                className={status === s.value ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                className={status === s.value ? 'bg-blue-700 hover:bg-blue-800' : ''}
               >
                 {s.label}
               </Button>
@@ -278,7 +278,7 @@ function WorkOrderCard({ wo }) {
             </Button>
           ) : wo.status === "to_do" ? (
             <Button 
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+              className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-medium"
               onClick={() => alert(`Starting work order ${wo.id}...`)}
             >
               ▶ Start
@@ -361,3 +361,4 @@ const statusVariant = (s, overdue) => overdue
   : s === 'completed'
   ? 'default'
   : 'secondary';
+

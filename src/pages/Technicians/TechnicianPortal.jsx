@@ -904,7 +904,7 @@ export default function TechnicianPortal() {
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-zinc-800">
                     <Button 
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                       onClick={() => setProgressModalOpen(true)}
                     >
                       Update Progress
@@ -980,7 +980,7 @@ export default function TechnicianPortal() {
                     Cancel
                   </Button>
                   <Button
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                     onClick={() => handleUpdateProgress()}
                   >
                     Update
@@ -1035,7 +1035,7 @@ export default function TechnicianPortal() {
                     Cancel
                   </Button>
                   <Button
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                     onClick={() => handleAddNote()}
                   >
                     Save Note
@@ -1117,7 +1117,7 @@ export default function TechnicianPortal() {
                     Cancel
                   </Button>
                   <Button
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                     onClick={() => handleAddPart()}
                   >
                     Add Part
@@ -1199,7 +1199,7 @@ export default function TechnicianPortal() {
                     Cancel
                   </Button>
                   <Button
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                     onClick={() => handleAddCost()}
                   >
                     Add Cost
@@ -1349,3 +1349,4 @@ export default function TechnicianPortal() {
     </div>
   );
 }
+

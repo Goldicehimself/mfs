@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   List,
   ListItem,
@@ -15,7 +15,14 @@ import { useActivity } from '../../contexts/ActivityContext';
 
 const RecentActivity = ({ activities: propActivities = null }) => {
   const { activities: contextActivities } = useActivity();
-  const activities = propActivities || contextActivities;
+  const normalizeActivities = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.data)) return value.data;
+    if (Array.isArray(value?.activities)) return value.activities;
+    return [];
+  };
+  const propList = normalizeActivities(propActivities);
+  const activities = propList.length ? propList : normalizeActivities(contextActivities);
 
   if (!activities || activities.length === 0) {
     return (
@@ -61,7 +68,7 @@ const RecentActivity = ({ activities: propActivities = null }) => {
             </ListItemAvatar>
             <ListItemText
               primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1f2937' }}>
                     {activity.title}
                   </Typography>
@@ -81,7 +88,7 @@ const RecentActivity = ({ activities: propActivities = null }) => {
                 </Box>
               }
               secondary={
-                <React.Fragment>
+                <Box component="span">
                   <Typography
                     component="span"
                     variant="body2"
@@ -90,19 +97,19 @@ const RecentActivity = ({ activities: propActivities = null }) => {
                   >
                     {activity.description}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                  <Box component="span" sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                     {activity.user && (
-                      <Typography variant="caption" color="text.secondary">
-                        👤 {activity.user}
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        User: {activity.user}
                       </Typography>
                     )}
                     {activity.timestamp && (
-                      <Typography variant="caption" color="text.secondary">
-                        🕒 {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                      <Typography component="span" variant="caption" color="text.secondary">
+                        Time: {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                       </Typography>
                     )}
                   </Box>
-                </React.Fragment>
+                </Box>
               }
             />
           </ListItem>
@@ -114,3 +121,7 @@ const RecentActivity = ({ activities: propActivities = null }) => {
 };
 
 export default RecentActivity;
+
+
+
+

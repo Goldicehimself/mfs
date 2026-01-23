@@ -261,7 +261,7 @@ export default function WorkOrderForm() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Required Parts & Materials</h2>
-              <Button size="sm" onClick={addPart} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1">
+              <Button size="sm" onClick={addPart} className="bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1">
                 <Plus size={14} /> Add Item
               </Button>
             </CardHeader>
@@ -396,7 +396,7 @@ export default function WorkOrderForm() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button type="submit" className="flex-1 bg-blue-700 hover:bg-blue-800 text-white">
                   Create Order
                 </Button>
                 <Button type="button" variant="outline" onClick={() => navigate('/work-orders')} className="flex-1">
@@ -410,3 +410,4 @@ export default function WorkOrderForm() {
     </form>
   );
 }
+

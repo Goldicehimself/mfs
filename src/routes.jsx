@@ -32,6 +32,8 @@ import VendorImport from './pages/Vendors/VendorImport';
 import VendorPortal from './pages/Vendors/VendorPortal';
 import TechnicianPortal from './pages/Technicians/TechnicianPortal';
 import StaffPortal from './pages/Staff/StaffPortal';
+import StaffManagement from './pages/Staff/StaffManagement';
+import LeaveCenter from './pages/Staff/LeaveCenter';
 import FinancePortal from './pages/Finance/FinancePortal';
 import ServiceRequests from './pages/ServiceRequests/ServiceRequests';
 import ServiceRequestForm from './pages/ServiceRequests/ServiceRequestForm';
@@ -181,8 +183,20 @@ const AppRoutes = () => {
       } />
       
       <Route path="/staff-portal" element={
-        <ProtectedRoute allowedRoles={["facility_manager", "admin", "staff"]}>
+        <ProtectedRoute allowedRoles={["staff"]}>
           <MainLayout><StaffPortal /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff-management" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><StaffManagement /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/leave-center" element={
+        <ProtectedRoute allowedRoles={["staff"]}>
+          <MainLayout><LeaveCenter /></MainLayout>
         </ProtectedRoute>
       } />
       

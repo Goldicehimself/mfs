@@ -186,7 +186,7 @@ const VendorList = ({
                   onClick={() => onPageChange?.(pageNumber)}
                   className={`px-3 py-1 rounded border text-sm font-medium ${
                     pageNumber === page
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
+                      ? 'border-indigo-600 bg-blue-700 text-white'
                       : 'border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                   }`}
                 >
@@ -212,3 +212,4 @@ const VendorList = ({
 };
 
 export default VendorList;
+

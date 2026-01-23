@@ -115,7 +115,7 @@ const Settings = () => {
               {/* Role Badge */}
               <div className="flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
                 <span className="text-sm text-gray-600 dark:text-gray-300">Your Role:</span>
-                <Badge className="bg-indigo-600 text-white capitalize">{user?.role?.replace(/_/g, ' ')}</Badge>
+                <Badge className="bg-blue-700 text-white capitalize">{user?.role?.replace(/_/g, ' ')}</Badge>
               </div>
 
               {/* System Configuration - Admin & Facility Manager Only */}
@@ -165,7 +165,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setAutoAssignOrders)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        autoAssignOrders ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        autoAssignOrders ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -184,7 +184,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setMaintenanceReminders)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        maintenanceReminders ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        maintenanceReminders ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -217,7 +217,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setTwoFactorAuth)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        twoFactorAuth ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        twoFactorAuth ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -250,7 +250,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setStrongPassword)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        strongPassword ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        strongPassword ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -269,7 +269,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setLoginNotifications)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        loginNotifications ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        loginNotifications ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -330,7 +330,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setRequireImages)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        requireImages ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        requireImages ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -381,7 +381,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setAutoBackup)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        autoBackup ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        autoBackup ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -452,7 +452,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setLoginNotifications)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        loginNotifications ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        loginNotifications ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -514,7 +514,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setTwoFactorAuth)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        twoFactorAuth ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        twoFactorAuth ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -547,7 +547,7 @@ const Settings = () => {
                     <button
                       onClick={() => handleToggle(setStrongPassword)}
                       className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                        strongPassword ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        strongPassword ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -588,7 +588,7 @@ const Settings = () => {
         <div className="flex justify-end">
           <Button
             onClick={handleSaveChanges}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 flex items-center gap-2"
+            className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 flex items-center gap-2"
           >
             <Save className="h-5 w-5" />
             Save Changes
@@ -600,4 +600,6 @@ const Settings = () => {
 };
 
 export default Settings;
+
+
 

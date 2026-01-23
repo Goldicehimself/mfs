@@ -281,7 +281,7 @@ const VendorForm = () => {
               <Button
                 type="button"
                 onClick={() => navigate(`/vendors/${id}/edit`)}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
               >
                 Edit Vendor
               </Button>
@@ -459,7 +459,7 @@ const VendorForm = () => {
                   <Button
                     type="button"
                     onClick={handleAddService}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="bg-blue-700 hover:bg-blue-800 text-white"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -607,7 +607,7 @@ const VendorForm = () => {
                 <Button
                   type="button"
                   onClick={() => navigate(`/vendors/${id}/edit`)}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                 >
                   Edit Vendor
                 </Button>
@@ -615,7 +615,7 @@ const VendorForm = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                 >
                   {loading ? 'Saving...' : isEdit ? 'Update Vendor' : 'Create Vendor'}
                 </Button>
@@ -630,3 +630,4 @@ const VendorForm = () => {
 };
 
 export default VendorForm;
+

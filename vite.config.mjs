@@ -12,12 +12,16 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    ...(process.env.VITE_ENABLE_API_PROXY === 'true'
+      ? {
+          proxy: {
+            '/api': {
+              target: 'http://localhost:3000',
+              changeOrigin: true,
+              secure: false,
+            },
+          },
+        }
+      : {}),
   },
 })

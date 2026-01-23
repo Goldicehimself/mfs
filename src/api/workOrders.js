@@ -2,13 +2,7 @@ import axiosInstance from './axiosConfig';
 import * as workOrderService from '../services/workOrderService';
 
 export const getWorkOrders = async (params = {}) => {
-  try {
-    const response = await axiosInstance.get('/work-orders', { params });
-    return response.data;
-  } catch (error) {
-    // Fallback to local mock
-    return await workOrderService.getWorkOrders(params);
-  }
+  return await workOrderService.getWorkOrders(params);
 };
 
 export const getWorkOrder = async (id) => {

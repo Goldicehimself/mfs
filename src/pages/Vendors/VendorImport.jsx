@@ -209,7 +209,7 @@ Fresh Clean Co,Cleaning,hello@freshclean.com,(555) 345-6789,789 Clean Lane,Chica
                       onChange={handleFileChange}
                       className="hidden"
                     />
-                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium transition-colors">
                       Browse Files
                     </span>
                   </label>
@@ -239,7 +239,7 @@ Fresh Clean Co,Cleaning,hello@freshclean.com,(555) 345-6789,789 Clean Lane,Chica
                   <Button
                     type="submit"
                     disabled={loading || !file}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white disabled:opacity-50"
                   >
                     {loading ? 'Importing...' : 'Import Vendors'}
                   </Button>
@@ -324,7 +324,7 @@ Fresh Clean Co,Cleaning,hello@freshclean.com,(555) 345-6789,789 Clean Lane,Chica
               <Button
                 type="button"
                 onClick={downloadTemplate}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2"
+                className="w-full bg-blue-700 hover:bg-blue-800 text-white flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
                 Download Template
@@ -338,3 +338,4 @@ Fresh Clean Co,Cleaning,hello@freshclean.com,(555) 345-6789,789 Clean Lane,Chica
 };
 
 export default VendorImport;
+

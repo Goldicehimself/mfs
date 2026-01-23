@@ -86,7 +86,7 @@ export const AdminSettings = () => {
           {!showInviteForm ? (
             <Button
               onClick={() => setShowInviteForm(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-blue-700 hover:bg-blue-800 text-white"
             >
               <Mail className="h-4 w-4 mr-2" />
               Invite New Admin
@@ -104,7 +104,7 @@ export const AdminSettings = () => {
                 <Button
                   onClick={handleSendInvite}
                   disabled={isSubmitting}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
                 >
                   Send Invitation
                 </Button>
@@ -246,3 +246,4 @@ export const StaffSettings = () => (
     </div>
   </div>
 );
+

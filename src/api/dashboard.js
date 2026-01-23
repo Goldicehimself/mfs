@@ -1,7 +1,15 @@
 import axiosInstance from './axiosConfig';
 
+const shouldUseMock = () => {
+  const token = localStorage.getItem('token');
+  return !token || token.startsWith('local-');
+};
+
 export const getDashboardData = async () => {
   try {
+    if (shouldUseMock()) {
+      throw new Error('mock');
+    }
     const response = await axiosInstance.get('/dashboard');
     return response.data;
   } catch (error) {
@@ -36,15 +44,25 @@ import { getWorkOrders } from './workOrders';
 
 export const getRecentActivities = async () => {
   try {
+    if (shouldUseMock()) {
+      throw new Error('mock');
+    }
     const response = await axiosInstance.get('/dashboard/activities');
     return response.data;
   } catch (error) {
     // Return mock recent activities derived from local work orders
     const workOrders = await getWorkOrders();
+    const list = Array.isArray(workOrders)
+      ? workOrders
+      : Array.isArray(workOrders?.data)
+      ? workOrders.data
+      : Array.isArray(workOrders?.workOrders)
+      ? workOrders.workOrders
+      : [];
     const now = () => new Date().toISOString();
 
     const activities = [
-      ...workOrders.slice(0, 5).map((wo, idx) => ({
+      ...list.slice(0, 5).map((wo) => ({
         id: `act-${wo.id}`,
         type: wo.status === 'completed' ? 'completed' : wo.status === 'overdue' ? 'overdue' : 'work_order',
         title: wo.title,

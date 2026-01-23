@@ -102,7 +102,7 @@ const VendorsPage = () => {
               Import
             </Button>
             <Button
-              className="bg-indigo-600 text-white hover:bg-indigo-700"
+              className="bg-blue-700 text-white hover:bg-blue-800"
               onClick={() => navigate('/vendors/new')}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -140,7 +140,7 @@ const VendorsPage = () => {
                   onClick={() => setSelectedCategory(cat)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedCategory === cat
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-blue-700 text-white'
                       : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   }`}
                 >
@@ -180,5 +180,7 @@ const VendorsPage = () => {
 };
 
 export default VendorsPage;
+
+
 
 

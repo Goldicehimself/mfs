@@ -506,7 +506,7 @@ const VendorPortal = () => {
                           View Details
                         </Button>
                         <Button
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap"
+                          className="bg-blue-700 hover:bg-blue-800 text-white whitespace-nowrap"
                           size="sm"
                           onClick={() => handleOpenStatus(wo)}
                         >
@@ -533,7 +533,7 @@ const VendorPortal = () => {
                     </div>
                   </div>
                   <Button
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap ml-4"
+                    className="bg-blue-700 hover:bg-blue-800 text-white whitespace-nowrap ml-4"
                     onClick={() => setRequestOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -710,7 +710,7 @@ const VendorPortal = () => {
                         <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">87%</span>
                       </div>
                       <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600 dark:bg-indigo-500" style={{ width: '87%' }}></div>
+                        <div className="h-full bg-blue-700 dark:bg-indigo-500" style={{ width: '87%' }}></div>
                       </div>
                     </div>
                   </div>
@@ -735,7 +735,7 @@ const VendorPortal = () => {
                         <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">4.6/5</span>
                       </div>
                       <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600 dark:bg-indigo-500" style={{ width: '92%' }}></div>
+                        <div className="h-full bg-blue-700 dark:bg-indigo-500" style={{ width: '92%' }}></div>
                       </div>
                     </div>
                   </div>
@@ -806,7 +806,7 @@ const VendorPortal = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button 
                     onClick={() => alert('Starting chat support session...')}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white w-full">
+                    className="bg-blue-700 hover:bg-blue-800 text-white w-full">
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Start Chat Support
                   </Button>
@@ -878,7 +878,7 @@ const VendorPortal = () => {
                 Close
               </Button>
               <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-blue-700 hover:bg-blue-800 text-white"
                 onClick={() => {
                   setDetailsOpen(false);
                   handleOpenStatus(selectedWorkOrder);
@@ -912,7 +912,7 @@ const VendorPortal = () => {
               <Button variant="outline" onClick={() => setStatusOpen(false)}>
                 Cancel
               </Button>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSaveStatus}>
+              <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={handleSaveStatus}>
                 Save
               </Button>
             </div>
@@ -984,7 +984,7 @@ const VendorPortal = () => {
               </Button>
               <Button
                 type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-blue-700 hover:bg-blue-800 text-white"
                 disabled={!requestForm.title.trim() || !requestForm.description.trim()}
               >
                 Submit Request
@@ -1062,5 +1062,7 @@ const ModalShell = ({ title, onClose, children }) => (
 );
 
 export default VendorPortal;
+
+
 
 

@@ -47,9 +47,13 @@ export default function WorkOrders() {
     () => getWorkOrders({ status: statusFilter, priority: priorityFilter, search, category: categoryFilter, assignee: assigneeFilter, dateRange, location: locationFilter })
   );
 
+  const workOrdersList = Array.isArray(workOrders)
+    ? workOrders
+    : (workOrders?.workOrders || workOrders?.data || []);
+
   const assignees = useMemo(() => {
     const localUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
-    const list = [...localUsers, ...workOrders.map(w => w.assignedTo).filter(Boolean)];
+    const list = [...localUsers, ...workOrdersList.map(w => w.assignedTo).filter(Boolean)];
     const seen = new Set();
     return list.filter(u => {
       if (!u) return false;
@@ -60,7 +64,7 @@ export default function WorkOrders() {
       if (!assigneeQuery) return true;
       return (u.name || '').toLowerCase().includes(assigneeQuery.toLowerCase()) || (u.email || '').toLowerCase().includes(assigneeQuery.toLowerCase());
     });
-  }, [workOrders, assigneeQuery]);
+  }, [workOrdersList, assigneeQuery]);
 
   const bulkAssignMutation = useMutation(({ ids, assignee, filters }) => bulkAssignWorkOrders({ ids, assignee, filters }), {
     onSuccess: (data) => {
@@ -74,7 +78,7 @@ export default function WorkOrders() {
   });
 
   const displayedWorkOrders = useMemo(() => {
-    let arr = [...workOrders];
+    let arr = [...workOrdersList];
     if (sortBy) {
       arr.sort((a, b) => {
         let valA = a[sortBy];
@@ -105,7 +109,7 @@ export default function WorkOrders() {
       });
     }
     return arr;
-  }, [workOrders, sortBy, sortDir]);
+  }, [workOrdersList, sortBy, sortDir]);
 
   const toggleSort = (field) => {
     if (sortBy === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -122,37 +126,37 @@ export default function WorkOrders() {
   });
 
   const stats = useMemo(() => {
-    const total = workOrders.length;
-    const open = workOrders.filter(w => w.status === 'open').length;
-    const inProgress = workOrders.filter(w => w.status === 'in_progress').length;
-    const completed = workOrders.filter(w => w.status === 'completed').length;
-    const overdue = workOrders.filter(w => w.status === 'overdue').length;
+    const total = workOrdersList.length;
+    const open = workOrdersList.filter(w => w.status === 'open').length;
+    const inProgress = workOrdersList.filter(w => w.status === 'in_progress').length;
+    const completed = workOrdersList.filter(w => w.status === 'completed').length;
+    const overdue = workOrdersList.filter(w => w.status === 'overdue').length;
     return { total, open, inProgress, completed, overdue };
-  }, [workOrders]);
+  }, [workOrdersList]);
 
   const categories = useMemo(() => {
     const set = new Set();
-    workOrders.forEach(w => w.category && set.add(w.category));
+    workOrdersList.forEach(w => w.category && set.add(w.category));
     return Array.from(set);
-  }, [workOrders]);
+  }, [workOrdersList]);
 
   const locations = useMemo(() => {
     const set = new Set();
-    workOrders.forEach(w => w.location && set.add(w.location.name));
+    workOrdersList.forEach(w => w.location && set.add(w.location.name));
     return Array.from(set);
-  }, [workOrders]);
+  }, [workOrdersList]);
 
   const assigneeOptions = useMemo(() => {
     const seen = new Set();
     const list = [];
-    workOrders.forEach(w => {
+    workOrdersList.forEach(w => {
       if (w.assignedTo && !seen.has(w.assignedTo.id)) {
         seen.add(w.assignedTo.id);
         list.push(w.assignedTo);
       }
     });
     return list;
-  }, [workOrders]);
+  }, [workOrdersList]);
 
   function priorityBadge(p) {
     const variants = {
@@ -236,7 +240,7 @@ export default function WorkOrders() {
               {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
 
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2" onClick={() => navigate('/work-orders/new')}>
+            <Button className="bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-2" onClick={() => navigate('/work-orders/new')}>
               <Plus size={16} /> Create
             </Button>
           </div>
@@ -257,7 +261,7 @@ export default function WorkOrders() {
               Bulk Assign
             </Button>
 
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2" size="sm" onClick={() => {
+            <Button className="bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-2" size="sm" onClick={() => {
               const csv = [
                 ['WO ID', 'Title', 'Asset', 'Assigned To', 'Priority', 'Status', 'Due Date'],
                 ...displayedWorkOrders.map(wo => [
@@ -351,7 +355,7 @@ export default function WorkOrders() {
                           {wo.status === 'open' && (
                             <Button 
                               size="sm" 
-                              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                              className="bg-blue-700 hover:bg-blue-800 text-white text-xs"
                               onClick={() => alert(`Starting work order ${wo.id}...`)}
                             >
                               Start
@@ -402,7 +406,7 @@ export default function WorkOrders() {
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6">
               <h3 className="text-xl font-bold">
-                Assign {selectAllMode ? workOrders.length : selected.length} selected work order{selectAllMode || selected.length !== 1 ? 's' : ''} to a technician
+                Assign {selectAllMode ? workOrdersList.length : selected.length} selected work order{selectAllMode || selected.length !== 1 ? 's' : ''} to a technician
               </h3>
             </div>
 
@@ -415,7 +419,7 @@ export default function WorkOrders() {
                       <CheckCircle2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
                       <div>
                         <p className="font-semibold text-indigo-900 dark:text-indigo-100 text-sm">
-                          {selectAllMode ? `${workOrders.length} work orders` : `${selected.length} work order${selected.length !== 1 ? 's' : ''}`} ready to assign
+                          {selectAllMode ? `${workOrdersList.length} work orders` : `${selected.length} work order${selected.length !== 1 ? 's' : ''}`} ready to assign
                         </p>
                         <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">Select a technician below</p>
                       </div>
@@ -475,7 +479,7 @@ export default function WorkOrders() {
                     <Button variant="outline" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }}>
                       Cancel
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
+                    <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => {
                       if (!assigneeSelected) { toast.error('Please select a technician'); return; }
                       setConfirmStep(true);
                     }} disabled={!assigneeSelected}>
@@ -502,7 +506,7 @@ export default function WorkOrders() {
                     {/* Summary */}
                     <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
                       <p className="text-sm text-amber-900 dark:text-amber-100">
-                        You are about to assign <strong>{selectAllMode ? workOrders.length : selected.length} work order{selectAllMode || selected.length !== 1 ? 's' : ''}</strong> to <strong>{assigneeSelected.name}</strong>.
+                        You are about to assign <strong>{selectAllMode ? workOrdersList.length : selected.length} work order{selectAllMode || selected.length !== 1 ? 's' : ''}</strong> to <strong>{assigneeSelected.name}</strong>.
                       </p>
                     </div>
                   </div>
@@ -512,7 +516,7 @@ export default function WorkOrders() {
                     <Button variant="outline" onClick={() => setConfirmStep(false)}>
                       Back
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => {
+                    <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => {
                       if (selectAllMode) {
                         bulkAssignMutation.mutate({ ids: null, assignee: assigneeSelected, filters: { status: statusFilter, priority: priorityFilter, search } });
                       } else {
@@ -561,3 +565,4 @@ function StatCard({ icon, label, value, color }) {
     </Card>
   );
 }
+
