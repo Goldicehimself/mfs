@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mock data for finance
 const mockFinanceData = {
@@ -102,7 +103,10 @@ const mockFinanceData = {
       amount: 12500,
       date: '2026-01-15',
       vendor: 'Industrial Supplies Inc',
-      status: 'approved'
+      status: 'approved',
+      submittedBy: 'Lisa Park',
+      notes: 'Replacement filters and belts for HVAC units.',
+      attachments: ['invoice-EXP-001.pdf']
     },
     {
       id: 'EXP-002',
@@ -110,7 +114,10 @@ const mockFinanceData = {
       amount: 18200,
       date: '2026-01-18',
       vendor: 'Internal',
-      status: 'approved'
+      status: 'approved',
+      submittedBy: 'Marcus Hill',
+      notes: 'Overtime labor for weekend shutdown.',
+      attachments: ['timesheet-EXP-002.pdf']
     },
     {
       id: 'EXP-003',
@@ -118,7 +125,10 @@ const mockFinanceData = {
       amount: 2100,
       date: '2026-01-17',
       vendor: 'Various',
-      status: 'pending'
+      status: 'pending',
+      submittedBy: 'Elena Cruz',
+      notes: 'Site visit mileage and lodging.',
+      attachments: []
     },
     {
       id: 'EXP-004',
@@ -126,7 +136,10 @@ const mockFinanceData = {
       amount: 9700,
       date: '2026-01-16',
       vendor: 'Tech Equipment Co',
-      status: 'approved'
+      status: 'approved',
+      submittedBy: 'Daniel Foster',
+      notes: 'Replacement pump and control module.',
+      attachments: ['quote-EXP-004.pdf', 'receipt-EXP-004.pdf']
     }
   ]
 };
@@ -143,7 +156,7 @@ const StatCard = ({ icon: Icon, label, value, trend, color = 'indigo' }) => (
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
         {trend && (
           <p className={`text-xs mt-2 ${trend > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}% from last month
+            {trend > 0 ? 'Up' : 'Down'} {Math.abs(trend)}% from last month
           </p>
         )}
       </div>
@@ -167,19 +180,6 @@ const InvoiceCard = ({ invoice, onSelect }) => {
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'paid':
-        return '✓';
-      case 'pending':
-        return '⏱';
-      case 'overdue':
-        return '!';
-      default:
-        return '○';
-    }
-  };
-
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -192,7 +192,7 @@ const InvoiceCard = ({ invoice, onSelect }) => {
           <p className="text-sm text-gray-600 dark:text-gray-400">{invoice.clientName}</p>
         </div>
         <Badge className={getStatusColor(invoice.status)}>
-          {getStatusIcon(invoice.status)} {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
         </Badge>
       </div>
 
@@ -209,15 +209,47 @@ const InvoiceCard = ({ invoice, onSelect }) => {
 };
 
 export default function FinancePortal() {
+  const { user } = useAuth();
+  const isFinance = user?.role === 'finance';
   const [search, setSearch] = useState('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState('all');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [selectedTab, setSelectedTab] = useState('invoices');
   const [newPaymentModalOpen, setNewPaymentModalOpen] = useState(false);
   const [newExpenseModalOpen, setNewExpenseModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [requestAmount, setRequestAmount] = useState('');
+  const [requestPurpose, setRequestPurpose] = useState('');
+  const [requestNotes, setRequestNotes] = useState('');
+  const [fundRequests, setFundRequests] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fund_requests') || '[]');
+    } catch (error) {
+      return [];
+    }
+  });
+
+  const canRequestFunds = user?.role === 'finance';
+  const canApproveFunds = user?.role === 'facility_manager' || user?.role === 'admin';
+  const canViewExpenses = isFinance || canApproveFunds;
+
+  useEffect(() => {
+    if (isFinance) {
+      return;
+    }
+
+    if (selectedTab === 'invoices') {
+      setSelectedTab(canViewExpenses ? 'expenses' : 'reports');
+      return;
+    }
+
+    if (!canViewExpenses && selectedTab === 'expenses') {
+      setSelectedTab('reports');
+    }
+  }, [canViewExpenses, isFinance, selectedTab]);
 
   const filteredInvoices = useMemo(() => {
     return mockFinanceData.invoices.filter((invoice) => {
@@ -237,19 +269,76 @@ export default function FinancePortal() {
 
   const handleProcessPayment = () => {
     if (paymentAmount && paymentAmount > 0) {
-      alert(`✓ Payment of $${paymentAmount} processed for ${selectedInvoice.id}`);
+      alert(`âœ“ Payment of $${paymentAmount} processed for ${selectedInvoice.id}`);
       setNewPaymentModalOpen(false);
       setPaymentAmount('');
       setPaymentNote('');
       setSelectedInvoice(null);
     } else {
-      alert('⚠ Please enter a valid payment amount');
+      alert('âš  Please enter a valid payment amount');
     }
   };
 
   const handleAddExpense = () => {
-    alert(`✓ Expense added successfully`);
+    alert(`âœ“ Expense added successfully`);
     setNewExpenseModalOpen(false);
+  };
+
+  const persistFundRequests = (nextRequests) => {
+    setFundRequests(nextRequests);
+    localStorage.setItem('fund_requests', JSON.stringify(nextRequests));
+  };
+
+  const handleCreateFundRequest = () => {
+    const amountValue = Number.parseFloat(requestAmount);
+    if (!amountValue || amountValue <= 0 || !requestPurpose.trim()) {
+      alert('Please enter a valid amount and purpose.');
+      return;
+    }
+
+    const newRequest = {
+      id: `FR-${Date.now()}`,
+      amount: amountValue,
+      purpose: requestPurpose.trim(),
+      notes: requestNotes.trim(),
+      status: 'pending',
+      requestedBy: user?.name || user?.email || 'Finance Officer',
+      requestedAt: new Date().toISOString(),
+    };
+
+    persistFundRequests([newRequest, ...fundRequests]);
+    setRequestAmount('');
+    setRequestPurpose('');
+    setRequestNotes('');
+  };
+
+  const handleReviewFundRequest = (id, nextStatus) => {
+    if (!canApproveFunds) {
+      return;
+    }
+
+    const nextRequests = fundRequests.map((request) => {
+      if (request.id !== id) return request;
+      return {
+        ...request,
+        status: nextStatus,
+        approvedBy: user?.name || user?.email || 'Manager',
+        approvedAt: new Date().toISOString(),
+      };
+    });
+
+    persistFundRequests(nextRequests);
+  };
+
+  const getFundRequestStatusClasses = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      default:
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+    }
   };
 
   return (
@@ -299,26 +388,32 @@ export default function FinancePortal() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200 dark:border-zinc-700">
-        <button
-          onClick={() => setSelectedTab('invoices')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            selectedTab === 'invoices'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
-          }`}
-        >
-          📄 Invoices
-        </button>
-        <button
-          onClick={() => setSelectedTab('expenses')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            selectedTab === 'expenses'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
-          }`}
-        >
-          💰 Expenses
-        </button>
+        {isFinance && (
+          <>
+            <button
+              onClick={() => setSelectedTab('invoices')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                selectedTab === 'invoices'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
+              }`}
+            >
+              Invoices
+            </button>
+          </>
+        )}
+        {canViewExpenses && (
+          <button
+            onClick={() => setSelectedTab('expenses')}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              selectedTab === 'expenses'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
+            }`}
+          >
+            Expenses
+          </button>
+        )}
         <button
           onClick={() => setSelectedTab('reports')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -327,12 +422,109 @@ export default function FinancePortal() {
               : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
           }`}
         >
-          📊 Reports
+          Reports
         </button>
       </div>
 
+      {/* Fund Requests */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fund Requests</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {canRequestFunds && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Amount"
+                value={requestAmount}
+                onChange={(e) => setRequestAmount(e.target.value)}
+                className="h-10"
+              />
+              <Input
+                placeholder="Purpose"
+                value={requestPurpose}
+                onChange={(e) => setRequestPurpose(e.target.value)}
+                className="h-10"
+              />
+              <Button
+                className="bg-blue-700 hover:bg-blue-800 text-white h-10"
+                onClick={handleCreateFundRequest}
+              >
+                Submit Request
+              </Button>
+              <textarea
+                value={requestNotes}
+                onChange={(e) => setRequestNotes(e.target.value)}
+                placeholder="Notes (optional)"
+                className="md:col-span-3 w-full h-20 p-3 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {fundRequests.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">No fund requests yet.</p>
+            ) : (
+              fundRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="border border-gray-200 dark:border-zinc-700 rounded-lg p-4 bg-white dark:bg-zinc-800"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        ${request.amount.toLocaleString()} - {request.purpose}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Requested by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}
+                      </p>
+                      {request.notes && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{request.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getFundRequestStatusClasses(request.status)}>
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </Badge>
+                      {canApproveFunds && request.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleReviewFundRequest(request.id, 'approved')}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                            onClick={() => handleReviewFundRequest(request.id, 'rejected')}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {request.approvedAt && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approvedBy} on{' '}
+                      {new Date(request.approvedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Invoices Tab */}
-      {selectedTab === 'invoices' && (
+      {isFinance && selectedTab === 'invoices' && (
         <div className="space-y-4">
           {/* Filters */}
           <Card>
@@ -359,8 +551,8 @@ export default function FinancePortal() {
                         All Status
                       </span>
                     </SelectItem>
-                    <SelectItem value="paid" className="hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">✓ Paid</SelectItem>
-                    <SelectItem value="pending" className="hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">⏱ Pending</SelectItem>
+                    <SelectItem value="paid" className="hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">Paid</SelectItem>
+                    <SelectItem value="pending" className="hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">Pending</SelectItem>
                     <SelectItem value="overdue" className="hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer">! Overdue</SelectItem>
                   </SelectContent>
                 </Select>
@@ -395,7 +587,7 @@ export default function FinancePortal() {
       )}
 
       {/* Expenses Tab */}
-      {selectedTab === 'expenses' && (
+      {canViewExpenses && selectedTab === 'expenses' && (
         <div className="space-y-4">
           {/* Filters */}
           <Card>
@@ -422,18 +614,20 @@ export default function FinancePortal() {
                         All Status
                       </span>
                     </SelectItem>
-                    <SelectItem value="approved" className="hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">✓ Approved</SelectItem>
-                    <SelectItem value="pending" className="hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">⏱ Pending Review</SelectItem>
+                    <SelectItem value="approved" className="hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer">Approved</SelectItem>
+                    <SelectItem value="pending" className="hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">Pending Review</SelectItem>
                   </SelectContent>
                 </Select>
 
-                <Button 
-                  className="bg-blue-700 hover:bg-blue-800 text-white h-10"
-                  onClick={() => setNewExpenseModalOpen(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Expense
-                </Button>
+                {isFinance && (
+                  <Button 
+                    className="bg-blue-700 hover:bg-blue-800 text-white h-10"
+                    onClick={() => setNewExpenseModalOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Expense
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -453,7 +647,11 @@ export default function FinancePortal() {
                 </thead>
                 <tbody>
                   {filteredExpenses.map((expense) => (
-                    <tr key={expense.id} className="border-b border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700/50">
+                    <tr
+                      key={expense.id}
+                      className="border-b border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700/50 cursor-pointer"
+                      onClick={() => setSelectedExpense(expense)}
+                    >
                       <td className="px-6 py-3 text-sm text-gray-900 dark:text-white font-medium">{expense.category}</td>
                       <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-400">{expense.vendor}</td>
                       <td className="px-6 py-3 text-sm font-semibold text-amber-600">${expense.amount.toLocaleString()}</td>
@@ -466,7 +664,7 @@ export default function FinancePortal() {
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
                             : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                         }>
-                          {expense.status === 'approved' ? '✓ Approved' : '⏱ Pending'}
+                          {expense.status === 'approved' ? 'Approved' : 'Pending'}
                         </Badge>
                       </td>
                     </tr>
@@ -532,7 +730,7 @@ export default function FinancePortal() {
                     size="sm"
                     onClick={() => setSelectedInvoice(null)}
                   >
-                    ✕
+                    Close
                   </Button>
                 </div>
               </CardHeader>
@@ -566,13 +764,19 @@ export default function FinancePortal() {
                 <Separator />
 
                 {selectedInvoice.status !== 'paid' && (
-                  <Button 
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => setNewPaymentModalOpen(true)}
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Process Payment
-                  </Button>
+                  canApproveFunds ? (
+                    <Button 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => setNewPaymentModalOpen(true)}
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Process Payment
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-amber-700 dark:text-amber-200">
+                      Manager approval is required before releasing funds.
+                    </p>
+                  )
                 )}
               </CardContent>
             </motion.div>
@@ -582,7 +786,7 @@ export default function FinancePortal() {
 
       {/* Payment Modal */}
       <AnimatePresence>
-        {newPaymentModalOpen && (
+        {newPaymentModalOpen && canApproveFunds && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -649,9 +853,98 @@ export default function FinancePortal() {
         )}
       </AnimatePresence>
 
+      {/* Expense Detail Modal */}
+      <AnimatePresence>
+        {selectedExpense && canViewExpenses && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedExpense(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 rounded-lg w-full max-w-md"
+            >
+              <CardHeader className="border-b border-gray-200 dark:border-zinc-800">
+                <div className="flex items-start justify-between">
+                  <CardTitle>Expense {selectedExpense.id}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedExpense(null)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Category</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{selectedExpense.category}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Vendor</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{selectedExpense.vendor}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Amount</p>
+                  <p className="text-2xl font-bold text-amber-600">${selectedExpense.amount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {new Date(selectedExpense.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                  <Badge className={
+                    selectedExpense.status === 'approved'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                  }>
+                    {selectedExpense.status === 'approved' ? 'Approved' : 'Pending'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Submitted By</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {selectedExpense.submittedBy || 'Unknown'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Notes</p>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {selectedExpense.notes || 'None'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Attachments</p>
+                  {selectedExpense.attachments && selectedExpense.attachments.length > 0 ? (
+                    <ul className="text-sm text-indigo-600 dark:text-indigo-300">
+                      {selectedExpense.attachments.map((file) => (
+                        <li key={file}>{file}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-900 dark:text-white">None</p>
+                  )}
+                </div>
+              </CardContent>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Add Expense Modal */}
       <AnimatePresence>
-        {newExpenseModalOpen && (
+        {newExpenseModalOpen && isFinance && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -732,4 +1025,3 @@ export default function FinancePortal() {
     </div>
   );
 }
-

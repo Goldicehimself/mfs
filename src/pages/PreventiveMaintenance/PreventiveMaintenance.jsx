@@ -25,6 +25,13 @@ const PreventiveMaintenance = () => {
   const navigate = useNavigate();
   const { addActivity } = useActivity();
   const [currentMonth] = useState(new Date(2024, 11)); // December 2024
+  const pmTasks = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('pm_tasks') || '[]');
+    } catch (error) {
+      return [];
+    }
+  }, []);
 
   const kpiData = [
     { label: 'Scheduled Tasks', value: '247', trend: '+3%', color: '#4f46e5', icon: <Calendar size={18} /> },
@@ -248,7 +255,7 @@ const PreventiveMaintenance = () => {
                           user: 'Current User',
                           status: 'in_progress',
                         });
-                        navigate('/assets?view=schedule');
+                        navigate('/preventive-maintenance/schedule');
                       },
                       2: () => {
                         addActivity({
@@ -270,7 +277,7 @@ const PreventiveMaintenance = () => {
                           user: 'Current User',
                           status: 'pending',
                         });
-                        alert('Viewing overdue tasks...');
+                        navigate('/preventive-maintenance/overdue');
                       },
                     };
                     return handlers[idx] || (() => {});
@@ -314,9 +321,62 @@ const PreventiveMaintenance = () => {
         </Grid>
       </Grid>
 
-      {/* Upcoming Deadlines */}
+      {/* Tasks and Deadlines */}
       <Grid container spacing={3}>
-        <Grid item xs={12}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ bgcolor: '#2563eb20', color: '#2563eb', width: 36, height: 36 }}>
+                    <FilePlus size={16} />
+                  </Avatar>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Recent PM Tasks</Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => navigate('/preventive-maintenance/new')}
+                  sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}
+                >
+                  New Task
+                </Button>
+              </Box>
+              <Divider sx={{ mb: 2.5 }} />
+              {pmTasks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No PM tasks yet. Create one to see it here.
+                </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {pmTasks.slice(0, 5).map((task) => (
+                    <Box
+                      key={task.id}
+                      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#f9fafb', borderRadius: 1 }}
+                    >
+                      <Box>
+                        <Typography sx={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>
+                          {task.title}
+                        </Typography>
+                        <Typography variant="caption" color="#6b7280" sx={{ fontWeight: 500 }}>
+                          {task.asset} • Due {task.dueDate || 'TBD'}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={(task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1)}
+                        size="small"
+                        color={task.priority === 'critical' || task.priority === 'high' ? 'error' : 'warning'}
+                        variant="filled"
+                        sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
           <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <CardContent sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

@@ -41,8 +41,16 @@ const mockReportsData = {
 };
 
 export async function fetchReports() {
+  const useMockReports = import.meta.env.VITE_USE_MOCK_REPORTS === 'true';
+  if (useMockReports) {
+    return mockReportsData;
+  }
+
   try {
     const response = await axiosInstance.get('/reports');
+    if (!response.data || Object.keys(response.data).length === 0) {
+      return mockReportsData;
+    }
     return response.data;
   } catch (error) {
     return mockReportsData;

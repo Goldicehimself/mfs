@@ -59,6 +59,26 @@ const ReportsPage = () => {
     scheduleOverview = [],
   } = reports;
 
+  const safeSummary = {
+    totalWorkOrders: 10,
+    completionRate: 0,
+    avgResponseTime: 0,
+    totalCosts: 0,
+    ...summary,
+  };
+
+  const safeAssetPerformance = {
+    activeAssets: 0,
+    assetsTrend: 0,
+    uptime: 0,
+    uptimeTrend: 0,
+    criticalIssues: 0,
+    criticalTrend: 0,
+    repairCosts: 0,
+    repairTrend: 0,
+    ...assetPerformance,
+  };
+
   const handleExportReport = async () => {
     await exportReport('pdf');
   };
@@ -93,9 +113,9 @@ const ReportsPage = () => {
               label="Time Range"
               onChange={(e) => setTimeRange(e.target.value)}
             >
-              <MenuItem value="Last 7 days">Last 7 days</MenuItem>
-              <MenuItem value="Last 30 days">Last 30 days</MenuItem>
-              <MenuItem value="Last 90 days">Last 90 days</MenuItem>
+              <MenuItem value="Last 7 days">This Week</MenuItem>
+              <MenuItem value="Last 30 days">This Month</MenuItem>
+              <MenuItem value="Last 90 days">This Quarter</MenuItem>
               <MenuItem value="Last Year">Last Year</MenuItem>
             </Select>
           </FormControl>
@@ -123,7 +143,7 @@ const ReportsPage = () => {
                     Total Work Orders
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
-                    {summary.totalWorkOrders?.toLocaleString() || 0}
+                    {safeSummary.totalWorkOrders.toLocaleString()}
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: '#4f46e520', width: 42, height: 42, color: '#4f46e5' }}>
@@ -157,7 +177,7 @@ const ReportsPage = () => {
                     Completion Rate
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
-                    {summary.completionRate || 0}%
+                    {safeSummary.completionRate}%
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: '#05966920', width: 42, height: 42, color: '#059669' }}>
@@ -191,7 +211,7 @@ const ReportsPage = () => {
                     Avg Response Time
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
-                    {summary.avgResponseTime || 0}h
+                    {safeSummary.avgResponseTime}h
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: '#dc262620', width: 42, height: 42, color: '#dc2626' }}>
@@ -225,7 +245,7 @@ const ReportsPage = () => {
                     Total Costs
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
-                    ${(summary.totalCosts / 1000).toFixed(1)}K
+                    ${(safeSummary.totalCosts / 1000).toFixed(1)}K
                   </Typography>
                 </Box>
                 <Avatar sx={{ bgcolor: '#d9770620', width: 42, height: 42, color: '#d97706' }}>
@@ -380,10 +400,10 @@ const ReportsPage = () => {
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
                     Active Assets
                   </Typography>
-                  <Chip label={`${assetPerformance.assetsTrend >= 0 ? '+' : ''}${assetPerformance.assetsTrend}%`} size="small" color={assetPerformance.assetsTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+                  <Chip label={`${safeAssetPerformance.assetsTrend >= 0 ? '+' : ''}${safeAssetPerformance.assetsTrend}%`} size="small" color={safeAssetPerformance.assetsTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
-                  {assetPerformance.activeAssets || 0}
+                  {safeAssetPerformance.activeAssets}
                 </Typography>
 
                 {/* Uptime */}
@@ -392,10 +412,10 @@ const ReportsPage = () => {
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
                     Uptime
                   </Typography>
-                  <Chip label={`${assetPerformance.uptimeTrend >= 0 ? '+' : ''}${assetPerformance.uptimeTrend}%`} size="small" color={assetPerformance.uptimeTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+                  <Chip label={`${safeAssetPerformance.uptimeTrend >= 0 ? '+' : ''}${safeAssetPerformance.uptimeTrend}%`} size="small" color={safeAssetPerformance.uptimeTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
-                  {assetPerformance.uptime || 0}%
+                  {safeAssetPerformance.uptime}%
                 </Typography>
 
                 {/* Critical Issues */}
@@ -404,10 +424,10 @@ const ReportsPage = () => {
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
                     Critical Issues
                   </Typography>
-                  <Chip label={`${assetPerformance.criticalTrend >= 0 ? '+' : ''}${assetPerformance.criticalTrend}%`} size="small" color={assetPerformance.criticalTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+                  <Chip label={`${safeAssetPerformance.criticalTrend >= 0 ? '+' : ''}${safeAssetPerformance.criticalTrend}%`} size="small" color={safeAssetPerformance.criticalTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
-                  {assetPerformance.criticalIssues || 0}
+                  {safeAssetPerformance.criticalIssues}
                 </Typography>
 
                 {/* Repair Costs */}
@@ -416,10 +436,10 @@ const ReportsPage = () => {
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
                     Repair Costs
                   </Typography>
-                  <Chip label={`${assetPerformance.repairTrend >= 0 ? '+' : ''}${assetPerformance.repairTrend}%`} size="small" color={assetPerformance.repairTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+                  <Chip label={`${safeAssetPerformance.repairTrend >= 0 ? '+' : ''}${safeAssetPerformance.repairTrend}%`} size="small" color={safeAssetPerformance.repairTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
-                  ${(assetPerformance.repairCosts / 1000).toFixed(1)}K
+                  ${(safeAssetPerformance.repairCosts / 1000).toFixed(1)}K
                 </Typography>
               </Box>
             </CardContent>
@@ -469,7 +489,7 @@ const ReportsPage = () => {
         <Grid item xs={12} md={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Alert */}
-            <Card sx={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <Card sx={{ backgroundColor: '#1e40af', color: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
                   <AlertCircle size={20} />
@@ -496,15 +516,20 @@ const ReportsPage = () => {
                 </Typography>
                 <Divider sx={{ mb: 2.5 }} />
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                  {['This Week', 'This Month', 'Custom'].map((filter) => (
+                  {[
+                    { label: 'This Week', value: 'Last 7 days' },
+                    { label: 'This Month', value: 'Last 30 days' },
+                    { label: 'This Quarter', value: 'Last 90 days' },
+                    { label: 'Last Year', value: 'Last Year' },
+                  ].map((filter) => (
                     <Chip
-                      key={filter}
-                      label={filter}
+                      key={filter.value}
+                      label={filter.label}
                       clickable
-                      variant={timeRange === filter ? 'filled' : 'outlined'}
-                      color={timeRange === filter ? 'primary' : 'default'}
+                      variant={timeRange === filter.value ? 'filled' : 'outlined'}
+                      color={timeRange === filter.value ? 'primary' : 'default'}
                       size="small"
-                      onClick={() => setTimeRange(filter)}
+                      onClick={() => setTimeRange(filter.value)}
                       sx={{ fontWeight: 600, fontSize: '0.75rem' }}
                     />
                   ))}

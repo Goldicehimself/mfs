@@ -52,6 +52,45 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      if (import.meta.env.VITE_USE_LOCAL_AUTH === 'true') {
+        const users = getLocalUsers();
+        const found = users.find(u => u.email?.toLowerCase() === email?.toLowerCase());
+        if (found && found.password === password) {
+          const token = `local-${Date.now()}`;
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(found));
+          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setUser(found);
+          toast.success('Login successful (local)');
+
+          // Redirect based on role
+          switch (found.role) {
+            case 'facility_manager':
+            case 'admin':
+              navigate('/dashboard');
+              break;
+            case 'technician':
+              navigate('/technician-portal');
+              break;
+            case 'vendor':
+              navigate('/vendor-portal');
+              break;
+            case 'finance':
+              navigate('/finance-portal');
+              break;
+            case 'staff':
+              navigate('/staff-portal');
+              break;
+            default:
+              navigate('/dashboard');
+          }
+
+          return { success: true };
+        }
+        toast.error('Login failed');
+        throw new Error('Login failed');
+      }
+
       const response = await axiosInstance.post('/auth/login', { email, password });
       const { token, user } = response.data;
       

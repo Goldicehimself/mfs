@@ -12,7 +12,7 @@ import {
   FormControlLabel,
   Paper,
 } from '@mui/material';
-import { Eye, EyeOff, Wrench } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -119,8 +119,9 @@ const Login = () => {
           </Typography>
 
           <Typography variant="body2" color="text.secondary" textAlign="center" mt={1}>
-            <Link component={RouterLink} to="/" underline="hover" sx={{ color: 'var(--mp-brand)' }}>
-              ← Back to home
+            <Link component={RouterLink} to="/" underline="hover" sx={{ color: 'var(--mp-brand)', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+              <ArrowLeft size={14} />
+              Back to home
             </Link>
           </Typography>
         </Box>
@@ -225,7 +226,7 @@ const Login = () => {
             textAlign="center"
             mt={3}
           >
-            Don’t have an account?{' '}
+            Don't have an account?{' '}
             <Link href="/register" fontWeight={600} sx={{ color: 'var(--mp-brand)', '&:hover': { color: 'var(--mp-brand-dark)' } }}>
               Sign up
             </Link>
@@ -234,7 +235,7 @@ const Login = () => {
 
         <Box textAlign="center" mt={4}>
                 <Typography variant="caption" color="text.secondary">
-                  © 2024 FacilityPro. All rights reserved.
+                  (c) 2024 FacilityPro. All rights reserved.
                 </Typography>
                 <Box mt={1} display="flex" justifyContent="center" gap={2}>
                   <Link variant="caption" href="/terms">Terms of Service</Link>

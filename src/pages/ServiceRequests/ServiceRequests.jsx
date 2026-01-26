@@ -97,7 +97,7 @@ const ServiceRequests = () => {
   ];
 
   // Mock Service Requests Data
-  const allRequests = [
+  const initialRequests = [
     {
       id: '#2847',
       title: 'HVAC System Not Cooling',
@@ -107,7 +107,6 @@ const ServiceRequests = () => {
       priority: 'high',
       status: 'pending',
       statusAssignee: 'pending 2 hours ago',
-      action: 'Assign',
     },
     {
       id: '#2846',
@@ -118,7 +117,6 @@ const ServiceRequests = () => {
       priority: 'medium',
       status: 'assigned',
       statusAssignee: 'Assigned Tom Wilson',
-      action: 'View',
     },
     {
       id: '#2845',
@@ -129,7 +127,6 @@ const ServiceRequests = () => {
       priority: 'low',
       status: 'in-progress',
       statusAssignee: '',
-      action: 'View',
     },
     {
       id: '#2844',
@@ -140,7 +137,6 @@ const ServiceRequests = () => {
       priority: 'low',
       status: 'completed',
       statusAssignee: 'Yesterday',
-      action: 'View',
     },
     {
       id: '#2843',
@@ -151,15 +147,21 @@ const ServiceRequests = () => {
       priority: 'medium',
       status: 'pending',
       statusAssignee: 'pending 4 hours ago',
-      action: 'Assign',
     },
   ];
+
+  const [requests, setRequests] = useState(initialRequests);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState('');
+  const [assignNote, setAssignNote] = useState('');
 
   // Filter requests by tab
   let filteredRequests =
     currentTab === 'all'
-      ? allRequests
-      : allRequests.filter((r) => r.status === currentTab);
+      ? requests
+      : requests.filter((r) => r.status === currentTab);
 
   // Apply search filter
   if (searchQuery) {
@@ -192,11 +194,11 @@ const ServiceRequests = () => {
   );
 
   const tabs = [
-    { label: 'All', value: 'all', count: allRequests.length },
-    { label: 'Pending', value: 'pending', count: allRequests.filter(r => r.status === 'pending').length },
-    { label: 'Assigned', value: 'assigned', count: allRequests.filter(r => r.status === 'assigned').length },
-    { label: 'In Progress', value: 'in-progress', count: allRequests.filter(r => r.status === 'in-progress').length },
-    { label: 'Completed', value: 'completed', count: allRequests.filter(r => r.status === 'completed').length },
+    { label: 'All', value: 'all', count: requests.length },
+    { label: 'Pending', value: 'pending', count: requests.filter(r => r.status === 'pending').length },
+    { label: 'Assigned', value: 'assigned', count: requests.filter(r => r.status === 'assigned').length },
+    { label: 'In Progress', value: 'in-progress', count: requests.filter(r => r.status === 'in-progress').length },
+    { label: 'Completed', value: 'completed', count: requests.filter(r => r.status === 'completed').length },
   ];
 
   const getPriorityColor = (priority) => {
@@ -266,6 +268,50 @@ const ServiceRequests = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenView = (request) => {
+    setSelectedRequest(request);
+    setViewOpen(true);
+  };
+
+  const handleOpenAssign = (request) => {
+    setSelectedRequest(request);
+    setAssignee('');
+    setAssignNote('');
+    setAssignOpen(true);
+  };
+
+  const handleCloseView = () => {
+    setViewOpen(false);
+    setSelectedRequest(null);
+  };
+
+  const handleCloseAssign = () => {
+    setAssignOpen(false);
+    setSelectedRequest(null);
+  };
+
+  const handleAssignSubmit = () => {
+    if (!assignee.trim()) {
+      toast.error('Please enter an assignee');
+      return;
+    }
+
+    setRequests((prev) =>
+      prev.map((req) =>
+        req.id === selectedRequest.id
+          ? {
+              ...req,
+              status: 'assigned',
+              statusAssignee: `Assigned ${assignee.trim()}`,
+            }
+          : req
+      )
+    );
+
+    toast.success('Request assigned successfully');
+    handleCloseAssign();
   };
 
   return (
@@ -607,6 +653,11 @@ const ServiceRequests = () => {
                       <Button
                         size="small"
                         variant="outlined"
+                        onClick={() =>
+                          request.status === 'pending'
+                            ? handleOpenAssign(request)
+                            : handleOpenView(request)
+                        }
                         sx={{
                           color: '#3b82f6',
                           borderColor: '#bfdbfe',
@@ -620,7 +671,7 @@ const ServiceRequests = () => {
                           },
                         }}
                       >
-                        {request.action}
+                        {request.status === 'pending' ? 'Assign' : 'View'}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -808,6 +859,101 @@ const ServiceRequests = () => {
             }}
           >
             {loading ? 'Submitting...' : 'Submit Request'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Request Dialog */}
+      <Dialog
+        open={viewOpen}
+        onClose={handleCloseView}
+        maxWidth="sm"
+        fullWidth
+        sx={{ '& .MuiDialog-paper': { borderRadius: '16px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '18px' }}>
+          Service Request Details
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {selectedRequest && (
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Request ID</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{selectedRequest.id}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Title</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{selectedRequest.title}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Description</Typography>
+                <Typography>{selectedRequest.description}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Location</Typography>
+                <Typography>{selectedRequest.location}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Requester</Typography>
+                <Typography>{selectedRequest.requester.name} ({selectedRequest.requester.role})</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Priority</Typography>
+                <Typography>{selectedRequest.priority}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Status</Typography>
+                <Typography>{getStatusColor(selectedRequest.status).label}</Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={handleCloseView} sx={{ textTransform: 'none' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Assign Dialog */}
+      <Dialog
+        open={assignOpen}
+        onClose={handleCloseAssign}
+        maxWidth="sm"
+        fullWidth
+        sx={{ '& .MuiDialog-paper': { borderRadius: '16px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '18px' }}>
+          Assign Service Request
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Stack spacing={2}>
+            <TextField
+              label="Assignee"
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Assignment Note"
+              value={assignNote}
+              onChange={(e) => setAssignNote(e.target.value)}
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={handleCloseAssign} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAssignSubmit}
+            sx={{ textTransform: 'none' }}
+          >
+            Assign
           </Button>
         </DialogActions>
       </Dialog>

@@ -26,6 +26,10 @@ import MyAssignments from './pages/WorkOrders/MyAssignments';
 import WorkOrderDetail from './pages/WorkOrders/WorkOrderDetail';
 import WorkOrderCreate from './pages/WorkOrders/WorkOrderCreate';
 import PreventiveMaintenance from './pages/PreventiveMaintenance/PreventiveMaintenance';
+import PMTaskCreate from './pages/PreventiveMaintenance/PMTaskCreate';
+import PMCompliance from './pages/PreventiveMaintenance/PMCompliance';
+import PMOverdue from './pages/PreventiveMaintenance/PMOverdue';
+import PMScheduleInspection from './pages/PreventiveMaintenance/PMScheduleInspection';
 import Vendors from './pages/Vendors/Vendors';
 import VendorForm from './pages/Vendors/VendorForm';
 import VendorImport from './pages/Vendors/VendorImport';
@@ -137,6 +141,30 @@ const AppRoutes = () => {
       <Route path="/preventive-maintenance" element={
         <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
           <MainLayout><PreventiveMaintenance /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/preventive-maintenance/new" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><PMTaskCreate /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/preventive-maintenance/compliance" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><PMCompliance /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/preventive-maintenance/schedule" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><PMScheduleInspection /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/preventive-maintenance/overdue" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><PMOverdue /></MainLayout>
         </ProtectedRoute>
       } />
       

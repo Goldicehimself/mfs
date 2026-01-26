@@ -100,6 +100,13 @@ const Register = () => {
     },
   };
 
+  const features = [
+    'Track Work Orders Easily',
+    'Prevent Equipment Failures',
+    'Manage Vendors Efficiently',
+    'View Reports & KPIs',
+  ];
+
   return (
     <Box
       sx={{
@@ -314,7 +321,7 @@ const Register = () => {
               '&:hover': { backgroundColor: 'var(--mp-brand-dark)' },
             }}
           >
-            {loading ? 'Creating Account…' : 'Create Account'}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </Button>
 
           <Typography
@@ -334,7 +341,7 @@ const Register = () => {
         {/* Footer */}
         <Box textAlign="center" mt={4}>
           <Typography variant="caption" color="text.secondary">
-            © 2024 FacilityPro. All rights reserved.
+            (c) 2024 FacilityPro. All rights reserved.
           </Typography>
           <Box mt={1} display="flex" justifyContent="center" gap={2}>
             <Link variant="caption" href="/terms">Terms of Service</Link>

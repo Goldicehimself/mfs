@@ -144,7 +144,7 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions Banner */}
-      <Card className="border-0 shadow-md bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+      <Card className="border-0 shadow-md bg-blue-800 text-white">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
