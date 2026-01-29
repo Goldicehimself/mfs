@@ -235,6 +235,7 @@ export default function FinancePortal() {
   const canRequestFunds = user?.role === 'finance';
   const canApproveFunds = user?.role === 'facility_manager' || user?.role === 'admin';
   const canViewExpenses = isFinance || canApproveFunds;
+  const canViewFundRequests = canRequestFunds || canApproveFunds;
 
   useEffect(() => {
     if (isFinance) {
@@ -249,7 +250,10 @@ export default function FinancePortal() {
     if (!canViewExpenses && selectedTab === 'expenses') {
       setSelectedTab('reports');
     }
-  }, [canViewExpenses, isFinance, selectedTab]);
+    if (!canViewFundRequests && selectedTab === 'funds') {
+      setSelectedTab(canViewExpenses ? 'expenses' : 'reports');
+    }
+  }, [canViewExpenses, canViewFundRequests, isFinance, selectedTab]);
 
   const filteredInvoices = useMemo(() => {
     return mockFinanceData.invoices.filter((invoice) => {
@@ -414,6 +418,18 @@ export default function FinancePortal() {
             Expenses
           </button>
         )}
+        {canViewFundRequests && (
+          <button
+            onClick={() => setSelectedTab('funds')}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              selectedTab === 'funds'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300'
+            }`}
+          >
+            Request Funds
+          </button>
+        )}
         <button
           onClick={() => setSelectedTab('reports')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -426,102 +442,104 @@ export default function FinancePortal() {
         </button>
       </div>
 
-      {/* Fund Requests */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fund Requests</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {canRequestFunds && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Amount"
-                value={requestAmount}
-                onChange={(e) => setRequestAmount(e.target.value)}
-                className="h-10"
-              />
-              <Input
-                placeholder="Purpose"
-                value={requestPurpose}
-                onChange={(e) => setRequestPurpose(e.target.value)}
-                className="h-10"
-              />
-              <Button
-                className="bg-blue-700 hover:bg-blue-800 text-white h-10"
-                onClick={handleCreateFundRequest}
-              >
-                Submit Request
-              </Button>
-              <textarea
-                value={requestNotes}
-                onChange={(e) => setRequestNotes(e.target.value)}
-                placeholder="Notes (optional)"
-                className="md:col-span-3 w-full h-20 p-3 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {fundRequests.length === 0 ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400">No fund requests yet.</p>
-            ) : (
-              fundRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="border border-gray-200 dark:border-zinc-700 rounded-lg p-4 bg-white dark:bg-zinc-800"
+      {/* Fund Requests Tab */}
+      {selectedTab === 'funds' && canViewFundRequests && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Fund Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {canRequestFunds && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Amount"
+                  value={requestAmount}
+                  onChange={(e) => setRequestAmount(e.target.value)}
+                  className="h-10"
+                />
+                <Input
+                  placeholder="Purpose"
+                  value={requestPurpose}
+                  onChange={(e) => setRequestPurpose(e.target.value)}
+                  className="h-10"
+                />
+                <Button
+                  className="bg-blue-700 hover:bg-blue-800 text-white h-10"
+                  onClick={handleCreateFundRequest}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        ${request.amount.toLocaleString()} - {request.purpose}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Requested by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}
-                      </p>
-                      {request.notes && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{request.notes}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getFundRequestStatusClasses(request.status)}>
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                      </Badge>
-                      {canApproveFunds && request.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() => handleReviewFundRequest(request.id, 'approved')}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-300 text-red-700 hover:bg-red-50"
-                            onClick={() => handleReviewFundRequest(request.id, 'rejected')}
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {request.approvedAt && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approvedBy} on{' '}
-                      {new Date(request.approvedAt).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              ))
+                  Submit Request
+                </Button>
+                <textarea
+                  value={requestNotes}
+                  onChange={(e) => setRequestNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  className="md:col-span-3 w-full h-20 p-3 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="space-y-3">
+              {fundRequests.length === 0 ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">No fund requests yet.</p>
+              ) : (
+                fundRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="border border-gray-200 dark:border-zinc-700 rounded-lg p-4 bg-white dark:bg-zinc-800"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          ${request.amount.toLocaleString()} - {request.purpose}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Requested by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}
+                        </p>
+                        {request.notes && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{request.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getFundRequestStatusClasses(request.status)}>
+                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        </Badge>
+                        {canApproveFunds && request.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => handleReviewFundRequest(request.id, 'approved')}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-300 text-red-700 hover:bg-red-50"
+                              onClick={() => handleReviewFundRequest(request.id, 'rejected')}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {request.approvedAt && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approvedBy} on{' '}
+                        {new Date(request.approvedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invoices Tab */}
       {isFinance && selectedTab === 'invoices' && (
