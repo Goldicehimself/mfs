@@ -30,6 +30,9 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.config?.suppressToast) {
+      return Promise.reject(error);
+    }
     if (error.response) {
       // Handle specific status codes
       switch (error.response.status) {

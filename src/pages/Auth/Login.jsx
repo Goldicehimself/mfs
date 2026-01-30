@@ -12,7 +12,7 @@ import {
   FormControlLabel,
   Paper,
 } from '@mui/material';
-import { ArrowLeft, Eye, EyeOff, Wrench } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Wrench,Copyright} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -233,9 +233,10 @@ const Login = () => {
           </Typography>
         </Box>
 
-        <Box textAlign="center" mt={4}>
-                <Typography variant="caption" color="text.secondary">
-                  (c) 2024 FacilityPro. All rights reserved.
+        <Box textAlign="center" mt={4} >
+                <Typography variant="caption" color="text.secondary" display="flex" justifyContent="center" gap={1}
+                alignItems="center">
+                 <Copyright size={12} /> 2026 FacilityPro. All rights reserved.
                 </Typography>
                 <Box mt={1} display="flex" justifyContent="center" gap={2}>
                   <Link variant="caption" href="/terms">Terms of Service</Link>

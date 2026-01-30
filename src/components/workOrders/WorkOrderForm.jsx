@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Plus, Delete, ArrowLeft, Upload } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { createWorkOrder } from '../../services/workOrderService';
-import { useQuery } from 'react-query';
+import { createWorkOrder } from '../../api/workOrders';
+import { useQuery, useQueryClient } from 'react-query';
 import { getAssets } from '../../api/assets';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 export default function WorkOrderForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { handleSubmit, control, watch } = useForm({
+  const queryClient = useQueryClient();
+  const { handleSubmit, control, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       title: '',
       priority: 'medium',
@@ -25,16 +25,18 @@ export default function WorkOrderForm() {
       instructions: '',
       parts: [],
       requestedBy: user?.name || '',
-      assignTo: '',
-      scheduledDate: '',
+      assignedTo: '',
+      dueDate: '',
       estimatedDuration: '',
       recurring: false,
     },
   });
 
   const [parts, setParts] = useState([]);
-  const [files, setFiles] = useState([]);
+  const [fileItems, setFileItems] = useState([]);
   const [assetQuery, setAssetQuery] = useState('');
+  const selectedAsset = watch('asset');
+  const selectedAssignee = watch('assignedTo');
 
   const { data: assets = [], isLoading: assetsLoading } = useQuery(
     ['assets', assetQuery],
@@ -50,9 +52,19 @@ export default function WorkOrderForm() {
   );
 
   const onSubmit = async (data) => {
-    const payload = { ...data, parts, attachments: files };
+    const attachments = fileItems.map((item) => ({
+      name: item.name,
+      type: item.type,
+      size: item.size,
+      url: item.previewUrl || '',
+    }));
+    const photos = fileItems
+      .filter((item) => item.isImage && item.previewUrl)
+      .map((item) => ({ url: item.previewUrl, name: item.name, type: item.type }));
+    const payload = { ...data, parts, attachments, photos };
     try {
       await createWorkOrder(payload);
+      queryClient.invalidateQueries('workOrders');
       toast.success('Work order created successfully');
       navigate('/work-orders');
     } catch (err) {
@@ -72,11 +84,55 @@ export default function WorkOrderForm() {
     setParts((p) => p.filter((_, i) => i !== index));
   };
 
-  const onFilesChange = (e) => {
-    setFiles(Array.from(e.target.files));
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const onFilesChange = async (e) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    const mapped = await Promise.all(selected.map(async (file) => {
+      const isImage = file.type.startsWith('image/');
+      let previewUrl = '';
+      if (isImage) {
+        try {
+          previewUrl = await fileToDataUrl(file);
+        } catch (err) {
+          previewUrl = '';
+        }
+      }
+      return {
+        id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        isImage,
+        previewUrl,
+      };
+    }));
+    setFileItems((prev) => [...prev, ...mapped]);
+    e.target.value = '';
   };
 
-  const priority = watch('priority');
+  const removeFile = (id) => {
+    setFileItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const assignees = useMemo(() => {
+    const localUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
+    const technicians = localUsers.filter(u => u.role === 'technician');
+    if (technicians.length > 0) return technicians;
+    return [
+      { id: 'tech1', name: 'John Doe' },
+      { id: 'tech2', name: 'Jane Smith' },
+    ];
+  }, []);
+  const imageItems = fileItems.filter((item) => item.isImage && item.previewUrl);
+  const otherItems = fileItems.filter((item) => !item.isImage || !item.previewUrl);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-8">
@@ -111,7 +167,7 @@ export default function WorkOrderForm() {
                 <Controller
                   name="title"
                   control={control}
-                  rules={{ required: true }}
+                  rules={{ required: 'Title is required' }}
                   render={({ field }) => (
                     <input 
                       {...field}
@@ -120,6 +176,9 @@ export default function WorkOrderForm() {
                     />
                   )}
                 />
+                {errors.title && (
+                  <p className="text-xs text-red-600 mt-1">{errors.title.message}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -144,6 +203,7 @@ export default function WorkOrderForm() {
                   <Controller
                     name="serviceCategory"
                     control={control}
+                    rules={{ required: 'Service category is required' }}
                     render={({ field }) => (
                       <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Select category...</option>
@@ -156,6 +216,9 @@ export default function WorkOrderForm() {
                   />
                 </div>
               </div>
+              {errors.serviceCategory && (
+                <p className="text-xs text-red-600 mt-1">{errors.serviceCategory.message}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -167,18 +230,19 @@ export default function WorkOrderForm() {
             <CardContent className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Select Asset</label>
-                <Controller
-                  name="asset"
-                  control={control}
-                  render={({ field }) => (
-                    <input 
-                      type="text"
-                      placeholder="Search for asset..."
-                      onChange={(e) => setAssetQuery(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  )}
+                <input
+                  type="text"
+                  value={assetQuery}
+                  placeholder="Search for asset..."
+                  onChange={(e) => setAssetQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+                {assetsLoading && assetQuery.trim() && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">Searching assets...</p>
+                )}
+                {!assetsLoading && assetQuery.trim() && assets.length === 0 && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">No assets found for "{assetQuery}"</p>
+                )}
                 {assets.length > 0 && (
                   <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
                     {assets.map(asset => (
@@ -186,7 +250,7 @@ export default function WorkOrderForm() {
                         key={asset.id}
                         type="button"
                         onClick={() => {
-                          document.querySelector('input[name="asset"]')?.setAttribute('value', asset.id);
+                          setValue('asset', asset, { shouldDirty: true, shouldTouch: true });
                           setAssetQuery('');
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
@@ -195,6 +259,25 @@ export default function WorkOrderForm() {
                         <p className="text-xs text-zinc-500">{asset.category || asset.model}</p>
                       </button>
                     ))}
+                  </div>
+                )}
+                {!!selectedAsset && (
+                  <div className="mt-3 flex items-center justify-between rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{selectedAsset.name}</p>
+                      <p className="text-xs text-indigo-700 dark:text-indigo-300">{selectedAsset.category || selectedAsset.model || 'Selected asset'}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setValue('asset', '', { shouldDirty: true, shouldTouch: true });
+                        setAssetQuery('');
+                      }}
+                    >
+                      Clear
+                    </Button>
                   </div>
                 )}
               </div>
@@ -227,7 +310,7 @@ export default function WorkOrderForm() {
                 <Controller
                   name="description"
                   control={control}
-                  rules={{ required: true }}
+                  rules={{ required: 'Description is required' }}
                   render={({ field }) => (
                     <textarea 
                       {...field}
@@ -237,6 +320,9 @@ export default function WorkOrderForm() {
                     />
                   )}
                 />
+                {errors.description && (
+                  <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>
+                )}
               </div>
 
               <div>
@@ -261,7 +347,7 @@ export default function WorkOrderForm() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Required Parts & Materials</h2>
-              <Button size="sm" onClick={addPart} className="bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1">
+              <Button type="button" size="sm" onClick={addPart} className="bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1">
                 <Plus size={14} /> Add Item
               </Button>
             </CardHeader>
@@ -308,16 +394,40 @@ export default function WorkOrderForm() {
                   <input type="file" multiple onChange={onFilesChange} className="hidden" />
                 </div>
               </label>
-              {files.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {files.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
-                      <span className="text-sm text-zinc-900 dark:text-zinc-100">{f.name}</span>
-                      <button type="button" onClick={() => setFiles(files.filter((_, idx) => idx !== i))} className="text-red-600 hover:text-red-700">
-                        <Delete size={16} />
-                      </button>
+              {fileItems.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">No attachments yet</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {imageItems.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {imageItems.map((item) => (
+                        <div key={item.id} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800">
+                          <img src={item.previewUrl} alt={item.name} className="h-28 w-full object-cover" />
+                          <div className="px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 truncate">{item.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(item.id)}
+                            className="absolute top-2 right-2 bg-white/90 dark:bg-zinc-900/90 text-red-600 hover:text-red-700 rounded-full p-1 shadow"
+                          >
+                            <Delete size={14} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {otherItems.length > 0 && (
+                    <div className="space-y-2">
+                      {otherItems.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                          <span className="text-sm text-zinc-900 dark:text-zinc-100">{item.name}</span>
+                          <button type="button" onClick={() => removeFile(item.id)} className="text-red-600 hover:text-red-700">
+                            <Delete size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -348,27 +458,59 @@ export default function WorkOrderForm() {
               <div>
                 <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Assign to Technician</label>
                 <Controller
-                  name="assignTo"
+                  name="assignedTo"
                   control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (value && !value.id) return 'Please select a technician';
+                      return true;
+                    },
+                  }}
                   render={({ field }) => (
-                    <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <select
+                      {...field}
+                      value={field.value?.id || ''}
+                      onChange={(e) => {
+                        const next = assignees.find(a => a.id === e.target.value) || '';
+                        field.onChange(next);
+                      }}
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
                       <option value="">Unassigned</option>
-                      <option value="tech1">John Doe</option>
-                      <option value="tech2">Jane Smith</option>
+                      {assignees.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
                     </select>
                   )}
                 />
+                {!!selectedAssignee && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                    Assigned to: <span className="font-medium text-zinc-800 dark:text-zinc-200">{selectedAssignee.name}</span>
+                  </p>
+                )}
+                {errors.assignedTo && (
+                  <p className="text-xs text-red-600 mt-1">{errors.assignedTo.message}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Scheduled Date</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Due Date</label>
                 <Controller
-                  name="scheduledDate"
+                  name="dueDate"
                   control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (selectedAssignee && !value) return 'Due date is required when assigned';
+                      return true;
+                    },
+                  }}
                   render={({ field }) => (
                     <input {...field} type="date" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   )}
                 />
+                {errors.dueDate && (
+                  <p className="text-xs text-red-600 mt-1">{errors.dueDate.message}</p>
+                )}
               </div>
 
               <div>
@@ -376,10 +518,19 @@ export default function WorkOrderForm() {
                 <Controller
                   name="estimatedDuration"
                   control={control}
+                  rules={{
+                    validate: (value) => {
+                      if (!value) return true;
+                      return /\d/.test(value) || 'Include a numeric duration (e.g., 2 hours)';
+                    },
+                  }}
                   render={({ field }) => (
                     <input {...field} placeholder="e.g., 2 hours" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   )}
                 />
+                {errors.estimatedDuration && (
+                  <p className="text-xs text-red-600 mt-1">{errors.estimatedDuration.message}</p>
+                )}
               </div>
 
               <div className="border-t border-gray-200 dark:border-zinc-700 pt-4">

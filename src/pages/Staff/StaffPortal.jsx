@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ClipboardList, Clock } from 'lucide-react';
+import { useQuery } from 'react-query';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '../../contexts/AuthContext';
-import mockWorkOrders from '../../mocks/mockWorkOrders';
+import { getWorkOrders } from '../../api/workOrders';
 
 const StaffPortal = () => {
   const { user } = useAuth();
@@ -22,9 +23,18 @@ const StaffPortal = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dueFilter, setDueFilter] = useState('all');
 
+  const { data: workOrders = [], isLoading } = useQuery(
+    ['workOrders', { scope: 'staff' }],
+    () => getWorkOrders()
+  );
+
+  const workOrdersList = Array.isArray(workOrders)
+    ? workOrders
+    : (workOrders?.workOrders || workOrders?.data || []);
+
   const myWorkOrders = useMemo(
-    () => mockWorkOrders.filter((order) => order.assignedTo?.name === currentUserName),
-    [currentUserName]
+    () => workOrdersList.filter((order) => order.assignedTo?.name === currentUserName),
+    [currentUserName, workOrdersList]
   );
 
   const filteredWorkOrders = useMemo(() => {
@@ -192,7 +202,11 @@ const StaffPortal = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredWorkOrders.length === 0 ? (
+          {isLoading ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Loading work orders...
+            </p>
+          ) : filteredWorkOrders.length === 0 ? (
             <p className="text-sm text-gray-600 dark:text-gray-400">
               You do not have matching work orders.
             </p>

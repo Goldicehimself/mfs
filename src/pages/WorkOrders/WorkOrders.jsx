@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Search, MoreHorizontal, Eye, Edit2, Trash2, Plus, Download, X, ArrowUp, ArrowDown, ArrowUpDown, AlertCircle, Clock, CheckCircle2, Zap } from 'lucide-react';
-import { getWorkOrders, deleteWorkOrder, bulkAssignWorkOrders } from '../../api/workOrders';
+import { getWorkOrders, deleteWorkOrder, bulkAssignWorkOrders, updateWorkOrderStatus } from '../../api/workOrders';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export default function WorkOrders() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
+  const [updatingId, setUpdatingId] = useState(null);
 
   // Read URL search params and apply filters
   useEffect(() => {
@@ -125,6 +126,21 @@ export default function WorkOrders() {
     onError: () => toast.error('Failed to delete'),
   });
 
+  const statusMutation = useMutation(
+    ({ id, status }) => updateWorkOrderStatus(id, status),
+    {
+      onMutate: ({ id }) => {
+        setUpdatingId(id);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries('workOrders');
+        toast.success('Status updated');
+      },
+      onError: () => toast.error('Failed to update status'),
+      onSettled: () => setUpdatingId(null),
+    }
+  );
+
   const stats = useMemo(() => {
     const total = workOrdersList.length;
     const open = workOrdersList.filter(w => w.status === 'open').length;
@@ -136,13 +152,19 @@ export default function WorkOrders() {
 
   const categories = useMemo(() => {
     const set = new Set();
-    workOrdersList.forEach(w => w.category && set.add(w.category));
+    workOrdersList.forEach(w => {
+      const value = w.category || w.serviceCategory || w.serviceType;
+      if (value) set.add(value);
+    });
     return Array.from(set);
   }, [workOrdersList]);
 
   const locations = useMemo(() => {
     const set = new Set();
-    workOrdersList.forEach(w => w.location && set.add(w.location.name));
+    workOrdersList.forEach(w => {
+      const value = w.location?.name || w.location;
+      if (value) set.add(value);
+    });
     return Array.from(set);
   }, [workOrdersList]);
 
@@ -175,8 +197,9 @@ export default function WorkOrders() {
       in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
       overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      cancelled: 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200',
     };
-    const icons = { open: '📋', in_progress: '⚙️', completed: '✓', overdue: '⚠️' };
+    const icons = { open: '📋', in_progress: '⚙️', completed: '✓', overdue: '⚠️', cancelled: '❌' };
     return <Badge className={`${variants[s] || variants.open} font-semibold`}>{icons[s]} {s.replace('_', ' ')}</Badge>;
   }
 
@@ -349,29 +372,52 @@ export default function WorkOrders() {
                       <td className="px-4 py-3 hidden lg:table-cell"><span className="text-sm text-zinc-600 dark:text-zinc-400">{wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : '—'}</span></td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`)} className="text-xs">
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`, { state: { workOrder: wo } })} className="text-xs">
                             <Eye size={14} /> View
                           </Button>
                           {wo.status === 'open' && (
                             <Button 
                               size="sm" 
                               className="bg-blue-700 hover:bg-blue-800 text-white text-xs"
-                              onClick={() => alert(`Starting work order ${wo.id}...`)}
+                              onClick={() => statusMutation.mutate({ id: wo.id, status: 'in_progress' })}
+                              disabled={statusMutation.isLoading && updatingId === wo.id}
                             >
                               Start
+                            </Button>
+                          )}
+                          {wo.status === 'overdue' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-rose-600 hover:bg-rose-700 text-white text-xs"
+                              onClick={() => statusMutation.mutate({ id: wo.id, status: 'in_progress' })}
+                              disabled={statusMutation.isLoading && updatingId === wo.id}
+                            >
+                              Start Now
                             </Button>
                           )}
                           {wo.status === 'in_progress' && (
                             <Button 
                               size="sm" 
                               className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
-                              onClick={() => alert(`Completing work order ${wo.id}...`)}
+                              onClick={() => statusMutation.mutate({ id: wo.id, status: 'completed' })}
+                              disabled={statusMutation.isLoading && updatingId === wo.id}
                             >
                               Complete
                             </Button>
                           )}
                           {wo.status === 'completed' && <Button size="sm" variant="outline" className="text-xs">Completed</Button>}
-                          {wo.status === 'overdue' && <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white text-xs">Overdue</Button>}
+                          {wo.status === 'cancelled' && <Button size="sm" variant="outline" className="text-xs">Cancelled</Button>}
+                          {(wo.status === 'open' || wo.status === 'in_progress' || wo.status === 'overdue') && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => statusMutation.mutate({ id: wo.id, status: 'cancelled' })}
+                              disabled={statusMutation.isLoading && updatingId === wo.id}
+                            >
+                              Cancel
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

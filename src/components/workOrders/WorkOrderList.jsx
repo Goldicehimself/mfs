@@ -1,5 +1,6 @@
 import React from 'react';
+import WorkOrders from '../../pages/WorkOrders/WorkOrders';
 
 export default function WorkOrderList() {
-  return <div>WorkOrderList (placeholder)</div>;
+  return <WorkOrders />;
 }

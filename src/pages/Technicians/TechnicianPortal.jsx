@@ -34,8 +34,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useQuery } from 'react-query';
+import { useAuth } from '../../contexts/AuthContext';
+import { getWorkOrders } from '../../api/workOrders';
 
-// Mock data for technician work orders
+// Mock data for technician profile info
 const mockTechnicianData = {
   technician: {
     id: 'tech-001',
@@ -49,119 +52,6 @@ const mockTechnicianData = {
     certifications: ['HVAC', 'Electrical', 'Plumbing'],
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
   },
-  workOrders: [
-    {
-      id: 'WO-2401',
-      title: 'HVAC System Maintenance - Building A',
-      location: 'Building A, Floor 3',
-      priority: 'high',
-      status: 'in_progress',
-      dueDate: '2026-01-20',
-      estimatedHours: 4,
-      actualHours: 2.5,
-      description: 'Quarterly HVAC system inspection and filter replacement',
-      assetId: 'ASSET-001',
-      assetName: 'Central HVAC System',
-      assignedDate: '2026-01-18',
-      progress: 65,
-      materials: ['Air Filter', 'Refrigerant', 'Lubricant'],
-      notes: 'System running normally, filter needs replacement',
-      replacedParts: [
-        { id: 1, name: 'Air Filter HVAC-2000', originalCost: 45, replacedDate: '2026-01-18', quantity: 1 }
-      ],
-      extraCosts: [
-        { id: 1, description: 'Extended service call (+1 hour)', amount: 50, receipt: 'receipt_001.pdf', date: '2026-01-18' }
-      ],
-      totalExtraCost: 50
-    },
-    {
-      id: 'WO-2402',
-      title: 'Elevator Safety Inspection',
-      location: 'Building B, Lobby',
-      priority: 'critical',
-      status: 'pending',
-      dueDate: '2026-01-19',
-      estimatedHours: 2,
-      actualHours: 0,
-      description: 'Monthly elevator safety certification',
-      assetId: 'ASSET-005',
-      assetName: 'Main Elevator Unit',
-      assignedDate: '2026-01-18',
-      progress: 0,
-      materials: ['Inspection Tag', 'Documentation'],
-      notes: 'Overdue - needs immediate attention',
-      replacedParts: [],
-      extraCosts: [],
-      totalExtraCost: 0
-    },
-    {
-      id: 'WO-2403',
-      title: 'Lighting System Repair',
-      location: 'Building C, Hallway',
-      priority: 'medium',
-      status: 'completed',
-      dueDate: '2026-01-18',
-      estimatedHours: 1.5,
-      actualHours: 1.25,
-      description: 'Replace LED fixtures in hallway C-200',
-      assetId: 'ASSET-008',
-      assetName: 'Lighting Panel C',
-      assignedDate: '2026-01-17',
-      progress: 100,
-      materials: ['LED Fixtures', 'Wire'],
-      notes: 'All fixtures replaced, system tested',
-      replacedParts: [
-        { id: 1, name: 'LED Fixture 50W', originalCost: 35, replacedDate: '2026-01-18', quantity: 4 },
-        { id: 2, name: 'Electrical Wire 10ft', originalCost: 12, replacedDate: '2026-01-18', quantity: 2 }
-      ],
-      extraCosts: [],
-      totalExtraCost: 0
-    },
-    {
-      id: 'WO-2404',
-      title: 'Plumbing Maintenance',
-      location: 'Building A, Restroom',
-      priority: 'low',
-      status: 'scheduled',
-      dueDate: '2026-01-25',
-      estimatedHours: 3,
-      actualHours: 0,
-      description: 'Pipe inspection and valve maintenance',
-      assetId: 'ASSET-012',
-      assetName: 'Main Water Supply',
-      assignedDate: '2026-01-18',
-      progress: 0,
-      materials: ['Valve Kit', 'Inspection Camera'],
-      notes: 'Scheduled for next week',
-      replacedParts: [],
-      extraCosts: [],
-      totalExtraCost: 0
-    },
-    {
-      id: 'WO-2405',
-      title: 'Emergency Door Lock Replacement',
-      location: 'Building B, Exit Door',
-      priority: 'high',
-      status: 'in_progress',
-      dueDate: '2026-01-20',
-      estimatedHours: 2,
-      actualHours: 1,
-      description: 'Replace faulty emergency exit lock',
-      assetId: 'ASSET-015',
-      assetName: 'Emergency Exit Lock',
-      assignedDate: '2026-01-18',
-      progress: 50,
-      materials: ['Door Lock', 'Bolts', 'Hinges'],
-      notes: 'Lock mechanism replaced, testing in progress',
-      replacedParts: [
-        { id: 1, name: 'Emergency Lock Mechanism', originalCost: 120, replacedDate: '2026-01-18', quantity: 1 }
-      ],
-      extraCosts: [
-        { id: 1, description: 'Emergency additional lock installation', amount: 75, receipt: 'receipt_002.pdf', date: '2026-01-18' }
-      ],
-      totalExtraCost: 75
-    },
-  ],
   metrics: {
     completedToday: 2,
     inProgress: 2,
@@ -185,7 +75,8 @@ const statusColorMap = {
   scheduled: 'bg-blue-100 text-blue-800 border-blue-300',
   in_progress: 'bg-amber-100 text-amber-800 border-amber-300',
   completed: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  cancelled: 'bg-red-100 text-red-800 border-red-300'
+  cancelled: 'bg-red-100 text-red-800 border-red-300',
+  overdue: 'bg-rose-100 text-rose-800 border-rose-300',
 };
 
 // Stat Card Component
@@ -271,7 +162,7 @@ const WorkOrderCard = ({ order, onViewDetails }) => {
               <div>
                 <p className="text-gray-600 dark:text-gray-400">Status</p>
                 <Badge className={`${statusColor} border mt-1`}>
-                  {order.status.replace('_', ' ').charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
+                  {formatStatusLabel(order.status)}
                 </Badge>
               </div>
               <div>
@@ -397,6 +288,7 @@ const TechnicianDetailsCard = ({ technician, metrics }) => {
 
 // Main Technician Portal Component
 export default function TechnicianPortal() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -418,6 +310,64 @@ export default function TechnicianPortal() {
   const [newPart, setNewPart] = useState({ name: '', cost: '', quantity: 1 });
   const [addCostModalOpen, setAddCostModalOpen] = useState(false);
   const [newCost, setNewCost] = useState({ description: '', amount: '', receipt: '' });
+
+  const { data: workOrders = [], isLoading } = useQuery(
+    ['workOrders', { scope: 'technician' }],
+    () => getWorkOrders()
+  );
+
+  const workOrdersList = Array.isArray(workOrders)
+    ? workOrders
+    : (workOrders?.workOrders || workOrders?.data || []);
+
+  const currentUserId = user?.id || null;
+  const currentUserName = user?.name || mockTechnicianData.technician.name;
+
+  const assignedOrders = useMemo(() => {
+    return workOrdersList.filter((order) => {
+      if (currentUserId) return order.assignedTo?.id === currentUserId;
+      return order.assignedTo?.name === currentUserName;
+    });
+  }, [workOrdersList, currentUserId, currentUserName]);
+
+  const normalizeStatus = (status, dueDate) => {
+    if (status === 'overdue') return 'overdue';
+    if (status === 'open') return 'pending';
+    if (!status && dueDate && new Date(dueDate) < new Date()) return 'overdue';
+    return status || 'pending';
+  };
+
+  const formatStatusLabel = (status) => {
+    const map = {
+      pending: 'Pending',
+      scheduled: 'Scheduled',
+      in_progress: 'In Progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      overdue: 'Overdue',
+    };
+    return map[status] || status;
+  };
+
+  const normalizedOrders = useMemo(() => {
+    return assignedOrders.map((order) => {
+      const dueDate = order.dueDate || order.scheduledDate || order.createdAt;
+      const status = normalizeStatus(order.status, dueDate);
+      const progress =
+        status === 'completed' ? 100 : status === 'in_progress' ? 50 : 0;
+      return {
+        ...order,
+        status,
+        dueDate,
+        progress,
+        location: order.location?.name || order.location || '—',
+        assetName: order.asset?.name || order.assetName || '—',
+        estimatedHours: order.estimatedHours || 0,
+        actualHours: order.actualHours || 0,
+        notes: order.notes || order.description || '',
+      };
+    });
+  }, [assignedOrders]);
 
   // Handle Update Progress
   const handleUpdateProgress = () => {
@@ -523,69 +473,89 @@ export default function TechnicianPortal() {
   };
 
   const filteredOrders = useMemo(() => {
-    return mockTechnicianData.workOrders.filter((order) => {
+    return normalizedOrders.filter((order) => {
       if (statusFilter !== 'all' && order.status !== statusFilter) return false;
       if (priorityFilter !== 'all' && order.priority !== priorityFilter) return false;
       if (search && !order.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [search, statusFilter, priorityFilter]);
+  }, [search, statusFilter, priorityFilter, normalizedOrders]);
 
   const stats = useMemo(() => {
+    const pending = normalizedOrders.filter(wo => wo.status === 'pending').length;
+    const inProgress = normalizedOrders.filter(wo => wo.status === 'in_progress').length;
+    const completed = normalizedOrders.filter(wo => wo.status === 'completed').length;
     return {
-      pending: mockTechnicianData.workOrders.filter(wo => wo.status === 'pending').length,
-      inProgress: mockTechnicianData.workOrders.filter(wo => wo.status === 'in_progress').length,
-      completed: mockTechnicianData.workOrders.filter(wo => wo.status === 'completed').length,
+      pending,
+      inProgress,
+      completed,
     };
-  }, []);
+  }, [normalizedOrders]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Technician Details */}
         <TechnicianDetailsCard
-          technician={mockTechnicianData.technician}
+          technician={{
+            ...mockTechnicianData.technician,
+            name: currentUserName,
+          }}
           metrics={mockTechnicianData.metrics}
         />
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard
-            icon={<AlertCircle className="h-5 w-5" />}
-            title="Pending"
-            value={stats.pending}
-            color="rose"
-            subtext="Awaiting assignment"
-          />
-          <StatCard
-            icon={<Clock className="h-5 w-5" />}
-            title="In Progress"
-            value={stats.inProgress}
-            color="amber"
-            subtext="Active work orders"
-          />
-          <StatCard
-            icon={<CheckCircle2 className="h-5 w-5" />}
-            title="Completed"
-            value={stats.completed}
-            color="emerald"
-            subtext="This month"
-          />
-          <StatCard
-            icon={<TrendingUp className="h-5 w-5" />}
-            title="Avg Completion"
-            value={`${mockTechnicianData.metrics.averageCompletionTime}h`}
-            color="indigo"
-            subtext="Per order"
-          />
-          <StatCard
-            icon={<Star className="h-5 w-5" />}
-            title="Satisfaction"
-            value={mockTechnicianData.metrics.satisfactionRating}
-            color="purple"
-            subtext="Rating"
-          />
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, idx) => (
+              <Card key={idx} className="border">
+                <CardContent className="p-4">
+                  <div className="h-4 w-24 bg-gray-200 dark:bg-zinc-800 rounded mb-3 animate-pulse" />
+                  <div className="h-8 w-16 bg-gray-200 dark:bg-zinc-800 rounded mb-2 animate-pulse" />
+                  <div className="h-3 w-20 bg-gray-200 dark:bg-zinc-800 rounded animate-pulse" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              icon={<AlertCircle className="h-5 w-5" />}
+              title="Pending"
+              value={stats.pending}
+              color="rose"
+              subtext="Awaiting assignment"
+            />
+            <StatCard
+              icon={<Clock className="h-5 w-5" />}
+              title="In Progress"
+              value={stats.inProgress}
+              color="amber"
+              subtext="Active work orders"
+            />
+            <StatCard
+              icon={<CheckCircle2 className="h-5 w-5" />}
+              title="Completed"
+              value={stats.completed}
+              color="emerald"
+              subtext="This month"
+            />
+            <StatCard
+              icon={<TrendingUp className="h-5 w-5" />}
+              title="Avg Completion"
+              value={`${mockTechnicianData.metrics.averageCompletionTime}h`}
+              color="indigo"
+              subtext="Per order"
+            />
+            <StatCard
+              icon={<Star className="h-5 w-5" />}
+              title="Satisfaction"
+              value={mockTechnicianData.metrics.satisfactionRating}
+              color="purple"
+              subtext="Rating"
+            />
+          </div>
+        )}
 
         {/* Filters Section */}
         <Card className="border-0 shadow-sm">
@@ -651,7 +621,11 @@ export default function TechnicianPortal() {
             Work Orders ({filteredOrders.length})
           </h2>
           
-          {filteredOrders.length > 0 ? (
+          {isLoading ? (
+            <Card className="text-center p-8">
+              <p className="text-gray-500 dark:text-gray-400">Loading work orders...</p>
+            </Card>
+          ) : filteredOrders.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <AnimatePresence>
                 {filteredOrders.map((order) => (
@@ -706,7 +680,7 @@ export default function TechnicianPortal() {
                     </div>
                     <div className="text-right">
                       <Badge className={`${statusColorMap[selectedOrder.status]} border mb-2`}>
-                        {selectedOrder.status.replace('_', ' ')}
+                        {formatStatusLabel(selectedOrder.status)}
                       </Badge>
                       <Badge className={`${priorityColorMap[selectedOrder.priority]} border ml-2`}>
                         {selectedOrder.priority}

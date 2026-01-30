@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, LogOut, Settings, User, Wrench } from "lucide-react";
+import { Menu, LogOut, Settings, User, Wrench, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { motion } from 'framer-motion';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -20,6 +20,12 @@ import NotificationTester from "../Notifications/NotificationTester";
 
 const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("mp_sidebar_collapsed");
+    return saved === "true";
+  });
+  const [sidebarHover, setSidebarHover] = useState(false);
+  const hoverTimeoutRef = React.useRef(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -30,6 +36,10 @@ const MainLayout = ({ children }) => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [mobileOpen]);
+
+  useEffect(() => {
+    localStorage.setItem("mp_sidebar_collapsed", String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const getRoleDisplay = (role) => {
     const roles = {
@@ -47,14 +57,14 @@ const MainLayout = ({ children }) => {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {/* ================= HEADER ================= */}
       <header
-        className="
+        className={`
           sticky top-0 z-50 h-16
           flex items-center justify-between
           px-6
-          md:ml-72
           border-b border-slate-200
           bg-white
-        "
+          ${sidebarCollapsed && !sidebarHover ? "md:ml-20" : "md:ml-72"}
+        `}
         style={{ fontFamily: '"Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif' }}
       >
 
@@ -89,6 +99,7 @@ const MainLayout = ({ children }) => {
                 <div className="text-xs text-slate-500">Maintenance Made Simple</div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -189,15 +200,36 @@ const MainLayout = ({ children }) => {
       <aside
         className={`
           fixed left-0 top-0 z-40
-          h-screen w-72
+          h-screen
           bg-white border-r border-slate-200 shadow-sm
           overflow-y-auto
-          transition-transform duration-300
+          transition-all duration-300
+          ${sidebarCollapsed && !sidebarHover ? "w-20" : "w-72"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
+        onMouseEnter={() => {
+          if (!sidebarCollapsed) return;
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+          }
+          setSidebarHover(true);
+        }}
+        onMouseLeave={() => {
+          if (!sidebarCollapsed) return;
+          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = setTimeout(() => {
+            setSidebarHover(false);
+            hoverTimeoutRef.current = null;
+          }, 150);
+        }}
       >
-        <NavigationMenu onCloseMobile={() => setMobileOpen(false)} />
+        <NavigationMenu
+          onCloseMobile={() => setMobileOpen(false)}
+          collapsed={sidebarCollapsed && !sidebarHover}
+          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* Mobile overlay */}
@@ -209,7 +241,7 @@ const MainLayout = ({ children }) => {
       )}
 
       {/* ================= MAIN ================= */}
-      <main className="p-4 md:p-6 md:ml-72">
+      <main className={`p-4 md:p-6 ${sidebarCollapsed && !sidebarHover ? "md:ml-20" : "md:ml-72"}`}>
         {children}
       </main>
 

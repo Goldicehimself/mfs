@@ -7,7 +7,7 @@ export const getWorkOrders = async (params = {}) => {
 
 export const getWorkOrder = async (id) => {
   try {
-    const response = await axiosInstance.get(`/work-orders/${id}`);
+    const response = await axiosInstance.get(`/work-orders/${id}`, { suppressToast: true });
     return response.data;
   } catch (error) {
     return await workOrderService.getWorkOrder(id);
@@ -16,7 +16,7 @@ export const getWorkOrder = async (id) => {
 
 export const createWorkOrder = async (data) => {
   try {
-    const response = await axiosInstance.post('/work-orders', data);
+    const response = await axiosInstance.post('/work-orders', data, { suppressToast: true });
     return response.data;
   } catch (error) {
     return await workOrderService.createWorkOrder(data);
@@ -25,7 +25,7 @@ export const createWorkOrder = async (data) => {
 
 export const updateWorkOrder = async (id, data) => {
   try {
-    const response = await axiosInstance.put(`/work-orders/${id}`, data);
+    const response = await axiosInstance.put(`/work-orders/${id}`, data, { suppressToast: true });
     return response.data;
   } catch (error) {
     // Best-effort: update in local mock if present
@@ -42,7 +42,7 @@ export const updateWorkOrder = async (id, data) => {
 
 export const deleteWorkOrder = async (id) => {
   try {
-    const response = await axiosInstance.delete(`/work-orders/${id}`);
+    const response = await axiosInstance.delete(`/work-orders/${id}`, { suppressToast: true });
     return response.data;
   } catch (error) {
     return await workOrderService.deleteWorkOrder(id);
@@ -54,7 +54,7 @@ export const updateWorkOrderStatus = async (id, status, notes = '') => {
     const response = await axiosInstance.patch(`/work-orders/${id}/status`, {
       status,
       notes,
-    });
+    }, { suppressToast: true });
     return response.data;
   } catch (error) {
     const wo = await workOrderService.getWorkOrder(id);
@@ -75,7 +75,18 @@ export const assignWorkOrder = async (id, assigneeId) => {
     });
     return response.data;
   } catch (error) {
-    // Not implemented in mock
+    const wo = await workOrderService.getWorkOrder(id);
+    let assignee = null;
+    if (assigneeId) {
+      const localUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
+      assignee =
+        localUsers.find((u) => u.id === assigneeId) ||
+        (wo?.potentialAssignees || []).find((u) => u.id === assigneeId) ||
+        { id: assigneeId, name: `User ${assigneeId}` };
+    }
+    if (wo) {
+      return await workOrderService.assignWorkOrder(id, assignee);
+    }
     throw error;
   }
 };
