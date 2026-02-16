@@ -48,9 +48,11 @@ import {
   VerifiedUser,
   AccountCircle,
   ArrowBack,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import { getHomeRoute } from '../../utils/roleHome';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -75,14 +77,17 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [certificates, setCertificates] = useState(user?.certificates || []);
   const fileInputRef = React.useRef(null);
+  const certificateInputRef = React.useRef(null);
 
   // Keyboard shortcut to exit profile page
   useEffect(() => {
+    setCertificates(user?.certificates || []);
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         // Navigate back to dashboard or previous page
-        navigate('/dashboard');
+        navigate(getHomeRoute(user?.role));
       }
     };
 
@@ -192,6 +197,65 @@ const Profile = () => {
     }
   };
 
+  const handleCertificateUpload = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const validFiles = [];
+    const rejectedFiles = [];
+
+    files.forEach((file) => {
+      const isPdf = file.type === 'application/pdf';
+      const isImage = file.type.startsWith('image/');
+      if (!isPdf && !isImage) {
+        rejectedFiles.push(file.name);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (rejectedFiles.length > 0) {
+      toast.error(`Unsupported files skipped: ${rejectedFiles.join(', ')}`);
+    }
+
+    if (validFiles.length === 0) return;
+
+    const readers = validFiles.map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) =>
+            resolve({
+              id: `cert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              uploadedAt: new Date().toISOString(),
+              dataUrl: e.target.result,
+            });
+          reader.readAsDataURL(file);
+        })
+    );
+
+    Promise.all(readers).then((newCerts) => {
+      const next = [...newCerts, ...certificates];
+      setCertificates(next);
+      updateUser({ certificates: next });
+      toast.success(
+        newCerts.length > 1 ? 'Certificates uploaded' : 'Certificate uploaded'
+      );
+    });
+
+    event.target.value = '';
+  };
+
+  const handleRemoveCertificate = (id) => {
+    const next = certificates.filter((c) => c.id !== id);
+    setCertificates(next);
+    updateUser({ certificates: next });
+    toast.info('Certificate removed');
+  };
+
   if (!user) {
     return (
       <Box>
@@ -230,7 +294,7 @@ const Profile = () => {
                 <ArrowBack />
               </motion.div>
             }
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(getHomeRoute(user?.role))}
             sx={{
               color: 'primary.main',
               fontWeight: 500,
@@ -427,6 +491,106 @@ const Profile = () => {
                   Last login: {new Date().toLocaleDateString()}
                 </Typography>
               </Alert>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Certificates */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Certificates
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+
+              <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ mb: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<VerifiedUser />}
+                  onClick={() => certificateInputRef.current?.click()}
+                >
+                  Upload Certificate
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  PDF or image files are supported.
+                </Typography>
+                <input
+                  type="file"
+                  ref={certificateInputRef}
+                  onChange={handleCertificateUpload}
+                  accept="application/pdf,image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                />
+              </Box>
+
+              {certificates.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No certificates uploaded yet.
+                </Typography>
+              ) : (
+                <Grid container spacing={2}>
+                  {certificates.map((cert) => {
+                    const isPdf = cert.type === 'application/pdf';
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={cert.id}>
+                        <Card variant="outlined" sx={{ height: '100%' }}>
+                          <CardContent>
+                            <Box display="flex" alignItems="center" gap={2}>
+                              {isPdf ? (
+                                <Box
+                                  sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 1,
+                                    bgcolor: 'grey.100',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <DescriptionIcon />
+                                </Box>
+                              ) : (
+                                <Avatar
+                                  variant="rounded"
+                                  src={cert.dataUrl}
+                                  sx={{ width: 48, height: 48 }}
+                                />
+                              )}
+                              <Box flex={1}>
+                                <Typography variant="body2" fontWeight={600} noWrap>
+                                  {cert.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(cert.uploadedAt).toLocaleDateString()}
+                                </Typography>
+                              </Box>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRemoveCertificate(cert.id)}
+                                title="Remove"
+                              >
+                                <Cancel fontSize="small" />
+                              </IconButton>
+                            </Box>
+                            <Box mt={1}>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => window.open(cert.dataUrl, '_blank')}
+                              >
+                                View
+                              </Button>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
             </CardContent>
           </Card>
         </Grid>

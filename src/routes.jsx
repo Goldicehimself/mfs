@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { getHomeRoute } from './utils/roleHome';
 
 // Layout Components
 import MainLayout from './components/common/Layout/MainLayout';
@@ -67,6 +68,26 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
   
   return children;
+};
+
+const UnauthorizedPage = () => {
+  const { user } = useAuth();
+  const homeRoute = getHomeRoute(user?.role);
+
+  return (
+    <AuthLayout>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Access Denied</h1>
+        <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#666' }}>You don't have permission to access this page.</p>
+        <button
+          onClick={() => window.location.href = homeRoute}
+          style={{ padding: '0.75rem 1.5rem', backgroundColor: '#4F46E5', color: 'white', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem', border: 'none' }}
+        >
+          Go to Home
+        </button>
+      </div>
+    </AuthLayout>
+  );
 };
 
 const AppRoutes = () => {
@@ -270,17 +291,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/unauthorized" element={
-        <AuthLayout>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Access Denied</h1>
-            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: '#666' }}>You don't have permission to access this page.</p>
-            <button onClick={() => window.location.href = '/dashboard'} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#4F46E5', color: 'white', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '1rem', border: 'none' }}>
-              Go to Dashboard
-            </button>
-          </div>
-        </AuthLayout>
-      } />
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

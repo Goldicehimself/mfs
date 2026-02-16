@@ -253,6 +253,19 @@ export default function StaffManagement() {
     },
   ]);
 
+  const getCertificatesForStaff = (staff) => {
+    if (!staff?.email) return [];
+    try {
+      const users = JSON.parse(localStorage.getItem('local_users') || '[]');
+      const match = users.find(
+        (u) => u.email?.toLowerCase() === staff.email.toLowerCase()
+      );
+      return match?.certificates || [];
+    } catch (e) {
+      return [];
+    }
+  };
+
 
   const filteredStaff = useMemo(() => {
     return mockStaffData.staffMembers.filter((staff) => {
@@ -700,6 +713,50 @@ export default function StaffManagement() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Certificates */}
+                <div className="rounded-lg border border-gray-200 dark:border-zinc-700 p-4">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Award className="h-4 w-4 text-emerald-600" />
+                    Certificates
+                  </h4>
+                  {getCertificatesForStaff(selectedStaff).length === 0 ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      No certificates uploaded.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {getCertificatesForStaff(selectedStaff).map((cert) => (
+                        <button
+                          key={cert.id}
+                          type="button"
+                          onClick={() => window.open(cert.dataUrl, '_blank')}
+                          className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-zinc-700 p-3 hover:border-emerald-400 hover:shadow-sm transition"
+                        >
+                          {cert.type === 'application/pdf' ? (
+                            <div className="h-10 w-10 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-semibold">
+                              PDF
+                            </div>
+                          ) : (
+                            <img
+                              src={cert.dataUrl}
+                              alt={cert.name}
+                              className="h-10 w-10 rounded object-cover"
+                            />
+                          )}
+                          <div className="text-left">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[160px]">
+                              {cert.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(cert.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Assignment Summary */}

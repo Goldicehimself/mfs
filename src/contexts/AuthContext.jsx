@@ -245,6 +245,21 @@ export const AuthProvider = ({ children }) => {
     const updatedUser = { ...user, ...updates };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
+
+    // Keep local users in sync so managers/admins can view updates
+    try {
+      const users = getLocalUsers();
+      const updatedUsers = users.map((u) => {
+        if (u.id && updatedUser.id && u.id === updatedUser.id) return { ...u, ...updatedUser };
+        if (u.email && updatedUser.email && u.email.toLowerCase() === updatedUser.email.toLowerCase()) {
+          return { ...u, ...updatedUser };
+        }
+        return u;
+      });
+      saveLocalUsers(updatedUsers);
+    } catch (e) {
+      // ignore local sync failures
+    }
   };
 
   const value = {
