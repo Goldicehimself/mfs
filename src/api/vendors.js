@@ -1,5 +1,13 @@
 import axiosInstance from './axiosConfig';
 
+const normalizeVendor = (vendor) => {
+  if (!vendor) return vendor;
+  return {
+    ...vendor,
+    id: vendor.id || vendor._id,
+  };
+};
+
 const mockVendors = [
   {
     id: 1,
@@ -98,7 +106,12 @@ export async function fetchVendors() {
       return mockVendors;
     }
     const response = await axiosInstance.get('/vendors');
-    return response.data;
+    const payload = response.data?.data;
+    if (Array.isArray(payload)) return payload.map(normalizeVendor);
+    if (Array.isArray(payload?.vendors)) {
+      return { ...payload, vendors: payload.vendors.map(normalizeVendor) };
+    }
+    return payload;
   } catch (error) {
     return mockVendors;
   }
@@ -110,7 +123,7 @@ export async function getVendorById(id) {
       return mockVendors.find((v) => v.id === parseInt(id));
     }
     const response = await axiosInstance.get(`/vendors/${id}`);
-    return response.data;
+    return normalizeVendor(response.data?.data);
   } catch (error) {
     return mockVendors.find((v) => v.id === parseInt(id));
   }
@@ -122,7 +135,7 @@ export async function createVendor(vendorData) {
       return { ...vendorData, id: Date.now() };
     }
     const response = await axiosInstance.post('/vendors', vendorData);
-    return response.data;
+    return normalizeVendor(response.data?.data);
   } catch (error) {
     const newVendor = { ...vendorData, id: Date.now() };
     return newVendor;
@@ -135,7 +148,7 @@ export async function updateVendor(id, vendorData) {
       return { ...vendorData, id };
     }
     const response = await axiosInstance.put(`/vendors/${id}`, vendorData);
-    return response.data;
+    return normalizeVendor(response.data?.data);
   } catch (error) {
     throw error;
   }
@@ -158,7 +171,7 @@ export async function importVendors(vendors) {
       return { successful: vendors.length, failed: 0, errors: [] };
     }
     const response = await axiosInstance.post('/vendors/import', { vendors });
-    return response.data;
+    return response.data?.data;
   } catch (error) {
     return { successful: vendors.length, failed: 0, errors: [] };
   }

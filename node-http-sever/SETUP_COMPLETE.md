@@ -131,7 +131,7 @@ node-http-sever/
 - Email validation & uniqueness
 - Password auto-hashing on save
 - Birth checking (6 char minimum)
-- Role assignment (6 roles: admin, manager, technician, staff, vendor, user)
+- Role assignment (6 roles: admin, facility_manager, technician, staff, vendor, user)
 - Last login tracking
 
 **Asset**
@@ -269,3 +269,4 @@ The backend folder structure is **production-ready** and fully integrated with M
 *Created: February 16, 2026*
 *Backend Framework: Express.js + MongoDB*
 *Architecture: MVC with Service Layer*
+

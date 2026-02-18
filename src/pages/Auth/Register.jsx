@@ -15,71 +15,146 @@ import {
   Paper,
   Checkbox,
   FormControlLabel,
-  RadioGroup,
-  Radio,
-  FormLabel,
 } from '@mui/material';
 import { Eye, EyeOff, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useInvitations } from '../../contexts/InvitationContext';
-import { useForm } from 'react-hook-form';
-import { Controller } from 'react-hook-form';
+import { toast } from 'react-toastify';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
 const schema = yup.object({
-  name: yup.string().required('Name is required'),
+  mode: yup.string().oneOf(['org', 'join']).required(),
+  organizationName: yup.string().when('mode', {
+    is: 'org',
+    then: (s) => s.required('Organization name is required'),
+    otherwise: (s) => s.optional(),
+  }),
+  industry: yup.string().optional(),
+  orgCode: yup.string().optional(),
+  inviteCode: yup.string().optional(),
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string().required('Phone number is required'),
-  gender: yup.string().required('Gender is required'),
+  department: yup.string().optional(),
   password: yup.string().min(6).required('Password is required'),
   confirmPassword: yup
     .string()
     .oneOf([yup.ref('password')], 'Passwords must match')
     .required(),
-  role: yup.string().required('Role is required'),
-});
+  role: yup.string().when(['mode', 'inviteCode'], {
+    is: (mode, inviteCode) => mode === 'join' && !inviteCode,
+    then: (s) => s.required('Role is required'),
+    otherwise: (s) => s.optional(),
+  }),
+}).test(
+  'org-or-invite',
+  'Organization code or invite code is required',
+  (values) => values?.mode !== 'join' || !!(values.orgCode || values.inviteCode)
+);
 
 const Register = () => {
   const { register: registerUser } = useAuth();
-  const { isTokenValid, getInvitationByToken, acceptInvitation } = useInvitations();
   const [searchParams] = useSearchParams();
-  const invitationToken = searchParams.get('invite');
-  const isAdminInvitation = invitationToken && isTokenValid(invitationToken);
+  const inviteCodeFromQuery = searchParams.get('invite') || '';
   
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOrgCode, setShowOrgCode] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     control,
+    setValue,
+    watch,
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { 
-      role: isAdminInvitation ? 'admin' : 'technician', 
-      gender: 'male' 
+    defaultValues: {
+      mode: inviteCodeFromQuery ? 'join' : 'org',
+      inviteCode: inviteCodeFromQuery || '',
+      role: 'technician',
     },
   });
+
+  const mode = watch('mode');
+  const inviteCode = watch('inviteCode');
+  const orgCodeRegister = register('orgCode');
+  const inviteCodeRegister = register('inviteCode');
 
   const onSubmit = async (data) => {
     setServerError('');
     setLoading(true);
 
-    const { name, email, phone, gender, password, role } = data;
-    const result = await registerUser({ name, email, phone, gender, password, role });
+    const {
+      mode: submitMode,
+      organizationName,
+      industry,
+      orgCode,
+      inviteCode,
+      firstName,
+      lastName,
+      email,
+      phone,
+      department,
+      password,
+      role,
+    } = data;
+    const result = await registerUser({
+      mode: submitMode,
+      organizationName,
+      industry,
+      orgCode: orgCode?.toUpperCase(),
+      inviteCode: inviteCode?.toUpperCase(),
+      firstName,
+      lastName,
+      email,
+      phone,
+      department,
+      password,
+      role,
+    });
 
     setLoading(false);
     if (!result.success) {
       setServerError('Registration failed.');
-    } else if (isAdminInvitation) {
-      // Accept the invitation
-      acceptInvitation(invitationToken, result.userId);
+    } else if (submitMode === 'org' && result.orgCode) {
+      toast.success(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontWeight: 600 }}>Organization created</div>
+          <div style={{ fontSize: 13 }}>
+            Org Code: <strong>{result.orgCode}</strong>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(result.orgCode);
+                toast.info('Org code copied');
+              }
+            }}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid #e2e8f0',
+              background: '#fff',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            Copy org code
+          </button>
+        </div>,
+        { autoClose: 9000 }
+      );
     }
   };
 
@@ -177,12 +252,119 @@ const Register = () => {
 
         {/* Form */}
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+          <input type="hidden" {...register('mode')} />
+          <Box display="flex" gap={1} mb={2}>
+            <Button
+              type="button"
+              variant={mode === 'org' ? 'contained' : 'outlined'}
+              onClick={() => setValue('mode', 'org')}
+              sx={{
+                flex: 1,
+                textTransform: 'none',
+                borderColor: 'var(--mp-brand)',
+                color: mode === 'org' ? '#fff' : 'var(--mp-brand)',
+                backgroundColor: mode === 'org' ? 'var(--mp-brand)' : 'transparent',
+                '&:hover': { backgroundColor: mode === 'org' ? 'var(--mp-brand-dark)' : 'rgba(0,0,0,0.04)' },
+              }}
+            >
+              Create Organization
+            </Button>
+            <Button
+              type="button"
+              variant={mode === 'join' ? 'contained' : 'outlined'}
+              onClick={() => setValue('mode', 'join')}
+              sx={{
+                flex: 1,
+                textTransform: 'none',
+                borderColor: 'var(--mp-brand)',
+                color: mode === 'join' ? '#fff' : 'var(--mp-brand)',
+                backgroundColor: mode === 'join' ? 'var(--mp-brand)' : 'transparent',
+                '&:hover': { backgroundColor: mode === 'join' ? 'var(--mp-brand-dark)' : 'rgba(0,0,0,0.04)' },
+              }}
+            >
+              Join Organization
+            </Button>
+          </Box>
+
+          {mode === 'org' && (
+            <>
+              <TextField
+                {...fieldProps}
+                label="Organization Name"
+                {...register('organizationName')}
+                error={!!errors.organizationName}
+                helperText={errors.organizationName?.message}
+              />
+
+              <TextField
+                {...fieldProps}
+                label="Industry (optional)"
+                {...register('industry')}
+                error={!!errors.industry}
+                helperText={errors.industry?.message}
+              />
+            </>
+          )}
+
+          {mode === 'join' && (
+            <>
+              <TextField
+                {...fieldProps}
+                label="Organization Code"
+                type={showOrgCode ? 'text' : 'password'}
+                {...orgCodeRegister}
+                error={!!errors.orgCode}
+                helperText={errors.orgCode?.message}
+                inputProps={{ maxLength: 12 }}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  orgCodeRegister.onChange(e);
+                  setValue('orgCode', value, { shouldValidate: true });
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowOrgCode(v => !v)}
+                      >
+                        {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                {...fieldProps}
+                label="Invite Code (optional)"
+                {...inviteCodeRegister}
+                error={!!errors.inviteCode}
+                helperText={errors.inviteCode?.message}
+                inputProps={{ maxLength: 12 }}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  inviteCodeRegister.onChange(e);
+                  setValue('inviteCode', value, { shouldValidate: true });
+                }}
+              />
+            </>
+          )}
+
           <TextField
             {...fieldProps}
-            label="Full Name"
-            {...register('name')}
-            error={!!errors.name}
-            helperText={errors.name?.message}
+            label="First Name"
+            {...register('firstName')}
+            error={!!errors.firstName}
+            helperText={errors.firstName?.message}
+          />
+
+          <TextField
+            {...fieldProps}
+            label="Last Name"
+            {...register('lastName')}
+            error={!!errors.lastName}
+            helperText={errors.lastName?.message}
           />
 
           <TextField
@@ -201,29 +383,13 @@ const Register = () => {
             helperText={errors.phone?.message}
           />
 
-          <FormControl component="fieldset" margin="normal" error={!!errors.gender}>
-            <FormLabel component="legend">Gender</FormLabel>
-            <Controller
-              name="gender"
-              control={control}
-              rules={{ required: 'Gender is required' }}
-              render={({ field }) => (
-                <RadioGroup
-                  row
-                  {...field}
-                >
-                  <FormControlLabel value="male" control={<Radio />} label="Male" />
-                  <FormControlLabel value="female" control={<Radio />} label="Female" />
-                  <FormControlLabel value="other" control={<Radio />} label="Other" />
-                </RadioGroup>
-              )}
-            />
-            {errors.gender && (
-              <Typography variant="caption" color="error">
-                {errors.gender.message}
-              </Typography>
-            )}
-          </FormControl>
+          <TextField
+            {...fieldProps}
+            label="Department (optional)"
+            {...register('department')}
+            error={!!errors.department}
+            helperText={errors.department?.message}
+          />
 
           <TextField
             {...fieldProps}
@@ -267,29 +433,29 @@ const Register = () => {
             }}
           />
 
-          <FormControl fullWidth margin="normal" error={!!errors.role}>
-            <InputLabel>Role</InputLabel>
-            <Controller
-              name="role"
-              control={control}
-              rules={{ required: 'Role is required' }}
-              render={({ field }) => (
-                <Select label="Role" {...field} disabled={isAdminInvitation}>
-                  {isAdminInvitation && <MenuItem value="admin">Administrator (Invited)</MenuItem>}
-                  <MenuItem value="facility_manager">Facility Manager</MenuItem>
-                  <MenuItem value="technician">Maintenance Technician</MenuItem>
-                  <MenuItem value="vendor">Vendor</MenuItem>
-                  <MenuItem value="staff">Staff</MenuItem>
-                  <MenuItem value="finance">Finance</MenuItem>
-                </Select>
+          {mode === 'join' && (
+            <FormControl fullWidth margin="normal" error={!!errors.role}>
+              <InputLabel>Role</InputLabel>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select label="Role" {...field} disabled={!!inviteCode}>
+                    <MenuItem value="facility_manager">Facility Manager</MenuItem>
+                    <MenuItem value="technician">Maintenance Technician</MenuItem>
+                    <MenuItem value="vendor">Vendor</MenuItem>
+                    <MenuItem value="staff">Staff</MenuItem>
+                    <MenuItem value="finance">Finance</MenuItem>
+                  </Select>
+                )}
+              />
+              {errors.role && (
+                <Typography variant="caption" color="error">
+                  {errors.role.message}
+                </Typography>
               )}
-            />
-            {errors.role && (
-              <Typography variant="caption" color="error">
-                {errors.role.message}
-              </Typography>
-            )}
-          </FormControl>
+            </FormControl>
+          )}
 
           {/* Terms */}
           <FormControlLabel

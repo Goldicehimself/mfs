@@ -1,11 +1,10 @@
 // Work Order Model
 const mongoose = require('mongoose');
-const constants = require('../config/constants');
+const constants = require('../constants/constants');
 
 const workOrderSchema = new mongoose.Schema({
   workOrderNumber: {
     type: String,
-    unique: true,
     required: true,
     trim: true
   },
@@ -43,10 +42,20 @@ const workOrderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  team: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   startDate: Date,
   dueDate: {
     type: Date,
@@ -70,6 +79,7 @@ const workOrderSchema = new mongoose.Schema({
     }
   }],
   attachments: [String],
+  photos: [String],
   tags: [String],
   location: String,
   createdAt: {
@@ -89,5 +99,6 @@ workOrderSchema.index({ status: 1, priority: 1 });
 workOrderSchema.index({ assignedTo: 1 });
 workOrderSchema.index({ asset: 1 });
 workOrderSchema.index({ createdAt: -1 });
+workOrderSchema.index({ organization: 1, workOrderNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('WorkOrder', workOrderSchema);

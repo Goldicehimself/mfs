@@ -18,6 +18,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const normalizeUser = (value) => {
+    if (!value) return value;
+    const firstName = value.firstName || value.first_name;
+    const lastName = value.lastName || value.last_name;
+    const name = value.name || [firstName, lastName].filter(Boolean).join(' ');
+    const role = value.role;
+    return {
+      ...value,
+      role,
+      id: value.id || value._id,
+      name,
+    };
+  };
+
   useEffect(() => {
     // Initialize default admin if no admin exists
     const existingUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
@@ -30,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         email: 'admin@facilitypro.com',
         password: 'Admin@123456', // Development only
         role: 'admin',
+        orgCode: 'LOCAL',
         createdAt: new Date('2024-01-01').toISOString(),
       };
       const updatedUsers = [...existingUsers, defaultAdmin];
@@ -38,11 +53,29 @@ export const AuthProvider = ({ children }) => {
 
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
+
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      setUser(normalizeUser(JSON.parse(userData)));
       axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setLoading(false);
+      return;
     }
+
+    if (token && import.meta.env.VITE_USE_LOCAL_AUTH !== 'true') {
+      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axiosInstance
+        .get('/auth/profile')
+        .then((response) => {
+          const apiUser = normalizeUser(response.data?.data);
+          if (apiUser) {
+            localStorage.setItem('user', JSON.stringify(apiUser));
+            setUser(apiUser);
+          }
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+
     setLoading(false);
   }, []);
 
@@ -50,21 +83,25 @@ export const AuthProvider = ({ children }) => {
   const getLocalUsers = () => JSON.parse(localStorage.getItem('local_users') || '[]');
   const saveLocalUsers = (users) => localStorage.setItem('local_users', JSON.stringify(users));
 
-  const login = async (email, password) => {
+  const login = async (email, password, orgCode) => {
     try {
       if (import.meta.env.VITE_USE_LOCAL_AUTH === 'true') {
         const users = getLocalUsers();
-        const found = users.find(u => u.email?.toLowerCase() === email?.toLowerCase());
+        const found = users.find(
+          u => u.email?.toLowerCase() === email?.toLowerCase() && u.orgCode === orgCode
+        );
         if (found && found.password === password) {
+          const normalized = normalizeUser(found);
           const token = `local-${Date.now()}`;
           localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(found));
+          localStorage.setItem('user', JSON.stringify(normalized));
+          localStorage.setItem('orgCode', orgCode);
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          setUser(found);
+          setUser(normalized);
           toast.success('Login successful (local)');
 
           // Redirect based on role
-          switch (found.role) {
+          switch (normalized.role) {
             case 'facility_manager':
             case 'admin':
               navigate('/dashboard');
@@ -91,18 +128,25 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Login failed');
       }
 
-      const response = await axiosInstance.post('/auth/login', { email, password });
-      const { token, user } = response.data;
+      const response = await axiosInstance.post('/auth/login', { email, password, orgCode });
+      const payload = response.data?.data || {};
+      const token = payload.token;
+      const apiUser = normalizeUser(payload.user);
       
+      if (!token || !apiUser) {
+        throw new Error('Login failed');
+      }
+
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(apiUser));
+      localStorage.setItem('orgCode', orgCode);
       axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      setUser(user);
+      setUser(apiUser);
       toast.success('Login successful');
       
       // Redirect based on role
-      switch (user.role) {
+      switch (apiUser.role) {
         case 'facility_manager':
         case 'admin':
           navigate('/dashboard');
@@ -128,17 +172,21 @@ export const AuthProvider = ({ children }) => {
       // Fallback to localStorage users when API is unavailable or registration API isn't set up
       try {
         const users = getLocalUsers();
-        const found = users.find(u => u.email?.toLowerCase() === email?.toLowerCase());
+        const found = users.find(
+          u => u.email?.toLowerCase() === email?.toLowerCase() && u.orgCode === orgCode
+        );
         if (found && found.password === password) {
+          const normalized = normalizeUser(found);
           const token = `local-${Date.now()}`;
           localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(found));
+          localStorage.setItem('user', JSON.stringify(normalized));
+          localStorage.setItem('orgCode', orgCode);
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          setUser(found);
+          setUser(normalized);
           toast.success('Login successful (local)');
 
           // Redirect based on role
-          switch (found.role) {
+          switch (normalized.role) {
             case 'facility_manager':
             case 'admin':
               navigate('/dashboard');
@@ -174,18 +222,49 @@ export const AuthProvider = ({ children }) => {
   // Register a new user
   const register = async (userData) => {
     try {
-      // Try API first
-      const response = await axiosInstance.post('/auth/register', userData);
+      const firstName = userData.firstName || (userData.name || '').trim().split(' ')[0] || 'User';
+      const lastName =
+        userData.lastName ||
+        (userData.name || '').trim().split(' ').slice(1).join(' ') ||
+        'User';
+      const mappedRole = userData.role;
+      let response;
+
+      if (userData.mode === 'org') {
+        response = await axiosInstance.post('/auth/register-org', {
+          organizationName: userData.organizationName,
+          industry: userData.industry,
+          firstName: firstName || 'User',
+          lastName,
+          email: userData.email,
+          password: userData.password,
+        });
+      } else {
+        const payload = {
+          firstName: firstName || 'User',
+          lastName,
+          email: userData.email,
+          password: userData.password,
+          role: mappedRole,
+        };
+        if (userData.orgCode) payload.orgCode = userData.orgCode;
+        if (userData.inviteCode) payload.inviteCode = userData.inviteCode;
+        response = await axiosInstance.post('/auth/register', payload);
+      }
+      const payload = response.data?.data || {};
+      const apiUser = normalizeUser(payload.user);
+      const orgCode = payload.organization?.orgCode || userData.orgCode;
       // Ensure we have a local record for development fallback so users can sign in
       try {
         const users = getLocalUsers();
         if (!users.find(u => u.email === userData.email)) {
           users.push({
-            id: `local-${Date.now()}`,
-            name: userData.name,
-            email: userData.email,
-            role: userData.role || 'technician',
+            id: apiUser?.id || `local-${Date.now()}`,
+            name: apiUser?.name || [firstName, lastName].filter(Boolean).join(' '),
+            email: apiUser?.email || userData.email,
+            role: apiUser?.role || userData.role || 'technician',
             password: userData.password,
+            orgCode,
           });
           saveLocalUsers(users);
         }
@@ -194,9 +273,11 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Do NOT auto-login after registration; inform the user and redirect to login
-      toast.success('Registration successful — please sign in');
+      if (userData.mode !== 'org') {
+        toast.success('Registration successful - please sign in');
+      }
       navigate('/login');
-      return { success: true };
+      return { success: true, orgCode, mode: userData.mode };
     } catch (error) {
       // Fallback to localStorage-based registration
       try {
@@ -207,23 +288,27 @@ export const AuthProvider = ({ children }) => {
           return { success: false, error: msg };
         }
 
+        const localOrgCode = userData.orgCode || `LOCAL${Date.now().toString().slice(-4)}`;
         const newUser = {
           id: `local-${Date.now()}`,
-          name: userData.name,
+          name: [firstName, lastName].filter(Boolean).join(' '),
           email: userData.email,
           role: userData.role || 'technician',
           avatar: userData.avatar || null,
           // NOTE: storing plaintext password for local dev only
           password: userData.password,
+          orgCode: localOrgCode,
         };
 
         users.push(newUser);
         saveLocalUsers(users);
 
         // Do NOT set token or auto-login for local registrations; redirect to login instead
-        toast.success('Registration successful (local) — please sign in');
+        if (userData.mode !== 'org') {
+          toast.success('Registration successful (local) - please sign in');
+        }
         navigate('/login');
-        return { success: true };
+        return { success: true, orgCode: localOrgCode, mode: userData.mode };
       } catch (e) {
         // Show a short, generic message only (do not display server-provided messages).
         toast.error('Registration failed');
@@ -242,7 +327,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updates) => {
-    const updatedUser = { ...user, ...updates };
+    const updatedUser = normalizeUser({ ...user, ...updates });
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
 
@@ -278,3 +363,7 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+
+
+

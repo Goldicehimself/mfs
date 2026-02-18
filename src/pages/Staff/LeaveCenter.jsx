@@ -1,47 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { createLeave, fetchMyLeaves, fetchPendingLeaves, approveLeave, rejectLeave } from '@/api/leave';
 
 const LeaveCenter = () => {
-  const [leaveRequests, setLeaveRequests] = useState([
-    {
-      id: 1,
-      staffName: 'Current User',
-      type: 'Annual',
-      startDate: '2026-01-28',
-      endDate: '2026-02-02',
-      reason: 'Family event',
-      status: 'Approved',
-      managerName: 'Facility Manager',
-      updatedAt: '2026-01-20',
-    },
-    {
-      id: 2,
-      staffName: 'Current User',
-      type: 'Sick',
-      startDate: '2026-02-10',
-      endDate: '2026-02-12',
-      reason: 'Medical appointment',
-      status: 'Pending',
-      managerName: 'Facility Manager',
-      updatedAt: '2026-01-21',
-    },
-  ]);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Leave approved',
-      message: 'Your annual leave was approved by Facility Manager.',
-      createdAt: '2026-01-20 16:40',
-      type: 'approved',
-    },
-  ]);
+  const { user } = useAuth();
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [decisionNotes, setDecisionNotes] = useState({});
   const [newLeave, setNewLeave] = useState({
-    staffName: 'Current User',
     type: 'Annual',
     startDate: '',
     endDate: '',
@@ -52,6 +26,10 @@ const LeaveCenter = () => {
 
   const parseDate = (dateString) => {
     if (!dateString) return null;
+    if (dateString instanceof Date) return dateString;
+    if (typeof dateString === 'string' && dateString.includes('T')) {
+      return new Date(dateString);
+    }
     return new Date(`${dateString}T00:00:00`);
   };
 
@@ -84,10 +62,10 @@ const LeaveCenter = () => {
   };
 
   const getStatusBadge = (status) => {
-    if (status === 'Approved') {
+    if (status === 'approved' || status === 'Approved') {
       return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100';
     }
-    if (status === 'Rejected') {
+    if (status === 'rejected' || status === 'Rejected') {
       return 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100';
     }
     return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100';
@@ -104,63 +82,82 @@ const LeaveCenter = () => {
     ]);
   };
 
-  const handleLeaveSubmit = (event) => {
+  const handleLeaveSubmit = async (event) => {
     event.preventDefault();
     if (!newLeave.startDate || !newLeave.endDate || !newLeave.reason) {
       toast.error('Please complete all leave request fields.');
       return;
     }
 
-    const request = {
-      id: Date.now(),
-      staffName: newLeave.staffName,
-      type: newLeave.type,
-      startDate: newLeave.startDate,
-      endDate: newLeave.endDate,
-      reason: newLeave.reason,
-      status: 'Pending',
-      managerName: 'Facility Manager',
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
-
-    setLeaveRequests((prev) => [request, ...prev]);
-    setNewLeave((prev) => ({
-      ...prev,
-      startDate: '',
-      endDate: '',
-      reason: '',
-    }));
-
-    pushNotification({
-      title: 'Leave request submitted',
-      message: `Your ${request.type} leave request was sent to the facility manager.`,
-      type: 'pending',
-    });
+    try {
+      const created = await createLeave({
+        type: newLeave.type,
+        startDate: newLeave.startDate,
+        endDate: newLeave.endDate,
+        reason: newLeave.reason,
+      });
+      setLeaveRequests((prev) => [created, ...prev]);
+      setNewLeave((prev) => ({
+        ...prev,
+        startDate: '',
+        endDate: '',
+        reason: '',
+      }));
+      pushNotification({
+        title: 'Leave request submitted',
+        message: `Your ${created.type} leave request was sent for approval.`,
+        type: 'pending',
+      });
+      toast.success('Leave request submitted');
+    } catch (error) {
+      // handled by interceptor
+    }
   };
 
   useEffect(() => {
-    leaveRequests.forEach((request) => {
-      if (request.status !== 'Approved') return;
-      const end = parseDate(request.endDate);
-      if (!end) return;
-      const now = new Date();
-      const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays < 0 || diffDays > 3) return;
-      const alreadyNotified = notifications.some(
-        (item) => item.type === 'ending_soon' && item.requestId === request.id
-      );
-      if (!alreadyNotified) {
-        pushNotification({
-          title: 'Leave ending soon',
-          message: `Your leave ends on ${formatDate(request.endDate)}.`,
-          type: 'ending_soon',
-          requestId: request.id,
-        });
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [myLeaves, pending] = await Promise.all([
+          fetchMyLeaves(),
+          user && ['facility_manager', 'admin'].includes(user.role) ? fetchPendingLeaves() : Promise.resolve([]),
+        ]);
+        setLeaveRequests(Array.isArray(myLeaves) ? myLeaves : []);
+        setPendingApprovals(Array.isArray(pending) ? pending : []);
+      } finally {
+        setLoading(false);
       }
-    });
-  }, [leaveRequests, notifications]);
+    };
+    load();
+  }, [user]);
 
-  const staffLeaveRequests = leaveRequests.filter((request) => request.staffName === 'Current User');
+  const canApprove = useMemo(() => user && ['facility_manager', 'admin'].includes(user.role), [user]);
+
+  const staffLeaveRequests = leaveRequests;
+
+  const handleApprove = async (request) => {
+    try {
+      const note = decisionNotes[request._id] || '';
+      await approveLeave(request._id, note);
+      toast.success('Leave approved');
+      setPendingApprovals((prev) => prev.filter((item) => item._id !== request._id));
+      setDecisionNotes((prev) => ({ ...prev, [request._id]: '' }));
+    } catch (error) {
+      // handled by interceptor
+    }
+  };
+
+  const handleReject = async (request) => {
+    try {
+      const note = decisionNotes[request._id] || '';
+      await rejectLeave(request._id, note);
+      toast.success('Leave rejected');
+      setPendingApprovals((prev) => prev.filter((item) => item._id !== request._id));
+      setDecisionNotes((prev) => ({ ...prev, [request._id]: '' }));
+    } catch (error) {
+      // handled by interceptor
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -196,74 +193,80 @@ const LeaveCenter = () => {
                     Apply for Leave
                   </h4>
                   <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-100">
-                    Staff
+                    {user?.role === 'staff' ? 'Staff' : 'Manager'}
                   </Badge>
                 </div>
-                <form onSubmit={handleLeaveSubmit} className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                      Leave Type
-                    </label>
-                    <select
-                      value={newLeave.type}
-                      onChange={(event) =>
-                        setNewLeave((prev) => ({ ...prev, type: event.target.value }))
-                      }
-                      className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-                    >
-                      {leaveTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                {user?.role === 'staff' ? (
+                  <form onSubmit={handleLeaveSubmit} className="space-y-3">
                     <div>
                       <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                        Start Date
+                        Leave Type
                       </label>
-                      <input
-                        type="date"
-                        value={newLeave.startDate}
+                      <select
+                        value={newLeave.type}
                         onChange={(event) =>
-                          setNewLeave((prev) => ({ ...prev, startDate: event.target.value }))
+                          setNewLeave((prev) => ({ ...prev, type: event.target.value }))
                         }
                         className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-                      />
+                      >
+                        {leaveTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={newLeave.startDate}
+                          onChange={(event) =>
+                            setNewLeave((prev) => ({ ...prev, startDate: event.target.value }))
+                          }
+                          className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={newLeave.endDate}
+                          onChange={(event) =>
+                            setNewLeave((prev) => ({ ...prev, endDate: event.target.value }))
+                          }
+                          className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                        End Date
+                        Reason
                       </label>
-                      <input
-                        type="date"
-                        value={newLeave.endDate}
+                      <textarea
+                        rows={3}
+                        value={newLeave.reason}
                         onChange={(event) =>
-                          setNewLeave((prev) => ({ ...prev, endDate: event.target.value }))
+                          setNewLeave((prev) => ({ ...prev, reason: event.target.value }))
                         }
                         className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                        placeholder="Add brief context for your manager."
                       />
                     </div>
+                    <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800">
+                      Submit Leave Request
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Managers review and approve leave requests. Use the approvals list below.
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                      Reason
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={newLeave.reason}
-                      onChange={(event) =>
-                        setNewLeave((prev) => ({ ...prev, reason: event.target.value }))
-                      }
-                      className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-                      placeholder="Add brief context for your manager."
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-blue-700 hover:bg-blue-800">
-                    Submit Leave Request
-                  </Button>
-                </form>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -272,11 +275,13 @@ const LeaveCenter = () => {
                     Your Leave Tracker
                   </h4>
                   <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                    Staff
+                    {user?.role === 'staff' ? 'Staff' : 'Manager'}
                   </Badge>
                 </div>
                 <div className="space-y-3">
-                  {staffLeaveRequests.length === 0 ? (
+                  {loading ? (
+                    <div className="text-sm text-muted-foreground">Loading leave requests...</div>
+                  ) : staffLeaveRequests.length === 0 ? (
                     <div className="text-sm text-muted-foreground">
                       No leave requests yet. Submit your first request.
                     </div>
@@ -286,7 +291,7 @@ const LeaveCenter = () => {
                       const phase = getLeavePhase(request.startDate, request.endDate);
                       return (
                         <div
-                          key={request.id}
+                          key={request._id || request.id}
                           className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3"
                         >
                           <div className="flex items-start justify-between">
@@ -299,7 +304,7 @@ const LeaveCenter = () => {
                               </p>
                             </div>
                             <Badge className={getStatusBadge(request.status)}>
-                              {request.status}
+                              {request.status?.toUpperCase?.() || request.status}
                             </Badge>
                           </div>
                           <div className="space-y-2">
@@ -315,7 +320,7 @@ const LeaveCenter = () => {
                             </div>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Manager: {request.managerName}
+                            Manager: {request.approvedBy?.firstName || request.rejectedBy?.firstName || 'Pending'}
                           </div>
                         </div>
                       );
@@ -364,6 +369,88 @@ const LeaveCenter = () => {
           </CardContent>
         </Card>
       </div>
+
+      {canApprove && (
+        <Card className="border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                  Pending Approvals
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Review and approve staff leave requests.
+                </p>
+              </div>
+              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-100">
+                Manager
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loading ? (
+              <div className="text-sm text-muted-foreground">Loading approvals...</div>
+            ) : pendingApprovals.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No pending leave approvals.</div>
+            ) : (
+              pendingApprovals.map((request) => (
+                <div
+                  key={request._id}
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                        {request.staff?.firstName} {request.staff?.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {request.type} leave • {formatDate(request.startDate)} to {formatDate(request.endDate)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Reason: {request.reason}
+                      </p>
+                    </div>
+                    <Badge className={getStatusBadge(request.status)}>
+                      {request.status?.toUpperCase?.() || request.status}
+                    </Badge>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                      Manager note (optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={decisionNotes[request._id] || ''}
+                      onChange={(event) =>
+                        setDecisionNotes((prev) => ({ ...prev, [request._id]: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                      placeholder="Add a brief note"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => handleApprove(request)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                      onClick={() => handleReject(request)}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

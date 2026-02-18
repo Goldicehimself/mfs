@@ -48,10 +48,11 @@ export async function fetchReports() {
 
   try {
     const response = await axiosInstance.get('/reports');
-    if (!response.data || Object.keys(response.data).length === 0) {
+    const payload = response.data?.data;
+    if (!payload || Object.keys(payload).length === 0) {
       return mockReportsData;
     }
-    return response.data;
+    return payload;
   } catch (error) {
     return mockReportsData;
   }
@@ -60,7 +61,7 @@ export async function fetchReports() {
 export async function exportReport(format = 'pdf') {
   try {
     const response = await axiosInstance.post('/reports/export', { format });
-    return response.data;
+    return response.data?.data;
   } catch (error) {
     console.error('Error exporting report:', error);
   }

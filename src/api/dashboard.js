@@ -11,7 +11,7 @@ export const getDashboardData = async () => {
       throw new Error('mock');
     }
     const response = await axiosInstance.get('/dashboard');
-    return response.data;
+    return response.data?.data || response.data;
   } catch (error) {
     // Return mock data if API fails
     return {

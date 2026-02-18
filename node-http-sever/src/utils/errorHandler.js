@@ -43,6 +43,13 @@ class ConflictError extends AppError {
   }
 }
 
+class BadRequestError extends AppError {
+  constructor(message) {
+    super(message, 400);
+    this.name = 'BadRequestError';
+  }
+}
+
 // Global error handler middleware
 const errorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
@@ -80,5 +87,6 @@ module.exports = {
   AuthorizationError,
   NotFoundError,
   ConflictError,
+  BadRequestError,
   errorHandler
 };

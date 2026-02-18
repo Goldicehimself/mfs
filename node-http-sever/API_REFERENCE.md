@@ -242,7 +242,7 @@ src/
 
 **"Insufficient permissions"**
 - Ensure user has correct role
-- Some endpoints may require admin/manager role
+- Some endpoints may require admin/facility_manager role
 
 ## Next Steps
 
@@ -276,3 +276,4 @@ src/
 
 **API Version**: 1.0.0
 **Last Updated**: February 16, 2026
+

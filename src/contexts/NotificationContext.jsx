@@ -1,6 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import {
+  fetchNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '../api/notifications';
 
 const NotificationContext = createContext(null);
 
@@ -15,49 +19,48 @@ export const useNotifications = () => {
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  
-  const { subscribe, unsubscribe } = useWebSocket();
+
+  const normalizeNotifications = (items = []) =>
+    items.map((n) => ({
+      id: n._id || n.id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      timestamp: n.createdAt || n.timestamp,
+      read: !!n.read,
+      actionUrl: n.link || n.actionUrl,
+    }));
+
+  const refreshNotifications = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || token.startsWith('local-')) return;
+
+    try {
+      const data = await fetchNotifications({ page: 1, limit: 20, unread: false, dueSoonDays: 7 });
+      const list = normalizeNotifications(data?.notifications || []);
+      setNotifications(list);
+      setUnreadCount(data?.unreadCount || 0);
+    } catch (error) {
+      // Silently ignore to avoid noise
+    }
+  }, []);
 
   useEffect(() => {
-    // Subscribe to notification events
-    const handleNotification = (data) => {
-      const newNotification = {
-        id: Date.now(),
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        timestamp: new Date().toISOString(),
-        read: false,
-        actionUrl: data.actionUrl,
-      };
-      
-      setNotifications(prev => [newNotification, ...prev]);
-      setUnreadCount(prev => prev + 1);
-      
-      // Show toast based on notification type
-      switch (data.type) {
-        case 'work_order_assigned':
-          toast.info(`New work order assigned: ${data.title}`);
-          break;
-        case 'work_order_overdue':
-          toast.error(`Work order overdue: ${data.title}`);
-          break;
-        case 'pm_due':
-          toast.warning(`Preventive maintenance due: ${data.title}`);
-          break;
-        default:
-          toast.info(data.message);
+    refreshNotifications();
+    const interval = setInterval(refreshNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [refreshNotifications]);
+
+  const markAsRead = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token && !token.startsWith('local-')) {
+        await markNotificationRead(id);
       }
-    };
+    } catch (error) {
+      // ignore
+    }
 
-    subscribe('notification', handleNotification);
-
-    return () => {
-      unsubscribe('notification', handleNotification);
-    };
-  }, [subscribe, unsubscribe]);
-
-  const markAsRead = (id) => {
     setNotifications(prev =>
       prev.map(notification =>
         notification.id === id ? { ...notification, read: true } : notification
@@ -66,7 +69,16 @@ export const NotificationProvider = ({ children }) => {
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token && !token.startsWith('local-')) {
+        await markAllNotificationsRead();
+      }
+    } catch (error) {
+      // ignore
+    }
+
     setNotifications(prev =>
       prev.map(notification => ({ ...notification, read: true }))
     );

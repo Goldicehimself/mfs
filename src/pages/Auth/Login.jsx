@@ -19,8 +19,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
+  const [orgCode, setOrgCode] = useState(() => localStorage.getItem('orgCode') || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showOrgCode, setShowOrgCode] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const { login } = useAuth();
@@ -28,8 +30,12 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!orgCode) {
+      setError('Organization code is required.');
+      return;
+    }
     try {
-      await login(email, password);
+      await login(email, password, orgCode);
     } catch {
       setError('Invalid email or password.');
     }
@@ -139,6 +145,30 @@ const Login = () => {
               label="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <TextField
+              {...fieldProps}
+              label="Organization code"
+            type={showOrgCode ? 'text' : 'password'}
+            value={orgCode}
+            onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
+            inputProps={{ maxLength: 12 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    aria-label={showOrgCode ? 'Hide org code' : 'Show org code'}
+                    onClick={() => setShowOrgCode(!showOrgCode)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    edge="end"
+                  >
+                    {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
 
           <TextField

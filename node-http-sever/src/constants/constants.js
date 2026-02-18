@@ -19,10 +19,12 @@ module.exports = {
   // Role Constants
   ROLES: {
     ADMIN: 'admin',
-    MANAGER: 'manager',
+    FACILITY_MANAGER: 'facility_manager',
     TECHNICIAN: 'technician',
     STAFF: 'staff',
     VENDOR: 'vendor',
+    FINANCE: 'finance',
+    PROCUREMENT: 'procurement',
     USER: 'user'
   },
   

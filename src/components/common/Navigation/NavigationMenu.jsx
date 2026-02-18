@@ -170,6 +170,12 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
       path: '/settings',
       roles: ['facility_manager', 'admin'],
     },
+    {
+      title: 'Org Admin',
+      icon: <Building />,
+      path: '/org-admin',
+      roles: ['admin'],
+    },
   ];
 
   if (!user) return null;
@@ -191,7 +197,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
     },
     {
       label: 'Admin',
-      items: ['Finance Portal', 'Reports', 'Settings'],
+      items: ['Finance Portal', 'Reports', 'Settings', 'Org Admin'],
     },
   ];
 

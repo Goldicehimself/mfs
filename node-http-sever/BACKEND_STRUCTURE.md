@@ -96,7 +96,7 @@ node-http-sever/
 
 #### User
 - Authentication & profile management
-- Role assignment (admin, manager, technician, staff, vendor, user)
+- Role assignment (admin, facility_manager, technician, staff, vendor, user)
 - Last login tracking
 
 #### Asset
@@ -270,3 +270,4 @@ curl http://localhost:5000/api/health
 
 **Last Updated:** February 16, 2026
 **Status:** Production Ready
+

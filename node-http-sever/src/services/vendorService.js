@@ -2,17 +2,18 @@
 const Vendor = require('../models/Vendor');
 const { NotFoundError } = require('../utils/errorHandler');
 
-const getVendors = async (filters = {}, page = 1, limit = 20) => {
+const getVendors = async (organizationId, filters = {}, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
+  const scopedFilters = { ...filters, organization: organizationId };
   
-  const query = Vendor.find(filters)
+  const query = Vendor.find(scopedFilters)
     .skip(skip)
     .limit(limit)
     .sort({ name: 1 });
 
   const [vendors, total] = await Promise.all([
     query.exec(),
-    Vendor.countDocuments(filters)
+    Vendor.countDocuments(scopedFilters)
   ]);
 
   return {
@@ -26,22 +27,23 @@ const getVendors = async (filters = {}, page = 1, limit = 20) => {
   };
 };
 
-const getVendorById = async (id) => {
-  const vendor = await Vendor.findById(id);
+const getVendorById = async (organizationId, id) => {
+  const vendor = await Vendor.findOne({ _id: id, organization: organizationId });
   if (!vendor) {
     throw new NotFoundError('Vendor');
   }
   return vendor;
 };
 
-const createVendor = async (vendorData) => {
+const createVendor = async (organizationId, vendorData) => {
+  vendorData.organization = organizationId;
   const vendor = new Vendor(vendorData);
   await vendor.save();
   return vendor;
 };
 
-const updateVendor = async (id, updateData) => {
-  const vendor = await Vendor.findByIdAndUpdate(id, updateData, {
+const updateVendor = async (organizationId, id, updateData) => {
+  const vendor = await Vendor.findOneAndUpdate({ _id: id, organization: organizationId }, updateData, {
     new: true,
     runValidators: true
   });
@@ -51,8 +53,8 @@ const updateVendor = async (id, updateData) => {
   return vendor;
 };
 
-const deleteVendor = async (id) => {
-  const vendor = await Vendor.findByIdAndDelete(id);
+const deleteVendor = async (organizationId, id) => {
+  const vendor = await Vendor.findOneAndDelete({ _id: id, organization: organizationId });
   if (!vendor) {
     throw new NotFoundError('Vendor');
   }

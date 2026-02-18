@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -11,7 +11,7 @@ import ComplianceChart from '../components/dashboard/Charts/ComplianceChart';
 import CostAnalysisChart from '../components/dashboard/Charts/CostAnalysisChart';
 
 // API
-import { getDashboardData, getRecentActivities } from '../api/dashboard';
+import { getDashboardData } from '../api/dashboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,10 +31,63 @@ const Dashboard = () => {
     }
   );
 
-  const { data: recentActivities } = useQuery(
-    'recentActivities',
-    getRecentActivities
-  );
+  const [recentActivities, setRecentActivities] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || token.startsWith('local-')) return;
+
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    const streamUrl = `${apiBase.replace(/\/$/, '')}/activities/stream?token=${encodeURIComponent(token)}`;
+    const stream = new EventSource(streamUrl);
+
+    const iconForType = (type) => {
+      if (type.startsWith('workorder')) return 'WO';
+      if (type.startsWith('asset')) return 'AS';
+      if (type.startsWith('maintenance')) return 'PM';
+      return 'EV';
+    };
+
+    const mapActivity = (payload) => {
+      const type = payload.type || 'event';
+      const action = type.includes('created')
+        ? 'created'
+        : type.includes('deleted')
+        ? 'deleted'
+        : type.includes('comment')
+        ? 'comment'
+        : type.includes('assigned')
+        ? 'assigned'
+        : type.includes('status')
+        ? 'status'
+        : 'updated';
+
+      return {
+        id: `${type}-${payload.entityId || Date.now()}`,
+        type,
+        action,
+        title: payload.message || 'Activity',
+        description: payload.entityType || '',
+        timestamp: payload.createdAt || new Date().toISOString(),
+        icon: iconForType(type),
+        status: null,
+      };
+    };
+
+    stream.addEventListener('activity', (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        const mapped = mapActivity(payload);
+        setRecentActivities((prev) => [mapped, ...prev].slice(0, 20));
+      } catch (e) {
+        // ignore parse errors
+      }
+    });
+
+    return () => {
+      stream.close();
+    };
+  }, []);
 
   if (isLoading) {
     return (

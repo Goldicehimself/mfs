@@ -53,6 +53,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { getHomeRoute } from '../../utils/roleHome';
+import axios from 'axios';
+import { updateProfile, uploadCertificates } from '../../api/profile';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -77,13 +79,24 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [certificates, setCertificates] = useState(user?.certificates || []);
   const fileInputRef = React.useRef(null);
   const certificateInputRef = React.useRef(null);
 
   // Keyboard shortcut to exit profile page
   useEffect(() => {
-    setCertificates(user?.certificates || []);
+    if (user) {
+      setFormData({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        gender: user?.gender || '',
+        role: user?.role || '',
+      });
+      setCertificates(user?.certificates || []);
+    }
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         // Navigate back to dashboard or previous page
@@ -95,7 +108,54 @@ const Profile = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate]);
+  }, [navigate, user]);
+
+  useEffect(() => {
+    if (selectedImage) {
+      setAvatarPreview(selectedImage);
+      return;
+    }
+
+    if (!user?.avatar) {
+      setAvatarPreview(null);
+      return;
+    }
+
+    if (user.avatar.startsWith('data:') || user.avatar.startsWith('http')) {
+      setAvatarPreview(user.avatar);
+      return;
+    }
+
+    let active = true;
+    let objectUrl = null;
+
+    const buildUploadUrl = (filePath) => {
+      const apiBase = import.meta.env.VITE_API_URL || '/api';
+      const base = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+      return `${base}/${filePath.replace(/^\/+/, '')}`;
+    };
+
+    const loadAvatar = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(buildUploadUrl(user.avatar), {
+          responseType: 'blob',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        objectUrl = URL.createObjectURL(response.data);
+        if (active) setAvatarPreview(objectUrl);
+      } catch (error) {
+        // Ignore fetch errors for protected assets
+      }
+    };
+
+    loadAvatar();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [user?.avatar, selectedImage]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -107,12 +167,19 @@ const Profile = () => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Include the selected image in the update
-      const updatedData = {
-        ...formData,
-        avatar: selectedImage || user.avatar
+      const fullName = formData.name?.trim() || '';
+      const [firstName, ...rest] = fullName.split(' ');
+      const lastName = rest.join(' ') || user?.lastName || '';
+      const payload = {
+        firstName: firstName || user?.firstName || '',
+        lastName,
+        phone: formData.phone,
       };
-      updateUser(updatedData);
+
+      const updated = await updateProfile(payload, selectedImageFile);
+      updateUser(updated);
+      setSelectedImage(null);
+      setSelectedImageFile(null);
       setIsEditing(false);
       toast.success('Profile updated successfully');
     } catch (error) {
@@ -131,6 +198,7 @@ const Profile = () => {
       role: user?.role || '',
     });
     setSelectedImage(null); // Reset any uploaded image
+    setSelectedImageFile(null);
     setIsEditing(false);
   };
 
@@ -190,6 +258,7 @@ const Profile = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedImage(e.target.result);
+        setSelectedImageFile(file);
         // In a real app, you would upload to server here
         toast.success('Profile image updated successfully');
       };
@@ -220,40 +289,63 @@ const Profile = () => {
 
     if (validFiles.length === 0) return;
 
-    const readers = validFiles.map(
-      (file) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) =>
-            resolve({
-              id: `cert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              uploadedAt: new Date().toISOString(),
-              dataUrl: e.target.result,
-            });
-          reader.readAsDataURL(file);
-        })
-    );
+    const token = localStorage.getItem('token');
+    if (!token || token.startsWith('local-')) {
+      toast.error('Certificate upload requires a backend login');
+      event.target.value = '';
+      return;
+    }
 
-    Promise.all(readers).then((newCerts) => {
-      const next = [...newCerts, ...certificates];
-      setCertificates(next);
-      updateUser({ certificates: next });
-      toast.success(
-        newCerts.length > 1 ? 'Certificates uploaded' : 'Certificate uploaded'
-      );
-    });
+    setLoading(true);
+    uploadCertificates(validFiles)
+      .then((updatedUser) => {
+        updateUser(updatedUser);
+        setCertificates(updatedUser?.certificates || []);
+        toast.success(
+          validFiles.length > 1 ? 'Certificates uploaded' : 'Certificate uploaded'
+        );
+      })
+      .catch(() => {
+        toast.error('Failed to upload certificates');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     event.target.value = '';
   };
 
   const handleRemoveCertificate = (id) => {
-    const next = certificates.filter((c) => c.id !== id);
+    const token = localStorage.getItem('token');
+    if (token && !token.startsWith('local-')) {
+      toast.info('Certificate removal is not available yet.');
+      return;
+    }
+    const next = certificates.filter((c) => (c?.id || c) !== id);
     setCertificates(next);
     updateUser({ certificates: next });
     toast.info('Certificate removed');
+  };
+
+  const buildUploadUrl = (filePath) => {
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    const base = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+    return `${base}/${filePath.replace(/^\/+/, '')}`;
+  };
+
+  const openProtectedFile = async (filePath) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(buildUploadUrl(filePath), {
+        responseType: 'blob',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const objectUrl = URL.createObjectURL(response.data);
+      window.open(objectUrl, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (error) {
+      toast.error('Unable to open file');
+    }
   };
 
   if (!user) {
@@ -325,7 +417,7 @@ const Profile = () => {
               <Box display="flex" alignItems="center" gap={3}>
                 <Box position="relative">
                   <Avatar
-                    src={selectedImage || user.avatar || '/avatar-placeholder.svg'}
+                    src={avatarPreview || '/avatar-placeholder.svg'}
                     sx={{ width: 80, height: 80 }}
                   >
                     {user.name?.charAt(0)?.toUpperCase()}
@@ -532,9 +624,15 @@ const Profile = () => {
               ) : (
                 <Grid container spacing={2}>
                   {certificates.map((cert) => {
-                    const isPdf = cert.type === 'application/pdf';
+                    const certPath = typeof cert === 'string' ? cert : cert?.path || cert?.dataUrl || '';
+                    const fileName = typeof cert === 'string'
+                      ? certPath.split('/').pop()
+                      : cert?.name || certPath.split('/').pop();
+                    const isPdf = typeof cert === 'string'
+                      ? fileName?.toLowerCase().endsWith('.pdf')
+                      : cert?.type === 'application/pdf';
                     return (
-                      <Grid item xs={12} sm={6} md={4} key={cert.id}>
+                      <Grid item xs={12} sm={6} md={4} key={cert?.id || certPath}>
                         <Card variant="outlined" sx={{ height: '100%' }}>
                           <CardContent>
                             <Box display="flex" alignItems="center" gap={2}>
@@ -555,21 +653,21 @@ const Profile = () => {
                               ) : (
                                 <Avatar
                                   variant="rounded"
-                                  src={cert.dataUrl}
+                                  src={typeof cert === 'string' ? undefined : cert?.dataUrl}
                                   sx={{ width: 48, height: 48 }}
                                 />
                               )}
                               <Box flex={1}>
                                 <Typography variant="body2" fontWeight={600} noWrap>
-                                  {cert.name}
+                                  {fileName}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {new Date(cert.uploadedAt).toLocaleDateString()}
+                                  Uploaded
                                 </Typography>
                               </Box>
                               <IconButton
                                 size="small"
-                                onClick={() => handleRemoveCertificate(cert.id)}
+                                onClick={() => handleRemoveCertificate(cert?.id || certPath)}
                                 title="Remove"
                               >
                                 <Cancel fontSize="small" />
@@ -579,7 +677,11 @@ const Profile = () => {
                               <Button
                                 size="small"
                                 variant="text"
-                                onClick={() => window.open(cert.dataUrl, '_blank')}
+                                onClick={() =>
+                                  typeof cert === 'string'
+                                    ? openProtectedFile(certPath)
+                                    : window.open(cert?.dataUrl, '_blank')
+                                }
                               >
                                 View
                               </Button>

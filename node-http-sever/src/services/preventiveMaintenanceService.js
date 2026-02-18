@@ -2,10 +2,11 @@
 const PreventiveMaintenance = require('../models/PreventiveMaintenance');
 const { NotFoundError } = require('../utils/errorHandler');
 
-const getPreventiveMaintenances = async (filters = {}, page = 1, limit = 20) => {
+const getPreventiveMaintenances = async (organizationId, filters = {}, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
+  const scopedFilters = { ...filters, organization: organizationId };
   
-  const query = PreventiveMaintenance.find(filters)
+  const query = PreventiveMaintenance.find(scopedFilters)
     .populate('asset assignedTo')
     .skip(skip)
     .limit(limit)
@@ -13,7 +14,7 @@ const getPreventiveMaintenances = async (filters = {}, page = 1, limit = 20) => 
 
   const [maintenances, total] = await Promise.all([
     query.exec(),
-    PreventiveMaintenance.countDocuments(filters)
+    PreventiveMaintenance.countDocuments(scopedFilters)
   ]);
 
   return {
@@ -27,8 +28,8 @@ const getPreventiveMaintenances = async (filters = {}, page = 1, limit = 20) => 
   };
 };
 
-const getPreventiveMaintenanceById = async (id) => {
-  const maintenance = await PreventiveMaintenance.findById(id)
+const getPreventiveMaintenanceById = async (organizationId, id) => {
+  const maintenance = await PreventiveMaintenance.findOne({ _id: id, organization: organizationId })
     .populate('asset assignedTo');
   if (!maintenance) {
     throw new NotFoundError('PreventiveMaintenance');
@@ -36,16 +37,17 @@ const getPreventiveMaintenanceById = async (id) => {
   return maintenance;
 };
 
-const createPreventiveMaintenance = async (maintenanceData) => {
+const createPreventiveMaintenance = async (organizationId, maintenanceData) => {
+  maintenanceData.organization = organizationId;
   const maintenance = new PreventiveMaintenance(maintenanceData);
   await maintenance.save();
   await maintenance.populate('asset assignedTo');
   return maintenance;
 };
 
-const updatePreventiveMaintenance = async (id, updateData) => {
+const updatePreventiveMaintenance = async (organizationId, id, updateData) => {
   updateData.updatedAt = new Date();
-  const maintenance = await PreventiveMaintenance.findByIdAndUpdate(id, updateData, {
+  const maintenance = await PreventiveMaintenance.findOneAndUpdate({ _id: id, organization: organizationId }, updateData, {
     new: true,
     runValidators: true
   }).populate('asset assignedTo');
@@ -56,19 +58,20 @@ const updatePreventiveMaintenance = async (id, updateData) => {
   return maintenance;
 };
 
-const deletePreventiveMaintenance = async (id) => {
-  const maintenance = await PreventiveMaintenance.findByIdAndDelete(id);
+const deletePreventiveMaintenance = async (organizationId, id) => {
+  const maintenance = await PreventiveMaintenance.findOneAndDelete({ _id: id, organization: organizationId });
   if (!maintenance) {
     throw new NotFoundError('PreventiveMaintenance');
   }
   return maintenance;
 };
 
-const getUpcomingMaintenance = async (days = 30) => {
+const getUpcomingMaintenance = async (organizationId, days = 30) => {
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
   const maintenances = await PreventiveMaintenance.find({
+    organization: organizationId,
     active: true,
     nextDueDate: { $gte: now, $lte: futureDate }
   })
@@ -78,8 +81,8 @@ const getUpcomingMaintenance = async (days = 30) => {
   return maintenances;
 };
 
-const markAsPerformed = async (id, notes = '') => {
-  const maintenance = await PreventiveMaintenance.findById(id);
+const markAsPerformed = async (organizationId, id, notes = '') => {
+  const maintenance = await PreventiveMaintenance.findOne({ _id: id, organization: organizationId });
   if (!maintenance) {
     throw new NotFoundError('PreventiveMaintenance');
   }

@@ -34,6 +34,12 @@ const vendorSchema = new mongoose.Schema({
     default: true
   },
   notes: String,
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

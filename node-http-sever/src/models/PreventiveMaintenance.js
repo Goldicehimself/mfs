@@ -30,6 +30,12 @@ const preventiveMaintenanceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   active: {
     type: Boolean,
     default: true

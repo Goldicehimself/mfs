@@ -28,12 +28,16 @@ const NotificationDropdown = () => {
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'work_order_assigned':
+      case 'workorder_assigned':
         return <Info className="h-4 w-4 text-blue-500" />;
       case 'work_order_overdue':
+      case 'workorder_due_soon':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'pm_due':
+      case 'maintenance_due_soon':
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case 'work_order_completed':
+      case 'workorder_status':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       default:
         return <Info className="h-4 w-4 text-slate-500" />;

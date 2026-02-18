@@ -1,17 +1,24 @@
 // Authentication middleware using JWT
 const jwt = require('jsonwebtoken');
 const { AuthenticationError } = require('../utils/errorHandler');
-const constants = require('../config/constants');
+const constants = require('../constants/constants');
+const Organization = require('../models/Organization');
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(' ')[1] || req.query?.token;
     
     if (!token) {
       throw new AuthenticationError('No token provided');
     }
 
     const decoded = jwt.verify(token, constants.JWT_SECRET);
+    if (decoded?.organization) {
+      const org = await Organization.findById(decoded.organization).select('status');
+      if (!org || org.status !== 'active') {
+        throw new AuthenticationError('Organization is disabled');
+      }
+    }
     req.user = decoded;
     next();
   } catch (error) {

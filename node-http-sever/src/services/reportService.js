@@ -2,10 +2,11 @@
 const Report = require('../models/Report');
 const { NotFoundError } = require('../utils/errorHandler');
 
-const getReports = async (filters = {}, page = 1, limit = 20) => {
+const getReports = async (organizationId, filters = {}, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
+  const scopedFilters = { ...filters, organization: organizationId };
   
-  const query = Report.find(filters)
+  const query = Report.find(scopedFilters)
     .populate('generatedBy')
     .skip(skip)
     .limit(limit)
@@ -13,7 +14,7 @@ const getReports = async (filters = {}, page = 1, limit = 20) => {
 
   const [reports, total] = await Promise.all([
     query.exec(),
-    Report.countDocuments(filters)
+    Report.countDocuments(scopedFilters)
   ]);
 
   return {
@@ -27,24 +28,25 @@ const getReports = async (filters = {}, page = 1, limit = 20) => {
   };
 };
 
-const getReportById = async (id) => {
-  const report = await Report.findById(id).populate('generatedBy');
+const getReportById = async (organizationId, id) => {
+  const report = await Report.findOne({ _id: id, organization: organizationId }).populate('generatedBy');
   if (!report) {
     throw new NotFoundError('Report');
   }
   return report;
 };
 
-const createReport = async (reportData) => {
+const createReport = async (organizationId, reportData) => {
+  reportData.organization = organizationId;
   const report = new Report(reportData);
   await report.save();
   await report.populate('generatedBy');
   return report;
 };
 
-const updateReport = async (id, updateData) => {
+const updateReport = async (organizationId, id, updateData) => {
   updateData.updatedAt = new Date();
-  const report = await Report.findByIdAndUpdate(id, updateData, {
+  const report = await Report.findOneAndUpdate({ _id: id, organization: organizationId }, updateData, {
     new: true,
     runValidators: true
   }).populate('generatedBy');
@@ -55,16 +57,17 @@ const updateReport = async (id, updateData) => {
   return report;
 };
 
-const deleteReport = async (id) => {
-  const report = await Report.findByIdAndDelete(id);
+const deleteReport = async (organizationId, id) => {
+  const report = await Report.findOneAndDelete({ _id: id, organization: organizationId });
   if (!report) {
     throw new NotFoundError('Report');
   }
   return report;
 };
 
-const generateReport = async (reportData, userId) => {
+const generateReport = async (organizationId, reportData, userId) => {
   reportData.generatedBy = userId;
+  reportData.organization = organizationId;
   const report = new Report(reportData);
   
   // Simulate data generation (would be replaced with actual report generation logic)
@@ -79,12 +82,12 @@ const generateReport = async (reportData, userId) => {
   return report;
 };
 
-const getReportsByUser = async (userId, page = 1, limit = 20) => {
-  return getReports({ generatedBy: userId }, page, limit);
+const getReportsByUser = async (organizationId, userId, page = 1, limit = 20) => {
+  return getReports(organizationId, { generatedBy: userId }, page, limit);
 };
 
-const getReportsByType = async (type, page = 1, limit = 20) => {
-  return getReports({ type }, page, limit);
+const getReportsByType = async (organizationId, type, page = 1, limit = 20) => {
+  return getReports(organizationId, { type }, page, limit);
 };
 
 module.exports = {

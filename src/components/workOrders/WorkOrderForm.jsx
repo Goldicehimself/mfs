@@ -42,8 +42,11 @@ export default function WorkOrderForm() {
     ['assets', assetQuery],
     async () => {
       try {
-        const res = await getAssets({ q: assetQuery });
-        return Array.isArray(res) ? res : [];
+        const res = await getAssets({ search: assetQuery });
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.assets)) return res.assets;
+        return [];
       } catch (err) {
         return [];
       }
@@ -52,16 +55,16 @@ export default function WorkOrderForm() {
   );
 
   const onSubmit = async (data) => {
-    const attachments = fileItems.map((item) => ({
-      name: item.name,
-      type: item.type,
-      size: item.size,
-      url: item.previewUrl || '',
-    }));
-    const photos = fileItems
-      .filter((item) => item.isImage && item.previewUrl)
-      .map((item) => ({ url: item.previewUrl, name: item.name, type: item.type }));
-    const payload = { ...data, parts, attachments, photos };
+    const attachments = fileItems.map((item) => item.name);
+    const photos = fileItems.filter((item) => item.isImage).map((item) => item.name);
+    const payload = {
+      ...data,
+      asset: data.asset?.id || data.asset || undefined,
+      assignedTo: data.assignedTo?.id || data.assignedTo || undefined,
+      parts,
+      attachments,
+      photos,
+    };
     try {
       await createWorkOrder(payload);
       queryClient.invalidateQueries('workOrders');

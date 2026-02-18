@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { createFundRequest, fetchMyFundRequests, fetchFundRequests, approveFundRequest, rejectFundRequest } from '@/api/funds';
 
 // Mock data for finance
 const mockFinanceData = {
@@ -224,16 +225,16 @@ export default function FinancePortal() {
   const [requestAmount, setRequestAmount] = useState('');
   const [requestPurpose, setRequestPurpose] = useState('');
   const [requestNotes, setRequestNotes] = useState('');
-  const [fundRequests, setFundRequests] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('fund_requests') || '[]');
-    } catch (error) {
-      return [];
-    }
+  const [fundRequests, setFundRequests] = useState([]);
+  const [fundLoading, setFundLoading] = useState(false);
+  const [fundFilters, setFundFilters] = useState({
+    status: 'all',
+    from: '',
+    to: ''
   });
 
   const canRequestFunds = user?.role === 'finance';
-  const canApproveFunds = user?.role === 'facility_manager' || user?.role === 'admin';
+  const canApproveFunds = user?.role === 'admin';
   const canViewExpenses = isFinance || canApproveFunds;
   const canViewFundRequests = canRequestFunds || canApproveFunds;
 
@@ -288,50 +289,65 @@ export default function FinancePortal() {
     setNewExpenseModalOpen(false);
   };
 
-  const persistFundRequests = (nextRequests) => {
-    setFundRequests(nextRequests);
-    localStorage.setItem('fund_requests', JSON.stringify(nextRequests));
+  const loadFundRequests = async () => {
+    setFundLoading(true);
+    try {
+      const params = {
+        status: fundFilters.status !== 'all' ? fundFilters.status : undefined,
+        from: fundFilters.from || undefined,
+        to: fundFilters.to || undefined
+      };
+      const data = canApproveFunds ? await fetchFundRequests(params) : await fetchMyFundRequests(params);
+      setFundRequests(Array.isArray(data) ? data : []);
+    } catch (error) {
+      // handled by interceptor
+    } finally {
+      setFundLoading(false);
+    }
   };
 
-  const handleCreateFundRequest = () => {
+  useEffect(() => {
+    if (!canViewFundRequests) return;
+    loadFundRequests();
+  }, [canViewFundRequests]);
+
+  const handleCreateFundRequest = async () => {
     const amountValue = Number.parseFloat(requestAmount);
     if (!amountValue || amountValue <= 0 || !requestPurpose.trim()) {
       alert('Please enter a valid amount and purpose.');
       return;
     }
 
-    const newRequest = {
-      id: `FR-${Date.now()}`,
-      amount: amountValue,
-      purpose: requestPurpose.trim(),
-      notes: requestNotes.trim(),
-      status: 'pending',
-      requestedBy: user?.name || user?.email || 'Finance Officer',
-      requestedAt: new Date().toISOString(),
-    };
-
-    persistFundRequests([newRequest, ...fundRequests]);
-    setRequestAmount('');
-    setRequestPurpose('');
-    setRequestNotes('');
+    try {
+      await createFundRequest({
+        amount: amountValue,
+        purpose: requestPurpose.trim(),
+        notes: requestNotes.trim(),
+      });
+      setRequestAmount('');
+      setRequestPurpose('');
+      setRequestNotes('');
+      loadFundRequests();
+    } catch (error) {
+      // handled by interceptor
+    }
   };
 
-  const handleReviewFundRequest = (id, nextStatus) => {
+  const handleReviewFundRequest = async (id, nextStatus) => {
     if (!canApproveFunds) {
       return;
     }
 
-    const nextRequests = fundRequests.map((request) => {
-      if (request.id !== id) return request;
-      return {
-        ...request,
-        status: nextStatus,
-        approvedBy: user?.name || user?.email || 'Manager',
-        approvedAt: new Date().toISOString(),
-      };
-    });
-
-    persistFundRequests(nextRequests);
+    try {
+      if (nextStatus === 'approved') {
+        await approveFundRequest(id);
+      } else {
+        await rejectFundRequest(id);
+      }
+      loadFundRequests();
+    } catch (error) {
+      // handled by interceptor
+    }
   };
 
   const getFundRequestStatusClasses = (status) => {
@@ -449,6 +465,50 @@ export default function FinancePortal() {
             <CardTitle>Fund Requests</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <Select
+                value={fundFilters.status}
+                onValueChange={(value) => setFundFilters((prev) => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-900">
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={fundFilters.from}
+                onChange={(e) => setFundFilters((prev) => ({ ...prev, from: e.target.value }))}
+                className="h-10"
+              />
+              <Input
+                type="date"
+                value={fundFilters.to}
+                onChange={(e) => setFundFilters((prev) => ({ ...prev, to: e.target.value }))}
+                className="h-10"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={loadFundRequests}>
+                  Apply
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setFundFilters({ status: 'all', from: '', to: '' });
+                    setTimeout(loadFundRequests, 0);
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+
             {canRequestFunds && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
@@ -482,12 +542,14 @@ export default function FinancePortal() {
             )}
 
             <div className="space-y-3">
-              {fundRequests.length === 0 ? (
+              {fundLoading ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">Loading fund requests...</p>
+              ) : fundRequests.length === 0 ? (
                 <p className="text-sm text-gray-600 dark:text-gray-400">No fund requests yet.</p>
               ) : (
                 fundRequests.map((request) => (
                   <div
-                    key={request.id}
+                    key={request._id}
                     className="border border-gray-200 dark:border-zinc-700 rounded-lg p-4 bg-white dark:bg-zinc-800"
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -496,7 +558,8 @@ export default function FinancePortal() {
                           ${request.amount.toLocaleString()} - {request.purpose}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Requested by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}
+                          Requested by {request.requestedBy?.firstName || request.requestedBy?.email || 'Finance Officer'} on{' '}
+                          {new Date(request.createdAt || request.requestedAt).toLocaleDateString()}
                         </p>
                         {request.notes && (
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{request.notes}</p>
@@ -511,7 +574,7 @@ export default function FinancePortal() {
                             <Button
                               size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => handleReviewFundRequest(request.id, 'approved')}
+                              onClick={() => handleReviewFundRequest(request._id, 'approved')}
                             >
                               Approve
                             </Button>
@@ -519,7 +582,7 @@ export default function FinancePortal() {
                               size="sm"
                               variant="outline"
                               className="border-red-300 text-red-700 hover:bg-red-50"
-                              onClick={() => handleReviewFundRequest(request.id, 'rejected')}
+                              onClick={() => handleReviewFundRequest(request._id, 'rejected')}
                             >
                               Reject
                             </Button>
@@ -527,10 +590,11 @@ export default function FinancePortal() {
                         )}
                       </div>
                     </div>
-                    {request.approvedAt && (
+                    {request.decidedAt && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approvedBy} on{' '}
-                        {new Date(request.approvedAt).toLocaleDateString()}
+                        {request.status === 'approved' ? 'Approved' : 'Rejected'} by{' '}
+                        {request.decidedBy?.firstName || request.decidedBy?.email || 'Admin'} on{' '}
+                        {new Date(request.decidedAt).toLocaleDateString()}
                       </p>
                     )}
                   </div>

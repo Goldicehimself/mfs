@@ -2,17 +2,18 @@
 const Asset = require('../models/Asset');
 const { NotFoundError } = require('../utils/errorHandler');
 
-const getAssets = async (filters = {}, page = 1, limit = 20) => {
+const getAssets = async (organizationId, filters = {}, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
+  const scopedFilters = { ...filters, organization: organizationId };
   
-  const query = Asset.find(filters)
+  const query = Asset.find(scopedFilters)
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
 
   const [assets, total] = await Promise.all([
     query.exec(),
-    Asset.countDocuments(filters)
+    Asset.countDocuments(scopedFilters)
   ]);
 
   return {
@@ -26,22 +27,23 @@ const getAssets = async (filters = {}, page = 1, limit = 20) => {
   };
 };
 
-const getAssetById = async (id) => {
-  const asset = await Asset.findById(id).populate('owner');
+const getAssetById = async (organizationId, id) => {
+  const asset = await Asset.findOne({ _id: id, organization: organizationId }).populate('owner');
   if (!asset) {
     throw new NotFoundError('Asset');
   }
   return asset;
 };
 
-const createAsset = async (assetData) => {
+const createAsset = async (organizationId, assetData) => {
+  assetData.organization = organizationId;
   const asset = new Asset(assetData);
   await asset.save();
   return asset;
 };
 
-const updateAsset = async (id, updateData) => {
-  const asset = await Asset.findByIdAndUpdate(id, updateData, {
+const updateAsset = async (organizationId, id, updateData) => {
+  const asset = await Asset.findOneAndUpdate({ _id: id, organization: organizationId }, updateData, {
     new: true,
     runValidators: true
   });
@@ -51,26 +53,26 @@ const updateAsset = async (id, updateData) => {
   return asset;
 };
 
-const deleteAsset = async (id) => {
-  const asset = await Asset.findByIdAndDelete(id);
+const deleteAsset = async (organizationId, id) => {
+  const asset = await Asset.findOneAndDelete({ _id: id, organization: organizationId });
   if (!asset) {
     throw new NotFoundError('Asset');
   }
   return asset;
 };
 
-const searchAssets = async (query, page = 1, limit = 20) => {
+const searchAssets = async (organizationId, query, page = 1, limit = 20) => {
   const skip = (page - 1) * limit;
   
   const assets = await Asset.find(
-    { $text: { $search: query } },
+    { $text: { $search: query }, organization: organizationId },
     { score: { $meta: 'textScore' } }
   )
     .sort({ score: { $meta: 'textScore' } })
     .skip(skip)
     .limit(limit);
 
-  const total = await Asset.countDocuments({ $text: { $search: query } });
+  const total = await Asset.countDocuments({ $text: { $search: query }, organization: organizationId });
 
   return {
     assets,

@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { getWorkOrder, updateWorkOrderStatus } from "../../api/workOrders";
+import ProtectedImage from "../../components/common/ProtectedImage";
 
 const formatDateTime = (value) =>
   value ? new Date(value).toLocaleString("en-US") : "—";
@@ -364,7 +365,7 @@ export default function WorkOrderDetailView() {
                     transition={{ delay: index * 0.05 }}
                     className="overflow-hidden rounded-md border border-slate-200 dark:border-slate-700"
                   >
-                    <img
+                    <ProtectedImage
                       src={photo.url}
                       alt={`attachment-${index}`}
                       className="h-28 w-full object-cover"

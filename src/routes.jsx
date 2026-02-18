@@ -46,6 +46,7 @@ import Inventory from './pages/Inventory/Inventory';
 import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
 import Profile from './pages/Settings/Profile';
+import OrgAdmin from './pages/Org/OrgAdmin';
 
 // Role-based route wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -244,7 +245,7 @@ const AppRoutes = () => {
       } />
 
       <Route path="/leave-center" element={
-        <ProtectedRoute allowedRoles={["staff"]}>
+        <ProtectedRoute allowedRoles={["staff", "facility_manager", "admin"]}>
           <MainLayout><LeaveCenter /></MainLayout>
         </ProtectedRoute>
       } />
@@ -288,6 +289,12 @@ const AppRoutes = () => {
       <Route path="/profile" element={
         <ProtectedRoute>
           <MainLayout><Profile /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/org-admin" element={
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <MainLayout><OrgAdmin /></MainLayout>
         </ProtectedRoute>
       } />
       

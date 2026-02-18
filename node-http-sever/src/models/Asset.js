@@ -1,6 +1,6 @@
 // Asset Model
 const mongoose = require('mongoose');
-const constants = require('../config/constants');
+const constants = require('../constants/constants');
 
 const assetSchema = new mongoose.Schema({
   name: {
@@ -10,7 +10,6 @@ const assetSchema = new mongoose.Schema({
   },
   assetNumber: {
     type: String,
-    unique: true,
     sparse: true,
     trim: true
   },
@@ -25,7 +24,6 @@ const assetSchema = new mongoose.Schema({
   },
   serialNumber: {
     type: String,
-    unique: true,
     sparse: true,
     trim: true
   },
@@ -56,6 +54,12 @@ const assetSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   department: String,
   tags: [String],
   customFields: mongoose.Schema.Types.Mixed,
@@ -74,5 +78,7 @@ const assetSchema = new mongoose.Schema({
 // Index for frequently searched fields
 assetSchema.index({ name: 'text', description: 'text', assetNumber: 1 });
 assetSchema.index({ status: 1, category: 1 });
+assetSchema.index({ organization: 1, assetNumber: 1 }, { unique: true, sparse: true });
+assetSchema.index({ organization: 1, serialNumber: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Asset', assetSchema);

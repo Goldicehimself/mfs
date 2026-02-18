@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import mockWorkOrders from '../../mocks/mockWorkOrders';
+import { fetchAllLeaves, fetchPendingLeaves, approveLeave, rejectLeave } from '@/api/leave';
+import { toast } from 'react-toastify';
 
 // Mock data for staff members
 const mockStaffData = {
@@ -226,32 +228,17 @@ export default function StaffManagement() {
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState('');
   const [assignmentDueDate, setAssignmentDueDate] = useState('');
   const [managementView, setManagementView] = useState('staff');
-  const [editingRequestId, setEditingRequestId] = useState(null);
-  const [editDates, setEditDates] = useState({ startDate: '', endDate: '' });
-  const [leaveRequests, setLeaveRequests] = useState([
-    {
-      id: 1,
-      staffName: 'Ifeanyi Cole',
-      type: 'Annual',
-      startDate: '2026-01-28',
-      endDate: '2026-02-02',
-      reason: 'Family event',
-      status: 'Pending',
-      managerName: 'Facility Manager',
-      updatedAt: '2026-01-20',
-    },
-    {
-      id: 2,
-      staffName: 'Sarah Johnson',
-      type: 'Sick',
-      startDate: '2026-02-10',
-      endDate: '2026-02-12',
-      reason: 'Medical appointment',
-      status: 'Pending',
-      managerName: 'Facility Manager',
-      updatedAt: '2026-01-21',
-    },
-  ]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [pendingLeaveRequests, setPendingLeaveRequests] = useState([]);
+  const [leaveFilters, setLeaveFilters] = useState({
+    status: 'all',
+    type: 'all',
+    staff: '',
+    from: '',
+    to: '',
+  });
+  const [decisionNotes, setDecisionNotes] = useState({});
+  const [leaveLoading, setLeaveLoading] = useState(false);
 
   const getCertificatesForStaff = (staff) => {
     if (!staff?.email) return [];
@@ -294,57 +281,95 @@ export default function StaffManagement() {
   };
 
   const getLeaveStatusClass = (status) => {
-    if (status === 'Approved') {
+    if (status === 'approved' || status === 'Approved') {
       return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
     }
-    if (status === 'Rejected') {
+    if (status === 'rejected' || status === 'Rejected') {
       return 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300';
     }
     return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
   };
 
-  const pendingLeaveRequests = leaveRequests.filter((request) => request.status === 'Pending');
-
-  const updateLeaveStatus = (requestId, status) => {
-    setLeaveRequests((prev) =>
-      prev.map((request) =>
-        request.id === requestId
-          ? {
-              ...request,
-              status,
-              updatedAt: new Date().toISOString().split('T')[0],
-            }
-          : request
-      )
-    );
+  const loadLeaves = async () => {
+    setLeaveLoading(true);
+    try {
+      const [pending, all] = await Promise.all([
+        fetchPendingLeaves(),
+        fetchAllLeaves({
+          status: leaveFilters.status !== 'all' ? leaveFilters.status : undefined,
+          type: leaveFilters.type !== 'all' ? leaveFilters.type : undefined,
+          staff: leaveFilters.staff || undefined,
+          from: leaveFilters.from || undefined,
+          to: leaveFilters.to || undefined,
+        }),
+      ]);
+      setPendingLeaveRequests(Array.isArray(pending) ? pending : []);
+      setLeaveRequests(Array.isArray(all) ? all : []);
+    } catch (error) {
+      // handled by interceptor
+    } finally {
+      setLeaveLoading(false);
+    }
   };
 
-  const beginEditDates = (request) => {
-    setEditingRequestId(request.id);
-    setEditDates({ startDate: request.startDate, endDate: request.endDate });
+  useEffect(() => {
+    if (managementView !== 'leave') return;
+    loadLeaves();
+  }, [managementView]);
+
+  const handleApproveLeave = async (request) => {
+    try {
+      const note = decisionNotes[request._id] || '';
+      await approveLeave(request._id, note);
+      toast.success('Leave approved');
+      setPendingLeaveRequests((prev) => prev.filter((r) => r._id !== request._id));
+      setDecisionNotes((prev) => ({ ...prev, [request._id]: '' }));
+      loadLeaves();
+    } catch (error) {
+      // handled by interceptor
+    }
   };
 
-  const saveEditDates = (requestId) => {
-    if (!editDates.startDate || !editDates.endDate) {
-      alert('Select both start and end dates.');
+  const handleRejectLeave = async (request) => {
+    try {
+      const note = decisionNotes[request._id] || '';
+      await rejectLeave(request._id, note);
+      toast.success('Leave rejected');
+      setPendingLeaveRequests((prev) => prev.filter((r) => r._id !== request._id));
+      setDecisionNotes((prev) => ({ ...prev, [request._id]: '' }));
+      loadLeaves();
+    } catch (error) {
+      // handled by interceptor
+    }
+  };
+
+  const exportLeaveHistory = () => {
+    if (!leaveRequests.length) {
+      toast.info('No leave records to export');
       return;
     }
-
-    setLeaveRequests((prev) =>
-      prev.map((request) =>
-        request.id === requestId
-          ? {
-              ...request,
-              startDate: editDates.startDate,
-              endDate: editDates.endDate,
-              updatedAt: new Date().toISOString().split('T')[0],
-            }
-          : request
-      )
-    );
-
-    setEditingRequestId(null);
-    setEditDates({ startDate: '', endDate: '' });
+    const rows = [
+      ['Staff', 'Email', 'Type', 'Start Date', 'End Date', 'Status', 'Reason'],
+      ...leaveRequests.map((leave) => [
+        `${leave.staff?.firstName || ''} ${leave.staff?.lastName || ''}`.trim(),
+        leave.staff?.email || '',
+        leave.type,
+        formatDate(leave.startDate),
+        formatDate(leave.endDate),
+        leave.status,
+        leave.reason?.replace(/\n/g, ' ') || ''
+      ])
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leave-history-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleAssignWork = () => {
@@ -424,12 +449,81 @@ export default function StaffManagement() {
       {managementView === 'leave' ? (
         <Card>
           <CardHeader>
-            <h3 className="font-semibold text-gray-900 dark:text-white">Leave Approvals</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Pending requests need manager action.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Leave Approvals</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Pending requests need manager action.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={exportLeaveHistory}>
+                Export History
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+              <Input
+                placeholder="Staff ID"
+                value={leaveFilters.staff}
+                onChange={(e) => setLeaveFilters((prev) => ({ ...prev, staff: e.target.value }))}
+              />
+              <Select
+                value={leaveFilters.status}
+                onValueChange={(value) => setLeaveFilters((prev) => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-900">
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={leaveFilters.type}
+                onValueChange={(value) => setLeaveFilters((prev) => ({ ...prev, type: value }))}
+              >
+                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-900">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Annual">Annual</SelectItem>
+                  <SelectItem value="Sick">Sick</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={leaveFilters.from}
+                onChange={(e) => setLeaveFilters((prev) => ({ ...prev, from: e.target.value }))}
+              />
+              <Input
+                type="date"
+                value={leaveFilters.to}
+                onChange={(e) => setLeaveFilters((prev) => ({ ...prev, to: e.target.value }))}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={loadLeaves}>
+                  Apply Filters
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setLeaveFilters({ status: 'all', type: 'all', staff: '', from: '', to: '' });
+                    setTimeout(loadLeaves, 0);
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+
             {pendingLeaveRequests.length === 0 ? (
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 No pending leave approvals.
@@ -438,98 +532,90 @@ export default function StaffManagement() {
               <div className="space-y-3">
                 {pendingLeaveRequests.map((request) => (
                   <div
-                    key={request.id}
+                    key={request._id}
                     className="rounded-lg border border-gray-200 dark:border-zinc-700 p-3 space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {request.staffName}
+                          {request.staff?.firstName} {request.staff?.lastName}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           {request.type} leave
                         </p>
                       </div>
                       <Badge className={getLeaveStatusClass(request.status)}>
-                        {request.status}
+                        {request.status?.toUpperCase?.() || request.status}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       {formatDate(request.startDate)} - {formatDate(request.endDate)}
                     </p>
-                    {editingRequestId === request.id ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="date"
-                            value={editDates.startDate}
-                            onChange={(event) =>
-                              setEditDates((prev) => ({
-                                ...prev,
-                                startDate: event.target.value,
-                              }))
-                            }
-                            className="bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700"
-                          />
-                          <Input
-                            type="date"
-                            value={editDates.endDate}
-                            onChange={(event) =>
-                              setEditDates((prev) => ({
-                                ...prev,
-                                endDate: event.target.value,
-                              }))
-                            }
-                            className="bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700"
-                          />
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-blue-700 hover:bg-blue-800 text-white"
-                            onClick={() => saveEditDates(request.id)}
-                          >
-                            Save Dates
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingRequestId(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          onClick={() => updateLeaveStatus(request.id, 'Approved')}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-rose-300 text-rose-700 hover:bg-rose-50"
-                          onClick={() => updateLeaveStatus(request.id, 'Rejected')}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => beginEditDates(request)}
-                        >
-                          Edit Dates
-                        </Button>
-                      </div>
-                    )}
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                        Manager note (optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={decisionNotes[request._id] || ''}
+                        onChange={(event) =>
+                          setDecisionNotes((prev) => ({ ...prev, [request._id]: event.target.value }))
+                        }
+                        className="mt-1 w-full rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => handleApproveLeave(request)}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                        onClick={() => handleRejectLeave(request)}
+                      >
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Leave History</h4>
+              {leaveLoading ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">Loading history...</p>
+              ) : leaveRequests.length === 0 ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400">No leave history yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {leaveRequests.slice(0, 8).map((leave) => (
+                    <div
+                      key={leave._id}
+                      className="rounded-lg border border-gray-200 dark:border-zinc-700 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {leave.staff?.firstName} {leave.staff?.lastName}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {leave.type} • {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
+                          </p>
+                        </div>
+                        <Badge className={getLeaveStatusClass(leave.status)}>
+                          {leave.status?.toUpperCase?.() || leave.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       ) : (
