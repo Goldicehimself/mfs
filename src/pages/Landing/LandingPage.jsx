@@ -13,9 +13,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 
-// Resolve images at runtime so dev server paths work reliably
-const PlaceholderImg = new URL('../../assets/screenshots/screenshot-1.svg', import.meta.url).href;
-
 // Optimized variants created by tools/generate-screenshots.js
 const DashboardWebpSrcSet = [480,768,1024,1440].map(w => `${new URL(`../../assets/screenshots/optimized/elaadmin-dashboard-template-${w}.webp`, import.meta.url).href} ${w}w`).join(', ');
 const DashboardPngFallback = new URL('../../assets/screenshots/optimized/elaadmin-dashboard-template-1024.png', import.meta.url).href;
