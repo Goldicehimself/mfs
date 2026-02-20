@@ -2,65 +2,57 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Avatar,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  Divider,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  Switch,
-  FormControlLabel,
-  LinearProgress,
-  Fade,
-  Paper,
-  Tooltip,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import {
-  Edit,
-  PhotoCamera,
+  ArrowLeft,
+  Camera,
+  Edit3,
   Save,
-  Cancel,
-  Person,
-  Security,
-  Email,
-  Phone,
-  Wc,
-  Business,
+  X,
+  Shield,
   Lock,
   History,
-  Shield,
-  VerifiedUser,
-  AccountCircle,
-  ArrowBack,
-  Description as DescriptionIcon,
-} from '@mui/icons-material';
+  BadgeCheck,
+  FileText,
+  UserCircle,
+  Mail,
+  Phone
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { getHomeRoute } from '../../utils/roleHome';
 import axios from 'axios';
 import { updateProfile, uploadCertificates } from '../../api/profile';
+import { getLoginHistory } from '../../api/audit';
+import { PhoneInput } from 'react-international-phone';
+import 'react-international-phone/style.css';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+
+  const isPhoneValid = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    return digits.length === 0 || (digits.length >= 6 && digits.length <= 15);
+  };
+
+  const getDialCode = (value) => {
+    const match = String(value || '').trim().match(/^(\+\d{1,4})/);
+    return match ? match[1] : null;
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -68,16 +60,19 @@ const Profile = () => {
     email: user?.email || '',
     phone: user?.phone || '',
     gender: user?.gender || '',
-    role: user?.role || '',
+    role: user?.role || ''
   });
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [loginHistory, setLoginHistory] = useState([]);
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -85,7 +80,6 @@ const Profile = () => {
   const fileInputRef = React.useRef(null);
   const certificateInputRef = React.useRef(null);
 
-  // Keyboard shortcut to exit profile page
   useEffect(() => {
     if (user) {
       setFormData({
@@ -93,13 +87,12 @@ const Profile = () => {
         email: user?.email || '',
         phone: user?.phone || '',
         gender: user?.gender || '',
-        role: user?.role || '',
+        role: user?.role || ''
       });
       setCertificates(user?.certificates || []);
     }
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
-        // Navigate back to dashboard or previous page
         navigate(getHomeRoute(user?.role));
       }
     };
@@ -140,7 +133,7 @@ const Profile = () => {
         const token = localStorage.getItem('token');
         const response = await axios.get(buildUploadUrl(user.avatar), {
           responseType: 'blob',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         objectUrl = URL.createObjectURL(response.data);
         if (active) setAvatarPreview(objectUrl);
@@ -157,8 +150,53 @@ const Profile = () => {
     };
   }, [user?.avatar, selectedImage]);
 
+  const normalizeLoginHistory = (items = []) =>
+    items.map((item, index) => ({
+      id: item.id || item._id || `lh-${index}`,
+      time: new Date(item.time || item.timestamp || item.createdAt || item.created_at || Date.now()),
+      location: item.location || item.ip || 'Web',
+      status: item.status || 'Success'
+    }));
+
+  const getLocalLoginHistory = (currentUser) => {
+    try {
+      const all = JSON.parse(localStorage.getItem('login_history') || '[]');
+      const filtered = all.filter((entry) => {
+        if (currentUser?.id && entry.userId) return entry.userId === currentUser.id;
+        if (currentUser?.email && entry.email) {
+          return entry.email.toLowerCase() === currentUser.email.toLowerCase();
+        }
+        return false;
+      });
+      return normalizeLoginHistory(filtered);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const loadLoginHistory = async () => {
+      if (!user) return;
+      setLoginHistoryLoading(true);
+      try {
+        const data = await getLoginHistory(user?.id);
+        const normalized = Array.isArray(data) ? normalizeLoginHistory(data) : [];
+        if (active) setLoginHistory(normalized);
+      } catch (e) {
+        if (active) setLoginHistory(getLocalLoginHistory(user));
+      } finally {
+        if (active) setLoginHistoryLoading(false);
+      }
+    };
+    loadLoginHistory();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, user?.email]);
+
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value
     }));
@@ -167,13 +205,31 @@ const Profile = () => {
   const handleSave = async () => {
     setLoading(true);
     try {
+      const nextErrors = {};
       const fullName = formData.name?.trim() || '';
+      const emailValue = formData.email?.trim() || '';
+      if (!fullName) nextErrors.name = 'Full name is required';
+      if (!emailValue) nextErrors.email = 'Email is required';
+      if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        nextErrors.email = 'Email is invalid';
+      }
       const [firstName, ...rest] = fullName.split(' ');
       const lastName = rest.join(' ') || user?.lastName || '';
+      if (!isPhoneValid(formData.phone)) {
+        nextErrors.phone = 'Phone number is invalid';
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setFormErrors(nextErrors);
+        toast.error('Please fix the form errors');
+        setLoading(false);
+        return;
+      }
+      setFormErrors({});
       const payload = {
         firstName: firstName || user?.firstName || '',
         lastName,
         phone: formData.phone,
+        phoneCountryCode: getDialCode(formData.phone)
       };
 
       const updated = await updateProfile(payload, selectedImageFile);
@@ -195,9 +251,10 @@ const Profile = () => {
       email: user?.email || '',
       phone: user?.phone || '',
       gender: user?.gender || '',
-      role: user?.role || '',
+      role: user?.role || ''
     });
-    setSelectedImage(null); // Reset any uploaded image
+    setFormErrors({});
+    setSelectedImage(null);
     setSelectedImageFile(null);
     setIsEditing(false);
   };
@@ -210,13 +267,12 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      // In a real app, this would call an API to change password
       toast.success('Password changed successfully');
       setPasswordDialog(false);
       setPasswordData({
         currentPassword: '',
         newPassword: '',
-        confirmPassword: '',
+        confirmPassword: ''
       });
     } catch (error) {
       toast.error('Failed to change password');
@@ -227,11 +283,12 @@ const Profile = () => {
 
   const getRoleDisplayName = (role) => {
     const roleMap = {
+      admin: 'Admin',
       facility_manager: 'Facility Manager',
       technician: 'Maintenance Technician',
       vendor: 'Vendor',
       staff: 'Staff',
-      finance: 'Finance',
+      finance: 'Finance'
     };
     return roleMap[role] || role;
   };
@@ -243,13 +300,11 @@ const Profile = () => {
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Please select a valid image file');
         return;
       }
 
-      // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Image size should be less than 5MB');
         return;
@@ -259,7 +314,6 @@ const Profile = () => {
       reader.onload = (e) => {
         setSelectedImage(e.target.result);
         setSelectedImageFile(file);
-        // In a real app, you would upload to server here
         toast.success('Profile image updated successfully');
       };
       reader.readAsDataURL(file);
@@ -301,9 +355,7 @@ const Profile = () => {
       .then((updatedUser) => {
         updateUser(updatedUser);
         setCertificates(updatedUser?.certificates || []);
-        toast.success(
-          validFiles.length > 1 ? 'Certificates uploaded' : 'Certificate uploaded'
-        );
+        toast.success(validFiles.length > 1 ? 'Certificates uploaded' : 'Certificate uploaded');
       })
       .catch(() => {
         toast.error('Failed to upload certificates');
@@ -338,7 +390,7 @@ const Profile = () => {
       const token = localStorage.getItem('token');
       const response = await axios.get(buildUploadUrl(filePath), {
         responseType: 'blob',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       const objectUrl = URL.createObjectURL(response.data);
       window.open(objectUrl, '_blank', 'noopener');
@@ -350,397 +402,467 @@ const Profile = () => {
 
   if (!user) {
     return (
-      <Box>
-        <Typography variant="h4" gutterBottom>
-          Profile
-        </Typography>
-        <Alert severity="info">
-          Please log in to view your profile.
+      <div className="mx-auto max-w-5xl px-4 py-10">
+        <h1 className="text-2xl font-semibold mb-3">Profile</h1>
+        <Alert>
+          <AlertDescription>Please log in to view your profile.</AlertDescription>
         </Alert>
-      </Box>
+      </div>
     );
   }
 
-  return (
-    <Box>
-      <Box mb={2}>
-        <motion.div
-          whileHover={{
-            x: -4,
-            scale: 1.02,
-          }}
-          whileTap={{ scale: 0.98 }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 17
-          }}
-        >
-          <Button
-            variant="text"
-            startIcon={
-              <motion.div
-                whileHover={{ x: -2 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              >
-                <ArrowBack />
-              </motion.div>
-            }
-            onClick={() => navigate(getHomeRoute(user?.role))}
-            sx={{
-              color: 'primary.main',
-              fontWeight: 500,
-              borderRadius: 2,
-              px: 2,
-              py: 1,
-              backgroundColor: 'transparent',
-              '&:hover': {
-                backgroundColor: 'primary.main',
-                color: 'primary.contrastText',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-              }
-            }}
-          >
-            Return to Dashboard
-          </Button>
-        </motion.div>
-      </Box>
-      <Typography variant="h4" gutterBottom>
-        Profile Settings
-      </Typography>
+  const getLoginStatusColor = (status) => {
+    const value = String(status || '').toLowerCase();
+    if (value.includes('fail') || value.includes('error')) return 'bg-rose-100 text-rose-700';
+    if (value.includes('warn')) return 'bg-amber-100 text-amber-700';
+    return 'bg-emerald-100 text-emerald-700';
+  };
 
-      <Grid container spacing={3}>
-        {/* Profile Header */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={3}>
-                <Box position="relative">
-                  <Avatar
-                    src={avatarPreview || '/avatar-placeholder.svg'}
-                    sx={{ width: 80, height: 80 }}
+  const displayPhone = (() => {
+    const phoneValue = String(user?.phone || '').trim();
+    if (!phoneValue) return '';
+    if (user?.phoneCountryCode) {
+      return phoneValue.startsWith(user.phoneCountryCode)
+        ? phoneValue
+        : `${user.phoneCountryCode} ${phoneValue}`.trim();
+    }
+    return phoneValue;
+  })();
+
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(99,102,241,0.12),_transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_65%)]">
+      <div className="mx-auto max-w-6xl px-4 py-10 space-y-7">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <motion.button
+            whileHover={{ x: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+            onClick={() => navigate(getHomeRoute(user?.role))}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </motion.button>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+            <Shield className="h-4 w-4" />
+            Profile settings are saved securely
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Profile Hub</p>
+              <h1 className="text-3xl font-semibold text-slate-900 mt-2">Profile Settings</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Keep your personal information up to date and manage access settings.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
+                <Shield className="h-3.5 w-3.5 text-slate-500" />
+                Security status: Healthy
+              </div>
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
+                <History className="h-3.5 w-3.5 text-slate-500" />
+                Last update: {new Date().toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-indigo-500" />
+          </div>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+          <div className="space-y-6">
+            <Card className="border-slate-200/70 bg-white/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Profile</CardTitle>
+                <CardDescription>Manage your identity and contact details.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Avatar className="h-20 w-20 border border-slate-200 bg-white">
+                        {avatarPreview ? (
+                          <AvatarImage src={avatarPreview} alt={user.name} />
+                        ) : (
+                          <AvatarFallback className="text-2xl">
+                            {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={handleCameraClick}
+                        className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700"
+                        aria-label="Upload profile photo"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h2 className="text-xl font-semibold text-slate-900">{user.name}</h2>
+                      <p className="text-sm text-slate-500">{getRoleDisplayName(user.role)}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1">
+                          <Mail className="h-3.5 w-3.5" />
+                          {user.email}
+                        </span>
+                        {displayPhone && (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            {displayPhone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="self-start bg-blue-700 text-white hover:bg-blue-800"
                   >
-                    {user.name?.charAt(0)?.toUpperCase()}
-                  </Avatar>
-                  <IconButton
-                    size="small"
-                    onClick={handleCameraClick}
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      backgroundColor: 'primary.main',
-                      color: 'white',
-                      '&:hover': { backgroundColor: 'primary.dark' }
-                    }}
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70 bg-white/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Personal Information</CardTitle>
+                <CardDescription>Update your basic information and contact details.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                    {formErrors.name && (
+                      <p className="text-xs text-rose-600">{formErrors.name}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                    {formErrors.email && (
+                      <p className="text-xs text-rose-600">{formErrors.email}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <div className={!isEditing ? 'opacity-60 pointer-events-none' : ''}>
+                      <PhoneInput
+                        defaultCountry="us"
+                        value={formData.phone || ''}
+                        onChange={(value) => handleInputChange('phone', value)}
+                        disabled={!isEditing}
+                        inputProps={{ name: 'phone' }}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    {formErrors.phone && (
+                      <p className="text-xs text-rose-600">{formErrors.phone}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <Select
+                      value={formData.gender || ''}
+                      onValueChange={(value) => handleInputChange('gender', value)}
+                      disabled={!isEditing}
+                    >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Role</Label>
+                    <Select value={formData.role || ''} disabled>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="facility_manager">Facility Manager</SelectItem>
+                        <SelectItem value="technician">Maintenance Technician</SelectItem>
+                        <SelectItem value="vendor">Vendor</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">
+                      Role changes must be requested through your administrator.
+                    </p>
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button onClick={handleSave} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+                      <Save className="mr-2 h-4 w-4" />
+                      {loading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancel} className="border-slate-200">
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70 bg-white/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Certificates</CardTitle>
+                <CardDescription>Upload and manage compliance documents.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    onClick={() => certificateInputRef.current?.click()}
+                    className="bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <PhotoCamera fontSize="small" />
-                  </IconButton>
+                    <BadgeCheck className="mr-2 h-4 w-4" />
+                    Upload Certificate
+                  </Button>
+                  <span className="text-xs text-slate-500">PDF or image files supported.</span>
                   <input
                     type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    style={{ display: 'none' }}
+                    ref={certificateInputRef}
+                    onChange={handleCertificateUpload}
+                    accept="application/pdf,image/*"
+                    multiple
+                    className="hidden"
                   />
-                </Box>
-                <Box flex={1}>
-                  <Typography variant="h5">{user.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {getRoleDisplayName(user.role)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {user.email}
-                  </Typography>
-                </Box>
+                </div>
+
+                {certificates.length === 0 ? (
+                  <p className="text-sm text-slate-500">No certificates uploaded yet.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {certificates.map((cert) => {
+                      const certPath =
+                        typeof cert === 'string' ? cert : cert?.path || cert?.dataUrl || '';
+                      const fileName =
+                        typeof cert === 'string'
+                          ? certPath.split('/').pop()
+                          : cert?.name || certPath.split('/').pop();
+                      const isPdf =
+                        typeof cert === 'string'
+                          ? fileName?.toLowerCase().endsWith('.pdf')
+                          : cert?.type === 'application/pdf';
+                      return (
+                        <div
+                          key={cert?.id || certPath}
+                          className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                              {isPdf ? <FileText className="h-4 w-4" /> : <UserCircle className="h-4 w-4" />}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-slate-900 truncate">{fileName}</p>
+                              <p className="text-xs text-slate-500">Uploaded</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCertificate(cert?.id || certPath)}
+                              className="text-slate-400 hover:text-slate-600"
+                              title="Remove"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                typeof cert === 'string'
+                                  ? openProtectedFile(certPath)
+                                  : window.open(cert?.dataUrl, '_blank')
+                              }
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="border-slate-200/70 bg-white/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Security</CardTitle>
+                <CardDescription>Manage password and authentication.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <Button
-                  variant="outlined"
-                  startIcon={<Edit />}
-                  onClick={() => setIsEditing(!isEditing)}
+                  variant="outline"
+                  className="w-full border-slate-200 text-slate-700 hover:bg-slate-50"
+                  onClick={() => setPasswordDialog(true)}
                 >
-                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                  <Lock className="mr-2 h-4 w-4" />
+                  Change Password
                 </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
 
-        {/* Profile Information */}
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Personal Information
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Full Name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    disabled={!isEditing}
-                    variant={isEditing ? 'outlined' : 'filled'}
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <span className="flex items-center gap-2 text-slate-700">
+                    <Shield className="h-4 w-4 text-slate-500" />
+                    Enable 2FA
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={twoFactorEnabled}
+                    onChange={(e) => setTwoFactorEnabled(e.target.checked)}
+                    className="h-4 w-4 accent-blue-600"
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    disabled={!isEditing}
-                    variant={isEditing ? 'outlined' : 'filled'}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    disabled={!isEditing}
-                    variant={isEditing ? 'outlined' : 'filled'}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth disabled={!isEditing} variant={isEditing ? 'outlined' : 'filled'}>
-                    <InputLabel>Gender</InputLabel>
-                    <Select
-                      value={formData.gender}
-                      onChange={(e) => handleInputChange('gender', e.target.value)}
-                      label="Gender"
-                    >
-                      <MenuItem value="male">Male</MenuItem>
-                      <MenuItem value="female">Female</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth disabled variant="filled">
-                    <InputLabel>Role</InputLabel>
-                    <Select value={formData.role} label="Role">
-                      <MenuItem value="facility_manager">Facility Manager</MenuItem>
-                      <MenuItem value="technician">Maintenance Technician</MenuItem>
-                      <MenuItem value="vendor">Vendor</MenuItem>
-                      <MenuItem value="staff">Staff</MenuItem>
-                      <MenuItem value="finance">Finance</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    Role changes must be requested through your administrator.
-                  </Typography>
-                </Grid>
-              </Grid>
-
-              {isEditing && (
-                <Box mt={3} display="flex" gap={2}>
-                  <Button
-                    variant="contained"
-                    startIcon={<Save />}
-                    onClick={handleSave}
-                    disabled={loading}
-                  >
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<Cancel />}
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Security Settings */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Security
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => setPasswordDialog(true)}
-                sx={{ mb: 2 }}
-              >
-                Change Password
-              </Button>
-
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="body2">
+                </label>
+                <p className="text-xs text-slate-500">
+                  Two-factor authentication adds an extra layer of security.
+                </p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                   Last login: {new Date().toLocaleDateString()}
-                </Typography>
-              </Alert>
-            </CardContent>
-          </Card>
-        </Grid>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Certificates */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Certificates
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
+            <Card className="border-slate-200/70 bg-white/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Login History</CardTitle>
+                <CardDescription>Recent sign-ins for your account.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loginHistoryLoading ? (
+                  <p className="text-sm text-slate-500">Loading login history...</p>
+                ) : loginHistory.length === 0 ? (
+                  <p className="text-sm text-slate-500">No login history yet.</p>
+                ) : (
+                  <div className="grid gap-3">
+                    {loginHistory.map((entry) => (
+                      <div key={entry.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-slate-900">
+                            {entry.time.toLocaleString()}
+                          </p>
+                          <History className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <p className="text-xs text-slate-500">{entry.location}</p>
+                        <div className="mt-2">
+                          <Badge className={getLoginStatusColor(entry.status)}>
+                            {entry.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
 
-              <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ mb: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<VerifiedUser />}
-                  onClick={() => certificateInputRef.current?.click()}
-                >
-                  Upload Certificate
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  PDF or image files are supported.
-                </Typography>
-                <input
-                  type="file"
-                  ref={certificateInputRef}
-                  onChange={handleCertificateUpload}
-                  accept="application/pdf,image/*"
-                  multiple
-                  style={{ display: 'none' }}
+      {passwordDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
+              <button
+                type="button"
+                onClick={() => setPasswordDialog(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) =>
+                    setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))
+                  }
                 />
-              </Box>
-
-              {certificates.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No certificates uploaded yet.
-                </Typography>
-              ) : (
-                <Grid container spacing={2}>
-                  {certificates.map((cert) => {
-                    const certPath = typeof cert === 'string' ? cert : cert?.path || cert?.dataUrl || '';
-                    const fileName = typeof cert === 'string'
-                      ? certPath.split('/').pop()
-                      : cert?.name || certPath.split('/').pop();
-                    const isPdf = typeof cert === 'string'
-                      ? fileName?.toLowerCase().endsWith('.pdf')
-                      : cert?.type === 'application/pdf';
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={cert?.id || certPath}>
-                        <Card variant="outlined" sx={{ height: '100%' }}>
-                          <CardContent>
-                            <Box display="flex" alignItems="center" gap={2}>
-                              {isPdf ? (
-                                <Box
-                                  sx={{
-                                    width: 48,
-                                    height: 48,
-                                    borderRadius: 1,
-                                    bgcolor: 'grey.100',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  }}
-                                >
-                                  <DescriptionIcon />
-                                </Box>
-                              ) : (
-                                <Avatar
-                                  variant="rounded"
-                                  src={typeof cert === 'string' ? undefined : cert?.dataUrl}
-                                  sx={{ width: 48, height: 48 }}
-                                />
-                              )}
-                              <Box flex={1}>
-                                <Typography variant="body2" fontWeight={600} noWrap>
-                                  {fileName}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Uploaded
-                                </Typography>
-                              </Box>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveCertificate(cert?.id || certPath)}
-                                title="Remove"
-                              >
-                                <Cancel fontSize="small" />
-                              </IconButton>
-                            </Box>
-                            <Box mt={1}>
-                              <Button
-                                size="small"
-                                variant="text"
-                                onClick={() =>
-                                  typeof cert === 'string'
-                                    ? openProtectedFile(certPath)
-                                    : window.open(cert?.dataUrl, '_blank')
-                                }
-                              >
-                                View
-                              </Button>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Password Change Dialog */}
-      <Dialog open={passwordDialog} onClose={() => setPasswordDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Change Password</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Current Password"
-            type="password"
-            value={passwordData.currentPassword}
-            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="New Password"
-            type="password"
-            value={passwordData.newPassword}
-            onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-            sx={{ mt: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Confirm New Password"
-            type="password"
-            value={passwordData.confirmPassword}
-            onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPasswordDialog(false)}>Cancel</Button>
-          <Button
-            onClick={handlePasswordChange}
-            variant="contained"
-            disabled={loading}
-          >
-            {loading ? 'Changing...' : 'Change Password'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) =>
+                    setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPasswordDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handlePasswordChange} disabled={loading}>
+                {loading ? 'Changing...' : 'Change Password'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
 export default Profile;
-

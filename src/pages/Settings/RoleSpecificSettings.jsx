@@ -2,24 +2,54 @@ import React from 'react';
 import { Lock, Database, Users, Settings as SettingsIcon, Mail, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useInvitations } from '../../contexts/InvitationContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../contexts/AuthContext';
+import { isEmailAllowedByPolicy } from '../../utils/securityPolicy';
+import { getOrgSettings } from '../../api/org';
 
 export const AdminSettings = () => {
   const { invitations, sendAdminInvitation, revokeInvitation, resendInvitation } = useInvitations();
+  const { user } = useAuth();
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [securityPolicy, setSecurityPolicy] = useState({ restrictInviteDomains: false, allowedInviteDomains: [] });
+
+  useEffect(() => {
+    const loadPolicy = async () => {
+      try {
+        const response = await getOrgSettings();
+        const settings = response?.settings || response || {};
+        setSecurityPolicy(settings.securityPolicy || { restrictInviteDomains: false, allowedInviteDomains: [] });
+      } catch {
+        setSecurityPolicy({ restrictInviteDomains: false, allowedInviteDomains: [] });
+      }
+    };
+    loadPolicy();
+  }, []);
 
   const handleSendInvite = async () => {
     if (!inviteEmail || !inviteEmail.includes('@')) {
       toast.error('Please enter a valid email address');
       return;
     }
+    if (!isEmailAllowedByPolicy(inviteEmail, securityPolicy)) {
+      toast.error('Invites are restricted to approved domains for this organization.');
+      return;
+    }
+    if (!user?.email) {
+      toast.error('You must be logged in to send invitations');
+      return;
+    }
+    if (user?.role !== 'admin') {
+      toast.error('Only admins can send invitations');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const invitation = sendAdminInvitation(inviteEmail, 'admin@maintainpro.com');
+      const invitation = sendAdminInvitation(inviteEmail, user.email);
       const inviteLink = `${window.location.origin}/register?invite=${invitation.token}`;
       
       // Copy to clipboard

@@ -1,22 +1,5 @@
-import React, { useState } from 'react';
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Alert,
-  Link,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  InputAdornment,
-  IconButton,
-  Paper,
-  Checkbox,
-  FormControlLabel,
-} from '@mui/material';
-import { Eye, EyeOff, Wrench } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Eye, EyeOff, Wrench,Copyright } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +7,16 @@ import { toast } from 'react-toastify';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { PhoneInput } from 'react-international-phone';
+import 'react-international-phone/style.css';
+import './Register.css';
+import { isEmailAllowedByPolicy } from '../../utils/securityPolicy';
+import { getPublicOrgSecurityPolicy } from '../../api/org';
+
+const isPhoneValid = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length >= 6 && digits.length <= 15;
+};
 
 const schema = yup.object({
   mode: yup.string().oneOf(['org', 'join']).required(),
@@ -38,7 +31,10 @@ const schema = yup.object({
   firstName: yup.string().required('First name is required'),
   lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
-  phone: yup.string().required('Phone number is required'),
+  phone: yup
+    .string()
+    .required('Phone number is required')
+    .test('phone-basic', 'Phone number is invalid', (value) => isPhoneValid(value)),
   department: yup.string().optional(),
   password: yup.string().min(6).required('Password is required'),
   confirmPassword: yup
@@ -66,6 +62,8 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showOrgCode, setShowOrgCode] = useState(false);
+  const [orgSecurityPolicy, setOrgSecurityPolicy] = useState({ restrictInviteDomains: false, allowedInviteDomains: [] });
+  const [policyLoaded, setPolicyLoaded] = useState(false);
 
   const {
     register,
@@ -85,12 +83,45 @@ const Register = () => {
 
   const mode = watch('mode');
   const inviteCode = watch('inviteCode');
+  const orgCode = watch('orgCode');
+  const watchedEmail = watch('email');
   const orgCodeRegister = register('orgCode');
   const inviteCodeRegister = register('inviteCode');
+  const showDomainHint = policyLoaded && orgSecurityPolicy.restrictInviteDomains;
+
+  useEffect(() => {
+    const currentOrgCode = (orgCode || '').trim().toUpperCase();
+    const currentInvite = (inviteCode || inviteCodeFromQuery || '').trim().toUpperCase();
+    if (!currentOrgCode && !currentInvite) {
+      setOrgSecurityPolicy({ restrictInviteDomains: false, allowedInviteDomains: [] });
+      setPolicyLoaded(false);
+      return;
+    }
+
+    let isMounted = true;
+    const loadPolicy = async () => {
+      try {
+        const data = await getPublicOrgSecurityPolicy({
+          orgCode: currentInvite ? undefined : (currentOrgCode || undefined),
+          inviteCode: currentInvite || undefined,
+        });
+        if (!isMounted) return;
+        setOrgSecurityPolicy(data?.securityPolicy || { restrictInviteDomains: false, allowedInviteDomains: [] });
+        setPolicyLoaded(true);
+      } catch {
+        if (!isMounted) return;
+        setOrgSecurityPolicy({ restrictInviteDomains: false, allowedInviteDomains: [] });
+        setPolicyLoaded(false);
+      }
+    };
+    loadPolicy();
+    return () => {
+      isMounted = false;
+    };
+  }, [orgCode, inviteCode, inviteCodeFromQuery]);
 
   const onSubmit = async (data) => {
     setServerError('');
-    setLoading(true);
 
     const {
       mode: submitMode,
@@ -106,6 +137,12 @@ const Register = () => {
       password,
       role,
     } = data;
+    if ((submitMode === 'join' || inviteCode) && !isEmailAllowedByPolicy(email, orgSecurityPolicy)) {
+      toast.error('This organization restricts invites to approved email domains.');
+      return;
+    }
+
+    setLoading(true);
     const result = await registerUser({
       mode: submitMode,
       organizationName,
@@ -158,364 +195,355 @@ const Register = () => {
     }
   };
 
-  const fieldProps = {
-    variant: 'outlined',
-    fullWidth: true,
-    size: 'small',
-    margin: 'normal',
-    sx: {
-      '& .MuiOutlinedInput-root': {
-        borderRadius: 1,
-        backgroundColor: '#f8fafc',
-        '&.Mui-focused fieldset': { borderColor: 'var(--mp-brand)' },
-        '& fieldset': { borderColor: '#e6eef8' },
-        fontSize: '0.95rem',
-      },
-      '& .MuiInputLabel-root': { fontSize: '0.9rem', color: '#374151' },
-    },
-  };
-
-  const features = [
-    'Track Work Orders Easily',
-    'Prevent Equipment Failures',
-    'Manage Vendors Efficiently',
-    'View Reports & KPIs',
-  ];
-
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        p: 2,
-      }}
-    >
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          maxWidth: 400,
-          width: '100%',
-          borderRadius: 2,
-        }}
-      >
-        {/* Logo + Brand (clickable to home) */}
-        <Box textAlign="center" mb={3}>
-          <Link component={RouterLink} to="/" underline="none" sx={{ display: 'inline-block', color: 'inherit' }} aria-label="Go to homepage">
-            <Box
-            sx={{
-              width: 56,
-              height: 56,
-              mx: 'auto',
-              mb: 2,
-              borderRadius: 2,
-              bgcolor: 'var(--mp-brand)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
-            }}
-          >
+    <div className="auth-page">
+      <div className="auth-card auth-card--tall">
+        <RouterLink className="auth-brand" to="/" aria-label="FacilityPro home">
+          <div className="auth-logo">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
-              style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: 'center' }}
+              className="auth-logo-spin"
             >
-              <Wrench size={26} color="#fff" />
+              <Wrench size={22} color="#fff" />
             </motion.div>
-          </Box>
+          </div>
+          <div className="auth-brand-name">FacilityPro</div>
+        </RouterLink>
 
-          <Typography fontWeight={700} variant="h6">
-            FacilityPro
-          </Typography>
-          </Link>
-        </Box>
+        <div className="auth-header">
+          <h1>Create Account</h1>
+          <p>Join our facility management platform to get started</p>
+        </div>
 
-        {/* Header */}
-        <Box textAlign="center" mb={3}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            Create Account
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Join our facility management platform to get started
-          </Typography>
-        </Box>
-
-        {serverError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {serverError}
-          </Alert>
+        {serverError && <div className="auth-error">{serverError}</div>}
+        {showDomainHint && (
+          <div className="auth-banner auth-banner--invite">
+            Invites are restricted to approved email domains for this organization.
+          </div>
+        )}
+        {inviteCodeFromQuery && (
+          <div className="auth-banner auth-banner--invite">
+            You’re joining via an invite. Your organization and role will be set automatically.
+          </div>
         )}
 
-        {/* Form */}
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
           <input type="hidden" {...register('mode')} />
-          <Box display="flex" gap={1} mb={2}>
-            <Button
+
+          <div className="auth-tabs">
+            <button
               type="button"
-              variant={mode === 'org' ? 'contained' : 'outlined'}
+              className={`auth-tab-btn ${mode === 'org' ? 'is-active' : ''}`}
               onClick={() => setValue('mode', 'org')}
-              sx={{
-                flex: 1,
-                textTransform: 'none',
-                borderColor: 'var(--mp-brand)',
-                color: mode === 'org' ? '#fff' : 'var(--mp-brand)',
-                backgroundColor: mode === 'org' ? 'var(--mp-brand)' : 'transparent',
-                '&:hover': { backgroundColor: mode === 'org' ? 'var(--mp-brand-dark)' : 'rgba(0,0,0,0.04)' },
-              }}
             >
               Create Organization
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant={mode === 'join' ? 'contained' : 'outlined'}
+              className={`auth-tab-btn ${mode === 'join' ? 'is-active' : ''}`}
               onClick={() => setValue('mode', 'join')}
-              sx={{
-                flex: 1,
-                textTransform: 'none',
-                borderColor: 'var(--mp-brand)',
-                color: mode === 'join' ? '#fff' : 'var(--mp-brand)',
-                backgroundColor: mode === 'join' ? 'var(--mp-brand)' : 'transparent',
-                '&:hover': { backgroundColor: mode === 'join' ? 'var(--mp-brand-dark)' : 'rgba(0,0,0,0.04)' },
-              }}
             >
               Join Organization
-            </Button>
-          </Box>
+            </button>
+          </div>
 
           {mode === 'org' && (
             <>
-              <TextField
-                {...fieldProps}
-                label="Organization Name"
-                {...register('organizationName')}
-                error={!!errors.organizationName}
-                helperText={errors.organizationName?.message}
-              />
+              <div className="auth-field">
+                <label htmlFor="register-org-name">Organization Name</label>
+                <input
+                  id="register-org-name"
+                  type="text"
+                  placeholder="Organization name"
+                  {...register('organizationName')}
+                />
+                {errors.organizationName && (
+                  <div className="auth-helper auth-helper--error">
+                    {errors.organizationName.message}
+                  </div>
+                )}
+              </div>
 
-              <TextField
-                {...fieldProps}
-                label="Industry (optional)"
-                {...register('industry')}
-                error={!!errors.industry}
-                helperText={errors.industry?.message}
-              />
+              <div className="auth-field">
+                <label htmlFor="register-industry">Industry (optional)</label>
+                <input
+                  id="register-industry"
+                  type="text"
+                  placeholder="Industry"
+                  {...register('industry')}
+                />
+                {errors.industry && (
+                  <div className="auth-helper auth-helper--error">
+                    {errors.industry.message}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
           {mode === 'join' && (
             <>
-              <TextField
-                {...fieldProps}
-                label="Organization Code"
-                type={showOrgCode ? 'text' : 'password'}
-                {...orgCodeRegister}
-                error={!!errors.orgCode}
-                helperText={errors.orgCode?.message}
-                inputProps={{ maxLength: 12 }}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  orgCodeRegister.onChange(e);
-                  setValue('orgCode', value, { shouldValidate: true });
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowOrgCode(v => !v)}
-                      >
-                        {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <div className="auth-field auth-field--icon">
+                <label htmlFor="register-org-code">Organization Code</label>
+                <div className="auth-input-wrap">
+                  <input
+                    id="register-org-code"
+                    type={showOrgCode ? 'text' : 'password'}
+                    placeholder="Organization code"
+                    maxLength={12}
+                    {...orgCodeRegister}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      orgCodeRegister.onChange(e);
+                      setValue('orgCode', value, { shouldValidate: true });
+                    }}
+                  />
+                  <button
+                    className="auth-icon-btn"
+                    type="button"
+                    onClick={() => setShowOrgCode(v => !v)}
+                    aria-label={showOrgCode ? 'Hide org code' : 'Show org code'}
+                  >
+                    {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.orgCode && (
+                  <div className="auth-helper auth-helper--error">
+                    {errors.orgCode.message}
+                  </div>
+                )}
+              </div>
 
-              <TextField
-                {...fieldProps}
-                label="Invite Code (optional)"
-                {...inviteCodeRegister}
-                error={!!errors.inviteCode}
-                helperText={errors.inviteCode?.message}
-                inputProps={{ maxLength: 12 }}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  inviteCodeRegister.onChange(e);
-                  setValue('inviteCode', value, { shouldValidate: true });
-                }}
-              />
+              <div className="auth-field">
+                <label htmlFor="register-invite-code">Invite Code (optional)</label>
+                <input
+                  id="register-invite-code"
+                  type="text"
+                  placeholder="Invite code"
+                  maxLength={12}
+                  {...inviteCodeRegister}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    inviteCodeRegister.onChange(e);
+                    setValue('inviteCode', value, { shouldValidate: true });
+                  }}
+                />
+                {errors.inviteCode && (
+                  <div className="auth-helper auth-helper--error">
+                    {errors.inviteCode.message}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
-          <TextField
-            {...fieldProps}
-            label="First Name"
-            {...register('firstName')}
-            error={!!errors.firstName}
-            helperText={errors.firstName?.message}
-          />
+          <div className="auth-field">
+            <label htmlFor="register-first-name">First Name</label>
+            <input
+              id="register-first-name"
+              type="text"
+              placeholder="First name"
+              {...register('firstName')}
+            />
+            {errors.firstName && (
+              <div className="auth-helper auth-helper--error">
+                {errors.firstName.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Last Name"
-            {...register('lastName')}
-            error={!!errors.lastName}
-            helperText={errors.lastName?.message}
-          />
+          <div className="auth-field">
+            <label htmlFor="register-last-name">Last Name</label>
+            <input
+              id="register-last-name"
+              type="text"
+              placeholder="Last name"
+              {...register('lastName')}
+            />
+            {errors.lastName && (
+              <div className="auth-helper auth-helper--error">
+                {errors.lastName.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Email Address"
-            {...register('email')}
-            error={!!errors.email}
-            helperText={errors.email?.message}
-          />
+          <div className="auth-field">
+            <label htmlFor="register-email">Email Address</label>
+            <input
+              id="register-email"
+              type="email"
+              placeholder="Enter your email"
+              {...register('email')}
+              autoComplete="email"
+            />
+            {showDomainHint && watchedEmail && !isEmailAllowedByPolicy(watchedEmail, policy) && (
+              <div className="auth-helper auth-helper--error">
+                This email domain is not approved for this organization.
+              </div>
+            )}
+            {errors.email && (
+              <div className="auth-helper auth-helper--error">
+                {errors.email.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Phone Number"
-            {...register('phone')}
-            error={!!errors.phone}
-            helperText={errors.phone?.message}
-          />
+          <div className="auth-field auth-field--phone">
+            <label htmlFor="register-phone">Phone Number</label>
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInput
+                  defaultCountry="us"
+                  value={field.value ?? ''}
+                  onChange={(value) => field.onChange(value)}
+                  style={{ width: '100%' }}
+                  inputProps={{
+                    id: 'register-phone',
+                    name: field.name,
+                    onBlur: field.onBlur,
+                    autoComplete: 'tel',
+                  }}
+                />
+              )}
+            />
+            {errors.phone && (
+              <div className="auth-helper auth-helper--error">
+                {errors.phone.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Department (optional)"
-            {...register('department')}
-            error={!!errors.department}
-            helperText={errors.department?.message}
-          />
+          <div className="auth-field">
+            <label htmlFor="register-dept">Department (optional)</label>
+            <input
+              id="register-dept"
+              type="text"
+              placeholder="Department"
+              {...register('department')}
+            />
+            {errors.department && (
+              <div className="auth-helper auth-helper--error">
+                {errors.department.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            {...register('password')}
-            error={!!errors.password}
-            helperText={errors.password?.message}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={() => setShowPassword(v => !v)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <div className="auth-field auth-field--icon">
+            <label htmlFor="register-password">Password</label>
+            <div className="auth-input-wrap">
+              <input
+                id="register-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Create a password"
+                {...register('password')}
+                autoComplete="new-password"
+              />
+              <button
+                className="auth-icon-btn"
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.password && (
+              <div className="auth-helper auth-helper--error">
+                {errors.password.message}
+              </div>
+            )}
+          </div>
 
-          <TextField
-            {...fieldProps}
-            label="Confirm Password"
-            type={showConfirmPassword ? 'text' : 'password'}
-            {...register('confirmPassword')}
-            error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword?.message}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={() => setShowConfirmPassword(v => !v)}
-                  >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <div className="auth-field auth-field--icon">
+            <label htmlFor="register-confirm">Confirm Password</label>
+            <div className="auth-input-wrap">
+              <input
+                id="register-confirm"
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirm password"
+                {...register('confirmPassword')}
+                autoComplete="new-password"
+              />
+              <button
+                className="auth-icon-btn"
+                type="button"
+                onClick={() => setShowConfirmPassword(v => !v)}
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <div className="auth-helper auth-helper--error">
+                {errors.confirmPassword.message}
+              </div>
+            )}
+          </div>
 
           {mode === 'join' && (
-            <FormControl fullWidth margin="normal" error={!!errors.role}>
-              <InputLabel>Role</InputLabel>
+            <div className="auth-field">
+              <label htmlFor="register-role">Role</label>
               <Controller
                 name="role"
                 control={control}
                 render={({ field }) => (
-                  <Select label="Role" {...field} disabled={!!inviteCode}>
-                    <MenuItem value="facility_manager">Facility Manager</MenuItem>
-                    <MenuItem value="technician">Maintenance Technician</MenuItem>
-                    <MenuItem value="vendor">Vendor</MenuItem>
-                    <MenuItem value="staff">Staff</MenuItem>
-                    <MenuItem value="finance">Finance</MenuItem>
-                  </Select>
+                  <select
+                    id="register-role"
+                    className="auth-select"
+                    disabled={!!inviteCode}
+                    {...field}
+                  >
+                    <option value="facility_manager">Facility Manager</option>
+                    <option value="technician">Maintenance Technician</option>
+                    <option value="vendor">Vendor</option>
+                    <option value="staff">Staff</option>
+                    <option value="finance">Finance</option>
+                  </select>
                 )}
               />
               {errors.role && (
-                <Typography variant="caption" color="error">
+                <div className="auth-helper auth-helper--error">
                   {errors.role.message}
-                </Typography>
+                </div>
               )}
-            </FormControl>
+            </div>
           )}
 
-          {/* Terms */}
-          <FormControlLabel
-            sx={{ mt: 1 }}
-            control={<Checkbox defaultChecked />}
-            label={
-              <Typography variant="body2">
-                I agree to the{' '}
-                <Link href="/terms" fontWeight={600}>
-                  Terms and Conditions
-                </Link>
-              </Typography>
-            }
-          />
+          <label className="auth-check auth-check--terms">
+            <input type="checkbox" defaultChecked />
+            I agree to the{' '}
+            <RouterLink className="auth-link" to="/terms">
+              Terms and Conditions
+            </RouterLink>
+          </label>
 
-          <Button
-            type="submit"
-            fullWidth
-            size="large"
-            variant="contained"
-            disabled={loading}
-            sx={{
-              mt: 3,
-              py: 1.4,
-              fontWeight: 600,
-              textTransform: 'none',
-              backgroundColor: 'var(--mp-brand)',
-              color: '#ffffff',
-              '&:hover': { backgroundColor: 'var(--mp-brand-dark)' },
-            }}
-          >
+          <button className="auth-submit" type="submit" disabled={loading}>
             {loading ? 'Creating Account...' : 'Create Account'}
-          </Button>
+          </button>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            textAlign="center"
-            mt={3}
-          >
+          <div className="auth-alt">
             Already have an account?{' '}
-            <Link href="/login" fontWeight={600} sx={{ color: 'var(--mp-brand)', '&:hover': { color: 'var(--mp-brand-dark)' } }}>
+            <RouterLink className="auth-link" to="/login">
               Log in
-            </Link>
-          </Typography>
+            </RouterLink>
+          </div>
+        </form>
 
-        </Box>
-
-        {/* Footer */}
-        <Box textAlign="center" mt={4}>
-          <Typography variant="caption" color="text.secondary">
-            (c) 2024 FacilityPro. All rights reserved.
-          </Typography>
-          <Box mt={1} display="flex" justifyContent="center" gap={2}>
-            <Link variant="caption" href="/terms">Terms of Service</Link>
-            <Link variant="caption" href="/privacy">Privacy Policy</Link>
-          </Box>
-        </Box>
-      </Paper>
-    </Box>
+        <div className="auth-footer">
+          <div className="auth-footer-text">
+            <Copyright size={12} />
+            2026 FacilityPro. All rights reserved.
+          </div>
+          <div className="auth-footer-links">
+            <RouterLink to="/terms">Terms of Service</RouterLink>
+            <RouterLink to="/privacy">Privacy Policy</RouterLink>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

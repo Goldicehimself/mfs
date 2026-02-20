@@ -11,18 +11,7 @@ export const useInvitations = () => {
 };
 
 export const InvitationProvider = ({ children }) => {
-  const [invitations, setInvitations] = useState([
-    {
-      id: 1,
-      email: 'manager@example.com',
-      role: 'admin',
-      status: 'pending',
-      sentBy: 'admin@maintainpro.com',
-      sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      token: 'inv_token_123456',
-    },
-  ]);
+  const [invitations, setInvitations] = useState([]);
 
   const sendAdminInvitation = (email, senderEmail) => {
     const newInvitation = {

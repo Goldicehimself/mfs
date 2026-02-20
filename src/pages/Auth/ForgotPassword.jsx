@@ -11,6 +11,7 @@ import { requestPasswordReset } from '@/api/auth';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
+  const [orgCode, setOrgCode] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -19,13 +20,13 @@ const ForgotPassword = () => {
     setError('');
     setMessage('');
 
-    if (!email.trim()) {
-      setError('Please enter your email address.');
+    if (!email.trim() || !orgCode.trim()) {
+      setError('Please enter your email and organization code.');
       return;
     }
 
     try {
-      await requestPasswordReset(email.trim());
+      await requestPasswordReset(email.trim(), orgCode.trim().toUpperCase());
       setMessage('If an account exists with this email, a password reset link has been sent.');
     } catch (err) {
       setError(err?.message || 'Unable to process password reset. Please try again.');
@@ -53,6 +54,16 @@ const ForgotPassword = () => {
         </Alert>
       )}
 
+      <TextField
+        margin="normal"
+        required
+        fullWidth
+        id="orgCode"
+        label="Organization Code"
+        name="orgCode"
+        value={orgCode}
+        onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
+      />
       <TextField
         margin="normal"
         required

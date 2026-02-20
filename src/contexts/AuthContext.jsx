@@ -18,6 +18,50 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const getFirstName = (value) => {
+    if (!value) return 'there';
+    if (value.firstName) return value.firstName;
+    if (value.first_name) return value.first_name;
+    if (value.name) return value.name.split(' ')[0];
+    return 'there';
+  };
+
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getDialCode = (value) => {
+    const match = String(value || '').trim().match(/^(\+\d{1,4})/);
+    return match ? match[1] : null;
+  };
+
+  const recordLoginHistory = (value, status = 'Success') => {
+    try {
+      const entry = {
+        id: `lh-${Date.now()}`,
+        time: new Date().toISOString(),
+        location: 'Web',
+        status,
+        userId: value?.id || null,
+        email: value?.email || null,
+      };
+      const existing = JSON.parse(localStorage.getItem('login_history') || '[]');
+      const next = [entry, ...existing].slice(0, 50);
+      localStorage.setItem('login_history', JSON.stringify(next));
+    } catch (e) {
+      // ignore local storage failures
+    }
+  };
+
+  const showLoginGreeting = (value) => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
+    const firstName = getFirstName(value);
+    toast.success(`Welcome, ${firstName}. ${getTimeGreeting()} (${timeZone})`);
+  };
+
   const normalizeUser = (value) => {
     if (!value) return value;
     const firstName = value.firstName || value.first_name;
@@ -33,36 +77,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Initialize default admin if no admin exists
-    const existingUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
-    const adminExists = existingUsers.some(u => u.role === 'admin');
-    
-    if (!adminExists) {
-      const defaultAdmin = {
-        id: 'admin-system',
-        name: 'System Administrator',
-        email: 'admin@facilitypro.com',
-        password: 'Admin@123456', // Development only
-        role: 'admin',
-        orgCode: 'LOCAL',
-        createdAt: new Date('2024-01-01').toISOString(),
-      };
-      const updatedUsers = [...existingUsers, defaultAdmin];
-      localStorage.setItem('local_users', JSON.stringify(updatedUsers));
-    }
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
 
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-
-    if (token && userData) {
+    if (storedToken && userData) {
       setUser(normalizeUser(JSON.parse(userData)));
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       setLoading(false);
       return;
     }
 
-    if (token && import.meta.env.VITE_USE_LOCAL_AUTH !== 'true') {
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (storedToken && import.meta.env.VITE_USE_LOCAL_AUTH !== 'true') {
+      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       axiosInstance
         .get('/auth/profile')
         .then((response) => {
@@ -83,7 +109,7 @@ export const AuthProvider = ({ children }) => {
   const getLocalUsers = () => JSON.parse(localStorage.getItem('local_users') || '[]');
   const saveLocalUsers = (users) => localStorage.setItem('local_users', JSON.stringify(users));
 
-  const login = async (email, password, orgCode) => {
+  const login = async (email, password, orgCode, rememberMe = false) => {
     try {
       if (import.meta.env.VITE_USE_LOCAL_AUTH === 'true') {
         const users = getLocalUsers();
@@ -93,12 +119,14 @@ export const AuthProvider = ({ children }) => {
         if (found && found.password === password) {
           const normalized = normalizeUser(found);
           const token = `local-${Date.now()}`;
-          localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(normalized));
-          localStorage.setItem('orgCode', orgCode);
+          const storage = rememberMe ? localStorage : sessionStorage;
+          storage.setItem('token', token);
+          storage.setItem('user', JSON.stringify(normalized));
+          storage.setItem('orgCode', orgCode);
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           setUser(normalized);
-          toast.success('Login successful (local)');
+          showLoginGreeting(normalized);
+          recordLoginHistory(normalized);
 
           // Redirect based on role
           switch (normalized.role) {
@@ -128,7 +156,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Login failed');
       }
 
-      const response = await axiosInstance.post('/auth/login', { email, password, orgCode });
+      const response = await axiosInstance.post('/auth/login', { email, password, orgCode, rememberMe });
       const payload = response.data?.data || {};
       const token = payload.token;
       const apiUser = normalizeUser(payload.user);
@@ -137,13 +165,15 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Login failed');
       }
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(apiUser));
-      localStorage.setItem('orgCode', orgCode);
+      const storage = rememberMe ? localStorage : sessionStorage;
+      storage.setItem('token', token);
+      storage.setItem('user', JSON.stringify(apiUser));
+      storage.setItem('orgCode', orgCode);
       axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(apiUser);
-      toast.success('Login successful');
+      showLoginGreeting(apiUser);
+      recordLoginHistory(apiUser);
       
       // Redirect based on role
       switch (apiUser.role) {
@@ -178,12 +208,14 @@ export const AuthProvider = ({ children }) => {
         if (found && found.password === password) {
           const normalized = normalizeUser(found);
           const token = `local-${Date.now()}`;
-          localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(normalized));
-          localStorage.setItem('orgCode', orgCode);
+          const storage = rememberMe ? localStorage : sessionStorage;
+          storage.setItem('token', token);
+          storage.setItem('user', JSON.stringify(normalized));
+          storage.setItem('orgCode', orgCode);
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           setUser(normalized);
-          toast.success('Login successful (local)');
+          showLoginGreeting(normalized);
+          recordLoginHistory(normalized);
 
           // Redirect based on role
           switch (normalized.role) {
@@ -238,6 +270,8 @@ export const AuthProvider = ({ children }) => {
           lastName,
           email: userData.email,
           password: userData.password,
+          phone: userData.phone,
+          phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
         });
       } else {
         const payload = {
@@ -246,6 +280,8 @@ export const AuthProvider = ({ children }) => {
           email: userData.email,
           password: userData.password,
           role: mappedRole,
+          phone: userData.phone,
+          phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
         };
         if (userData.orgCode) payload.orgCode = userData.orgCode;
         if (userData.inviteCode) payload.inviteCode = userData.inviteCode;
@@ -265,6 +301,8 @@ export const AuthProvider = ({ children }) => {
             role: apiUser?.role || userData.role || 'technician',
             password: userData.password,
             orgCode,
+            phone: userData.phone || null,
+            phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
           });
           saveLocalUsers(users);
         }
@@ -298,6 +336,8 @@ export const AuthProvider = ({ children }) => {
           // NOTE: storing plaintext password for local dev only
           password: userData.password,
           orgCode: localOrgCode,
+          phone: userData.phone || null,
+          phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
         };
 
         users.push(newUser);
@@ -320,6 +360,10 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('orgCode');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('orgCode');
     delete axiosInstance.defaults.headers.common['Authorization'];
     setUser(null);
     navigate('/');
@@ -329,7 +373,8 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updates) => {
     const updatedUser = normalizeUser({ ...user, ...updates });
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify(updatedUser));
 
     // Keep local users in sync so managers/admins can view updates
     try {

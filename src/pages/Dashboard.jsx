@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Clock, BarChart3 } from 'lucide-react';
+import { ArrowUpRight, BarChart3, Clock, Sparkles } from 'lucide-react';
 
 // Components
 import KPICard from '../components/dashboard/KPICards';
@@ -25,9 +25,9 @@ const Dashboard = () => {
     getDashboardData,
     {
       refetchInterval: 30000,
-      onError: (error) => {
+      onError: () => {
         toast.error('Failed to load dashboard data');
-      },
+      }
     }
   );
 
@@ -70,7 +70,7 @@ const Dashboard = () => {
         description: payload.entityType || '',
         timestamp: payload.createdAt || new Date().toISOString(),
         icon: iconForType(type),
-        status: null,
+        status: null
       };
     };
 
@@ -113,15 +113,15 @@ const Dashboard = () => {
       { month: 'Mar', compliance: 80, target: 85, completed: 48, pending: 10 },
       { month: 'Apr', compliance: 85, target: 85, completed: 56, pending: 6 },
       { month: 'May', compliance: 88, target: 85, completed: 62, pending: 5 },
-      { month: 'Jun', compliance: 87, target: 85, completed: 59, pending: 4 },
+      { month: 'Jun', compliance: 87, target: 85, completed: 59, pending: 4 }
     ],
     costAnalysis: null,
     serviceCategories: [
       { name: 'HVAC', count: 45, trend: 'up' },
       { name: 'Electrical', count: 32, trend: 'down' },
       { name: 'Plumbing', count: 28, trend: 'up' },
-      { name: 'General', count: 51, trend: 'up' },
-    ],
+      { name: 'General', count: 51, trend: 'up' }
+    ]
   };
 
   const safeDashboardData = dashboardData && Object.keys(dashboardData).length
@@ -134,81 +134,89 @@ const Dashboard = () => {
       value: safeDashboardData.openWorkOrders || 0,
       change: '+12%',
       trend: 'up',
-      icon: '📋',
+      icon: '??',
       color: 'primary',
-      link: '/work-orders?status=open',
+      link: '/work-orders?status=open'
     },
     {
       title: 'Overdue',
       value: safeDashboardData.overdueWorkOrders || 0,
       change: '-5%',
       trend: 'down',
-      icon: '⚠️',
+      icon: '??',
       color: 'error',
-      link: '/work-orders?status=overdue',
+      link: '/work-orders?status=overdue'
     },
     {
       title: 'PM Compliance',
       value: `${safeDashboardData.pmCompliance || 0}%`,
       change: '+8%',
       trend: 'up',
-      icon: '✓',
+      icon: '?',
       color: 'success',
-      link: '/preventive-maintenance',
+      link: '/preventive-maintenance'
     },
     {
       title: 'Pending Requests',
       value: safeDashboardData.pendingRequests || 0,
       change: '+3%',
       trend: 'up',
-      icon: '📝',
+      icon: '??',
       color: 'warning',
-      link: '/service-requests',
+      link: '/service-requests'
     },
     {
       title: 'Active Assets',
       value: safeDashboardData.activeAssets || 0,
       change: '+2%',
       trend: 'up',
-      icon: '🏭',
+      icon: '??',
       color: 'info',
-      link: '/assets',
+      link: '/assets'
     },
     {
       title: 'Vendor Performance',
       value: `${safeDashboardData.vendorPerformance || 0}%`,
       change: '+4%',
       trend: 'up',
-      icon: '👥',
+      icon: '??',
       color: 'secondary',
-      link: '/vendors',
-    },
+      link: '/vendors'
+    }
   ];
 
-
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
-        <h1 className="text-3xl font-bold text-indigo-900 dark:text-indigo-100">Dashboard</h1>
-        <p className="text-indigo-700 dark:text-indigo-300 mt-1">
-          Complete overview of your facility maintenance operations
-        </p>
-      </div>
-
-      {/* Quick Actions Banner */}
-      <Card className="border-0 shadow-md bg-blue-800 text-white">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_55%),radial-gradient(circle_at_85%_10%,_rgba(14,165,233,0.10),_transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_65%)]">
+      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold mb-1">Quick Actions</h2>
-              <p className="text-indigo-100">
-                Quickly submit a maintenance request or create a new work order
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Operations</p>
+              <h1 className="text-3xl font-semibold text-slate-900 mt-2">Admin Dashboard</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Real-time visibility across work orders, assets, and compliance health.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button 
-                className="bg-white text-indigo-600 hover:bg-indigo-50 font-medium"
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-100 text-emerald-700">Live</Badge>
+              <Badge className="bg-slate-100 text-slate-600">Updated every 30s</Badge>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
+                <Sparkles className="h-3.5 w-3.5 text-slate-500" />
+                System health: Stable
+              </div>
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
+                <Clock className="h-3.5 w-3.5 text-slate-500" />
+                Last sync: {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                className="bg-blue-700 text-white hover:bg-blue-800"
                 onClick={() => {
                   addActivity({
                     type: 'user_action',
@@ -216,16 +224,16 @@ const Dashboard = () => {
                     title: 'New Service Request Initiated',
                     description: 'User started creating a new maintenance request',
                     user: 'Current User',
-                    status: 'pending',
+                    status: 'pending'
                   });
                   navigate('/service-requests/new');
                 }}
               >
-                📝 New Request
+                ?? New Request
               </Button>
-              <Button 
+              <Button
                 variant="outline"
-                className="border-white text-white hover:bg-blue-800"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50"
                 onClick={() => {
                   addActivity({
                     type: 'work_order',
@@ -233,134 +241,126 @@ const Dashboard = () => {
                     title: 'New Work Order Created',
                     description: 'User initiated work order creation',
                     user: 'Current User',
-                    status: 'pending',
+                    status: 'pending'
                   });
                   navigate('/work-orders/new');
                 }}
               >
-                🔧 Create Work Order
+                Create Work Order
+                <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {kpis.map((kpi, index) => (
-          <KPICard key={index} {...kpi} />
-        ))}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Charts (Left) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Compliance Chart */}
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                    Preventive Maintenance Compliance
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Track PM compliance trends over time
-                  </p>
-                </div>
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ComplianceChart data={safeDashboardData.complianceTrend} />
-            </CardContent>
-          </Card>
-
-          {/* Cost Analysis Chart */}
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                    Maintenance Cost Analysis
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Monthly maintenance expenses
-                  </p>
-                </div>
-                <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CostAnalysisChart data={safeDashboardData.costAnalysis} />
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Recent Activity (Right) */}
-        <div>
-          <Card className="border-0 shadow-md h-full">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Recent Activity
-                </h3>
-                <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-lg">
-                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <RecentActivity activities={recentActivities} />
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {kpis.map((kpi, index) => (
+            <KPICard key={index} {...kpi} />
+          ))}
         </div>
-      </div>
 
-      {/* Service Categories */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              Service Categories
-            </h3>
-            <div className="p-2 bg-purple-50 dark:bg-purple-950 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-0 shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Preventive Maintenance Compliance
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Track PM compliance trends over time
+                    </p>
+                  </div>
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ComplianceChart data={safeDashboardData.complianceTrend} />
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Maintenance Cost Analysis
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Monthly maintenance expenses
+                    </p>
+                  </div>
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CostAnalysisChart data={safeDashboardData.costAnalysis} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="border-0 shadow-md h-full">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Recent Activity
+                  </h3>
+                  <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-lg">
+                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <RecentActivity activities={recentActivities} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Card className="border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                Service Categories
+              </h3>
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-950 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {safeDashboardData.serviceCategories?.map((category) => (
-              <div key={category.name} className="text-center p-4 rounded-lg bg-gray-50 dark:bg-zinc-800 hover:shadow-md transition-shadow">
-                <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-                  {category.count}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {safeDashboardData.serviceCategories?.map((category) => (
+                <div key={category.name} className="text-center p-4 rounded-lg bg-gray-50 dark:bg-zinc-800 hover:shadow-md transition-shadow">
+                  <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">
+                    {category.count}
+                  </div>
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    {category.name}
+                  </p>
+                  <Badge
+                    variant={category.trend === 'up' ? 'default' : 'secondary'}
+                    className={category.trend === 'up'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100'
+                      : 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100'
+                    }
+                  >
+                    {category.trend === 'up' ? 'Up' : 'Down'} {category.trend === 'up' ? 'Increasing' : 'Decreasing'}
+                  </Badge>
                 </div>
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {category.name}
-                </p>
-                <Badge 
-                  variant={category.trend === 'up' ? 'default' : 'secondary'}
-                  className={category.trend === 'up' 
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100' 
-                    : 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-100'
-                  }
-                >
-                  {category.trend === 'up' ? 'Up' : 'Down'} {category.trend === 'up' ? 'Increasing' : 'Decreasing'}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
 
 export default Dashboard;
-
-

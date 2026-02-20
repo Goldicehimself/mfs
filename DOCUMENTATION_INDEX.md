@@ -77,7 +77,7 @@
 ## File Structure
 
 ```
-maintainpro-frontend/
+facilitypro-frontend/
 ├── MFS/
 │   ├── src/
 │   │   ├── pages/

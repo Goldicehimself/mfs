@@ -66,7 +66,15 @@ export function DropdownMenuContent({ children, align = 'end', className, ...pro
 
 export function DropdownMenuItem(props) {
   const ctx = useContext(DropdownMenuContext);
-  return <MenuItem onClick={() => { if (props.onClick) props.onClick(); ctx && ctx.closeMenu(); }} {...props} />;
+  return (
+    <MenuItem
+      onClick={(event) => {
+        if (ctx) ctx.closeMenu();
+        if (props.onClick) props.onClick(event);
+      }}
+      {...props}
+    />
+  );
 }
 
 export function DropdownMenuSeparator(props) {

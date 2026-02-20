@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Save, Clock, Calendar, Bell, Lock, Database, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  getOrgSettings,
+  updateOrgSettings,
+  getOrgIntegrations,
+  createOrgWebhook,
+  deleteOrgWebhook,
+  createOrgApiKey,
+  revokeOrgApiKey
+} from '../../api/org';
 import {
   AdminSettings,
   FacilityManagerSettings,
@@ -29,7 +38,22 @@ const Settings = () => {
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState('2 hours');
   const [strongPassword, setStrongPassword] = useState(true);
+  const [minPasswordLength, setMinPasswordLength] = useState('12');
+  const [lockoutThreshold, setLockoutThreshold] = useState('5 attempts');
+  const [allowedInviteDomains, setAllowedInviteDomains] = useState('');
+  const [restrictInviteDomains, setRestrictInviteDomains] = useState(false);
+
+  const [enforceMfa, setEnforceMfa] = useState(false);
   const [loginNotifications, setLoginNotifications] = useState(false);
+  const [notifyWoCreated, setNotifyWoCreated] = useState(true);
+  const [notifyWoAssigned, setNotifyWoAssigned] = useState(true);
+  const [notifyWoOverdue, setNotifyWoOverdue] = useState(true);
+  const [notifyPmDue, setNotifyPmDue] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifyInApp, setNotifyInApp] = useState(true);
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
+  const [quietHoursStart, setQuietHoursStart] = useState('22:00');
+  const [quietHoursEnd, setQuietHoursEnd] = useState('06:00');
 
   // Default Settings State
   const [defaultPriority, setDefaultPriority] = useState('Medium');
@@ -41,6 +65,92 @@ const Settings = () => {
   const [autoBackup, setAutoBackup] = useState(true);
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [dataRetention, setDataRetention] = useState('7 years');
+
+  // Company Profile State
+  const [companyName, setCompanyName] = useState('');
+  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
+  const [companyLogoDataUrl, setCompanyLogoDataUrl] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyContactEmail, setCompanyContactEmail] = useState('');
+  const [companyContactPhone, setCompanyContactPhone] = useState('');
+  const [companyIndustry, setCompanyIndustry] = useState('');
+  const [supportContactEmail, setSupportContactEmail] = useState('');
+  const [supportContactPhone, setSupportContactPhone] = useState('');
+  const [webhooks, setWebhooks] = useState([]);
+  const [apiKeys, setApiKeys] = useState([]);
+  const [newWebhookName, setNewWebhookName] = useState('');
+  const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [newWebhookEvents, setNewWebhookEvents] = useState([
+    'workorder.created',
+    'workorder.assigned',
+    'workorder.status_changed',
+    'workorder.overdue',
+    'pm.due'
+  ]);
+  const [newApiKeyScopes, setNewApiKeyScopes] = useState([
+    'workorders:read',
+    'assets:read',
+    'vendors:read',
+    'reports:read'
+  ]);
+  const [apiKeyExpiresAt, setApiKeyExpiresAt] = useState('');
+  const [apiKeyRateWindowMs, setApiKeyRateWindowMs] = useState('60000');
+  const [apiKeyRateMax, setApiKeyRateMax] = useState('60');
+  const [createdApiKey, setCreatedApiKey] = useState('');
+  const [createdWebhookSecret, setCreatedWebhookSecret] = useState('');
+  const [loadingIntegrations, setLoadingIntegrations] = useState(false);
+
+  const sessionTimeoutOptions = [
+    { label: '30 minutes', minutes: 30 },
+    { label: '1 hour', minutes: 60 },
+    { label: '2 hours', minutes: 120 },
+    { label: '4 hours', minutes: 240 },
+  ];
+
+  const lockoutOptions = [
+    { label: '3 attempts', value: 3 },
+    { label: '5 attempts', value: 5 },
+    { label: '8 attempts', value: 8 },
+    { label: '10 attempts', value: 10 },
+  ];
+
+  const getSessionTimeoutLabel = (minutes) => {
+    const match = sessionTimeoutOptions.find((opt) => opt.minutes === minutes);
+    return match ? match.label : '2 hours';
+  };
+
+  const getSessionTimeoutMinutes = (label) => {
+    const match = sessionTimeoutOptions.find((opt) => opt.label === label);
+    return match ? match.minutes : 120;
+  };
+
+  const getLockoutLabel = (value) => {
+    const match = lockoutOptions.find((opt) => opt.value === value);
+    return match ? match.label : '5 attempts';
+  };
+
+  const getLockoutValue = (label) => {
+    const match = lockoutOptions.find((opt) => opt.label === label);
+    return match ? match.value : 5;
+  };
+
+  const webhookEventOptions = [
+    { id: 'workorder.created', label: 'workorder.created' },
+    { id: 'workorder.assigned', label: 'workorder.assigned' },
+    { id: 'workorder.status_changed', label: 'workorder.status_changed' },
+    { id: 'workorder.overdue', label: 'workorder.overdue' },
+    { id: 'pm.due', label: 'pm.due' }
+  ];
+
+  const apiKeyScopeOptions = [
+    { id: 'workorders:read', label: 'workorders:read' },
+    { id: 'workorders:write', label: 'workorders:write' },
+    { id: 'assets:read', label: 'assets:read' },
+    { id: 'assets:write', label: 'assets:write' },
+    { id: 'vendors:read', label: 'vendors:read' },
+    { id: 'reports:read', label: 'reports:read' }
+  ];
 
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
@@ -67,14 +177,232 @@ const Settings = () => {
     setHasChanges(true);
   };
 
-  const handleSaveChanges = () => {
-    toast.success('Settings saved successfully!');
-    setHasChanges(false);
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await getOrgSettings();
+        const settings = response?.settings || response || {};
+
+        const securityPolicy = settings.securityPolicy || {};
+        setTwoFactorAuth(!!securityPolicy.twoFactorAuth);
+        setEnforceMfa(!!securityPolicy.enforceMfa);
+        setStrongPassword(
+          typeof securityPolicy.strongPassword === 'boolean' ? securityPolicy.strongPassword : true
+        );
+        setMinPasswordLength(
+          String(securityPolicy.minPasswordLength ?? 12)
+        );
+        setLockoutThreshold(
+          getLockoutLabel(securityPolicy.lockoutThreshold ?? 5)
+        );
+        if (typeof securityPolicy.sessionTimeoutMinutes === 'number') {
+          setSessionTimeout(getSessionTimeoutLabel(securityPolicy.sessionTimeoutMinutes));
+        }
+        setRestrictInviteDomains(!!securityPolicy.restrictInviteDomains);
+        setAllowedInviteDomains((securityPolicy.allowedInviteDomains || []).join(', '));
+
+        const notifications = settings.notifications || {};
+        setNotifyWoCreated(!!notifications.notifyWoCreated);
+        setNotifyWoAssigned(!!notifications.notifyWoAssigned);
+        setNotifyWoOverdue(!!notifications.notifyWoOverdue);
+        setNotifyPmDue(!!notifications.notifyPmDue);
+        setNotifyEmail(
+          typeof notifications.notifyEmail === 'boolean' ? notifications.notifyEmail : true
+        );
+        setNotifyInApp(
+          typeof notifications.notifyInApp === 'boolean' ? notifications.notifyInApp : true
+        );
+        setQuietHoursEnabled(!!notifications.quietHoursEnabled);
+        if (typeof notifications.quietHoursStart === 'string') setQuietHoursStart(notifications.quietHoursStart);
+        if (typeof notifications.quietHoursEnd === 'string') setQuietHoursEnd(notifications.quietHoursEnd);
+
+        const companyProfile = settings.companyProfile || {};
+        if (typeof companyProfile.companyName === 'string') setCompanyName(companyProfile.companyName);
+        if (typeof companyProfile.logoUrl === 'string') setCompanyLogoUrl(companyProfile.logoUrl);
+        if (typeof companyProfile.logoDataUrl === 'string') setCompanyLogoDataUrl(companyProfile.logoDataUrl);
+        if (typeof companyProfile.address === 'string') setCompanyAddress(companyProfile.address);
+        if (typeof companyProfile.contactEmail === 'string') setCompanyContactEmail(companyProfile.contactEmail);
+        if (typeof companyProfile.contactPhone === 'string') setCompanyContactPhone(companyProfile.contactPhone);
+        if (typeof companyProfile.industry === 'string') setCompanyIndustry(companyProfile.industry);
+        if (typeof companyProfile.supportEmail === 'string') setSupportContactEmail(companyProfile.supportEmail);
+        if (typeof companyProfile.supportPhone === 'string') setSupportContactPhone(companyProfile.supportPhone);
+      } catch (error) {
+        toast.error('Failed to load organization settings.');
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    const loadIntegrations = async () => {
+      if (user?.role !== 'admin') return;
+      setLoadingIntegrations(true);
+      try {
+        const data = await getOrgIntegrations();
+        setWebhooks(data?.webhooks || []);
+        setApiKeys(data?.apiKeys || []);
+      } catch (error) {
+        toast.error('Failed to load integrations.');
+      } finally {
+        setLoadingIntegrations(false);
+      }
+    };
+    loadIntegrations();
+  }, [user?.role]);
+
+  const handleSaveChanges = async () => {
+    try {
+      await updateOrgSettings({
+        securityPolicy: {
+          twoFactorAuth,
+          enforceMfa,
+          sessionTimeoutMinutes: getSessionTimeoutMinutes(sessionTimeout),
+          strongPassword,
+          minPasswordLength: Number(minPasswordLength),
+          lockoutThreshold: getLockoutValue(lockoutThreshold),
+          restrictInviteDomains,
+          allowedInviteDomains: allowedInviteDomains
+            .split(',')
+            .map((d) => d.trim().toLowerCase())
+            .filter(Boolean),
+        },
+        notifications: {
+          notifyWoCreated,
+          notifyWoAssigned,
+          notifyWoOverdue,
+          notifyPmDue,
+          notifyEmail,
+          notifyInApp,
+          quietHoursEnabled,
+          quietHoursStart,
+          quietHoursEnd,
+        },
+        companyProfile: {
+          companyName: companyName.trim(),
+          logoUrl: companyLogoUrl.trim(),
+          logoDataUrl: companyLogoDataUrl,
+          address: companyAddress.trim(),
+          contactEmail: companyContactEmail.trim(),
+          contactPhone: companyContactPhone.trim(),
+          industry: companyIndustry.trim(),
+          supportEmail: supportContactEmail.trim(),
+          supportPhone: supportContactPhone.trim(),
+        },
+      });
+      toast.success('Settings saved successfully!');
+      setHasChanges(false);
+    } catch (error) {
+      toast.error('Failed to save settings.');
+    }
+  };
+
+  const handleLogoFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('image/')) {
+      toast.error('Please upload an image file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      setCompanyLogoDataUrl(result);
+      setCompanyLogoUrl('');
+      setHasChanges(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleExportData = () => {
     toast.info('Exporting all data...');
     // Implement actual export logic
+  };
+
+  const handleCreateWebhook = async () => {
+    if (!newWebhookName.trim() || !newWebhookUrl.trim()) {
+      toast.error('Webhook name and URL are required.');
+      return;
+    }
+    if (!newWebhookEvents.length) {
+      toast.error('Select at least one webhook event.');
+      return;
+    }
+    try {
+      const result = await createOrgWebhook({
+        name: newWebhookName.trim(),
+        url: newWebhookUrl.trim(),
+        events: newWebhookEvents,
+        active: true
+      });
+      if (result?.webhook) {
+        setWebhooks((prev) => [result.webhook, ...prev]);
+      }
+      if (result?.secret) {
+        setCreatedWebhookSecret(result.secret);
+      }
+      setNewWebhookName('');
+      setNewWebhookUrl('');
+      toast.success('Webhook created.');
+    } catch (error) {
+      toast.error('Failed to create webhook.');
+    }
+  };
+
+  const handleDeleteWebhook = async (id) => {
+    try {
+      await deleteOrgWebhook(id);
+      setWebhooks((prev) => prev.filter((hook) => hook.id !== id));
+      toast.success('Webhook deleted.');
+    } catch (error) {
+      toast.error('Failed to delete webhook.');
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    if (!newApiKeyName.trim()) {
+      toast.error('API key name is required.');
+      return;
+    }
+    if (!newApiKeyScopes.length) {
+      toast.error('Select at least one scope.');
+      return;
+    }
+    try {
+      const rateWindow = Number(apiKeyRateWindowMs);
+      const rateMax = Number(apiKeyRateMax);
+      const result = await createOrgApiKey({
+        name: newApiKeyName.trim(),
+        scopes: newApiKeyScopes,
+        expiresAt: apiKeyExpiresAt ? new Date(apiKeyExpiresAt).toISOString() : undefined,
+        rateLimit: {
+          windowMs: Number.isFinite(rateWindow) ? rateWindow : 60000,
+          max: Number.isFinite(rateMax) ? rateMax : 60
+        }
+      });
+      if (result?.apiKey) {
+        setApiKeys((prev) => [result.apiKey, ...prev]);
+      }
+      if (result?.key) {
+        setCreatedApiKey(result.key);
+      }
+      setNewApiKeyName('');
+      toast.success('API key created.');
+    } catch (error) {
+      toast.error('Failed to create API key.');
+    }
+  };
+
+  const handleRevokeApiKey = async (id) => {
+    try {
+      await revokeOrgApiKey(id);
+      setApiKeys((prev) =>
+        prev.map((key) => (key.id === id ? { ...key, revokedAt: new Date().toISOString() } : key))
+      );
+      toast.success('API key revoked.');
+    } catch (error) {
+      toast.error('Failed to revoke API key.');
+    }
   };
 
   return (
@@ -228,6 +556,25 @@ const Settings = () => {
                     </button>
                   </div>
 
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Enforce MFA for All Users</label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Require MFA for every user in this organization</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggle(setEnforceMfa)}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                        enforceMfa ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                          enforceMfa ? 'translate-x-7' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Session Timeout</label>
                     <select
@@ -235,10 +582,9 @@ const Settings = () => {
                       onChange={(e) => handleChange(setSessionTimeout)(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
                     >
-                      <option>30 minutes</option>
-                      <option>1 hour</option>
-                      <option>2 hours</option>
-                      <option>4 hours</option>
+                      {sessionTimeoutOptions.map((option) => (
+                        <option key={option.label}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -532,10 +878,9 @@ const Settings = () => {
                       onChange={(e) => handleChange(setSessionTimeout)(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
                     >
-                      <option>30 minutes</option>
-                      <option>1 hour</option>
-                      <option>2 hours</option>
-                      <option>4 hours</option>
+                      {sessionTimeoutOptions.map((option) => (
+                        <option key={option.label}>{option.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -557,6 +902,661 @@ const Settings = () => {
                       />
                     </button>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Minimum Password Length</label>
+                    <select
+                      value={minPasswordLength}
+                      onChange={(e) => handleChange(setMinPasswordLength)(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                    >
+                      <option>10</option>
+                      <option>12</option>
+                      <option>14</option>
+                      <option>16</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lockout Threshold</label>
+                    <select
+                      value={lockoutThreshold}
+                      onChange={(e) => handleChange(setLockoutThreshold)(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                    >
+                      {lockoutOptions.map((option) => (
+                        <option key={option.label}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Restrict Invite Domains</label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">When enabled, only approved domains can be invited</p>
+                      {!restrictInviteDomains && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Default: allow any email domain.</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleToggle(setRestrictInviteDomains)}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                        restrictInviteDomains ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                          restrictInviteDomains ? 'translate-x-7' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Allowed Invite Domains</label>
+                    <input
+                      type="text"
+                      value={allowedInviteDomains}
+                      onChange={(e) => handleChange(setAllowedInviteDomains)(e.target.value)}
+                      disabled={!restrictInviteDomains}
+                      className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                        restrictInviteDomains ? 'border-gray-300 dark:border-gray-600' : 'border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
+                      }`}
+                      placeholder="example.com, partner.com"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {restrictInviteDomains
+                        ? 'Comma-separated domains allowed for invites.'
+                        : 'Default: allow any email domain.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Company Profile Tab */}
+          {activeTab === 'company' && (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                    <Database className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Company Profile</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company Name</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => handleChange(setCompanyName)(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Company name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo</label>
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoFileChange}
+                        className="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={companyLogoUrl}
+                          onChange={(e) => handleChange(setCompanyLogoUrl)(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          placeholder="Or paste logo URL"
+                        />
+                        <div className="flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 min-h-[72px]">
+                          {companyLogoDataUrl || companyLogoUrl ? (
+                            <img
+                              src={companyLogoDataUrl || companyLogoUrl}
+                              alt="Company logo preview"
+                              className="max-h-14 object-contain"
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Logo preview</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Upload an image or provide a URL. Uploaded files are stored locally in this browser.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
+                    <textarea
+                      value={companyAddress}
+                      onChange={(e) => handleChange(setCompanyAddress)(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Street, City, State, ZIP, Country"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contact Email</label>
+                      <input
+                        type="email"
+                        value={companyContactEmail}
+                        onChange={(e) => handleChange(setCompanyContactEmail)(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="contact@company.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contact Phone</label>
+                      <input
+                        type="tel"
+                        value={companyContactPhone}
+                        onChange={(e) => handleChange(setCompanyContactPhone)(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="+1 (555) 555-5555"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Industry</label>
+                    <input
+                      type="text"
+                      value={companyIndustry}
+                      onChange={(e) => handleChange(setCompanyIndustry)(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Industry"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Support Email</label>
+                      <input
+                        type="email"
+                        value={supportContactEmail}
+                        onChange={(e) => handleChange(setSupportContactEmail)(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="support@company.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Support Phone</label>
+                      <input
+                        type="tel"
+                        value={supportContactPhone}
+                        onChange={(e) => handleChange(setSupportContactPhone)(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="+1 (555) 555-5555"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === 'notifications' && (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-amber-50 dark:bg-amber-900 rounded-lg">
+                    <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+                </div>
+
+                <div className="space-y-8">
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Notification Triggers</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work Order Created</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Notify when a new work order is created</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyWoCreated)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyWoCreated ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyWoCreated ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work Order Assigned</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Notify when a work order is assigned</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyWoAssigned)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyWoAssigned ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyWoAssigned ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Work Order Overdue</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Notify when a work order becomes overdue</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyWoOverdue)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyWoOverdue ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyWoOverdue ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preventive Maintenance Due</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Notify when PM is due</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyPmDue)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyPmDue ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyPmDue ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Channels</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Send notifications by email</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyEmail)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyEmail ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyEmail ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">In-app</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Show notifications in the app</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setNotifyInApp)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            notifyInApp ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              notifyInApp ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Quiet Hours</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Enable Quiet Hours</label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Pause notifications during set hours</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggle(setQuietHoursEnabled)}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                            quietHoursEnabled ? 'bg-blue-700' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              quietHoursEnabled ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Time</label>
+                          <input
+                            type="time"
+                            value={quietHoursStart}
+                            onChange={(e) => handleChange(setQuietHoursStart)(e.target.value)}
+                            disabled={!quietHoursEnabled}
+                            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                              quietHoursEnabled ? 'border-gray-300 dark:border-gray-600' : 'border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Time</label>
+                          <input
+                            type="time"
+                            value={quietHoursEnd}
+                            onChange={(e) => handleChange(setQuietHoursEnd)(e.target.value)}
+                            disabled={!quietHoursEnabled}
+                            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                              quietHoursEnabled ? 'border-gray-300 dark:border-gray-600' : 'border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Integrations Tab */}
+          {activeTab === 'integrations' && (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-sky-50 dark:bg-sky-900 rounded-lg">
+                    <Database className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Integrations</h3>
+                </div>
+
+                {loadingIntegrations && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Loading integrations...</p>
+                )}
+
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Webhooks</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="text"
+                        value={newWebhookName}
+                        onChange={(e) => setNewWebhookName(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Webhook name"
+                      />
+                      <input
+                        type="url"
+                        value={newWebhookUrl}
+                        onChange={(e) => setNewWebhookUrl(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="https://example.com/webhook"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-300">
+                      {webhookEventOptions.map((event) => (
+                        <label key={event.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={newWebhookEvents.includes(event.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewWebhookEvents((prev) => [...prev, event.id]);
+                              } else {
+                                setNewWebhookEvents((prev) => prev.filter((item) => item !== event.id));
+                              }
+                            }}
+                          />
+                          {event.label}
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={handleCreateWebhook}
+                      className="bg-blue-700 hover:bg-blue-800 text-white"
+                    >
+                      Add Webhook
+                    </Button>
+
+                    {createdWebhookSecret && (
+                      <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800">
+                        <div className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          Webhook secret (shown once)
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <code className="text-xs bg-white/70 dark:bg-black/20 px-2 py-1 rounded">
+                            {createdWebhookSecret}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard.writeText(createdWebhookSecret);
+                                toast.info('Webhook secret copied');
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {webhooks.length === 0 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No webhooks created yet.</p>
+                      )}
+                      {webhooks.map((hook) => (
+                        <div
+                          key={hook.id}
+                          className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                        >
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{hook.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{hook.url}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Events: {(hook.events || []).join(', ') || 'None'}
+                            </div>
+                            {hook.deliveryLogs?.length ? (
+                              <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                {hook.deliveryLogs.slice(-5).reverse().map((log, idx) => (
+                                  <div key={`${hook.id}-log-${idx}`}>
+                                    {log.event} • {log.success ? 'success' : 'failed'} • {new Date(log.createdAt).toLocaleString()}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          <Button
+                            variant="outline"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => handleDeleteWebhook(hook.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">API Keys</h4>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <input
+                        type="text"
+                        value={newApiKeyName}
+                        onChange={(e) => setNewApiKeyName(e.target.value)}
+                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="API key name"
+                      />
+                      <Button
+                        onClick={handleCreateApiKey}
+                        className="bg-blue-700 hover:bg-blue-800 text-white"
+                      >
+                        Create Key
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-300">
+                      {apiKeyScopeOptions.map((scope) => (
+                        <label key={scope.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={newApiKeyScopes.includes(scope.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewApiKeyScopes((prev) => [...prev, scope.id]);
+                              } else {
+                                setNewApiKeyScopes((prev) => prev.filter((item) => item !== scope.id));
+                              }
+                            }}
+                          />
+                          {scope.label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Expiration (optional)</label>
+                        <input
+                          type="date"
+                          value={apiKeyExpiresAt}
+                          onChange={(e) => setApiKeyExpiresAt(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Rate window (ms)</label>
+                        <input
+                          type="number"
+                          min="1000"
+                          value={apiKeyRateWindowMs}
+                          onChange={(e) => setApiKeyRateWindowMs(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Max requests</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={apiKeyRateMax}
+                          onChange={(e) => setApiKeyRateMax(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                    </div>
+
+                    {createdApiKey && (
+                      <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                        <div className="text-sm font-medium text-green-800 dark:text-green-200">
+                          API key (shown once)
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <code className="text-xs bg-white/70 dark:bg-black/20 px-2 py-1 rounded">
+                            {createdApiKey}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard.writeText(createdApiKey);
+                                toast.info('API key copied');
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {apiKeys.length === 0 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No API keys created yet.</p>
+                      )}
+                      {apiKeys.map((key) => (
+                        <div
+                          key={key.id}
+                          className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                        >
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{key.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {key.prefix}••••{key.last4}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Scopes: {(key.scopes || []).join(', ') || 'None'}
+                            </div>
+                            {key.expiresAt && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Expires: {new Date(key.expiresAt).toLocaleDateString()}
+                              </div>
+                            )}
+                            {key.lastUsedAt && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Last used: {new Date(key.lastUsedAt).toLocaleString()}
+                              </div>
+                            )}
+                            {key.rateLimit && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Rate limit: {key.rateLimit.max} / {Math.round((key.rateLimit.windowMs || 60000) / 1000)}s
+                              </div>
+                            )}
+                          </div>
+                          {key.revokedAt ? (
+                            <span className="text-xs text-red-600">Revoked</span>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handleRevokeApiKey(key.id)}
+                            >
+                              Revoke
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -574,12 +1574,7 @@ const Settings = () => {
             </div>
           )}
 
-          {/* Other tabs placeholder */}
-          {!['general', 'security', 'role-specific'].includes(activeTab) && (
-            <div className="py-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">This tab is under development</p>
-            </div>
-          )}
+          {/* Other tabs placeholder removed */}
         </CardContent>
       </Card>
 

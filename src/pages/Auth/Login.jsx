@@ -1,21 +1,9 @@
 import React, { useState } from 'react';
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Alert,
-  Link,
-  InputAdornment,
-  IconButton,
-  Checkbox,
-  FormControlLabel,
-  Paper,
-} from '@mui/material';
-import { ArrowLeft, Eye, EyeOff, Wrench,Copyright} from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Wrench, Copyright } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import './Login.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -35,246 +23,137 @@ const Login = () => {
       return;
     }
     try {
-      await login(email, password, orgCode);
+      await login(email, password, orgCode, rememberMe);
     } catch {
       setError('Invalid email or password.');
     }
   };
 
-  const fieldProps = {
-    variant: 'outlined',
-    fullWidth: true,
-    size: 'small',
-    margin: 'normal',
-    sx: {
-      '& .MuiOutlinedInput-root': {
-        borderRadius: 1,
-        backgroundColor: '#f8fafc',
-        '&.Mui-focused fieldset': { borderColor: 'var(--mp-brand)' },
-        '& fieldset': { borderColor: '#e6eef8' },
-        fontSize: '0.95rem',
-      },
-      '& .MuiInputLabel-root': { fontSize: '0.9rem', color: '#374151' },
-    },
-  };
-
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f9fafb',
-        p: 2,
-      }}
-    >
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          maxWidth: 400,
-          width: '100%',
-          borderRadius: 2,
-        }}
-      >
-        {/* Logo (click to return to landing) */}
-        <Box textAlign="center" mb={3}>
-          <Link component={RouterLink} to="/" underline="none" sx={{ display: 'inline-block', color: 'inherit' }}>
-            <Box
-              sx={{
-                width: 52,
-                height: 52,
-                mx: 'auto',
-                mb: 1.5,
-                borderRadius: 1.5,
-                bgcolor: 'var(--mp-brand)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden'
-              }}
+    <div className="auth-page">
+      <div className="auth-card">
+        <RouterLink className="auth-brand" to="/" aria-label="FacilityPro home">
+          <div className="auth-logo">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
+              className="auth-logo-spin"
             >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
-                style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: 'center' }}
-              >
-                <Wrench size={26} color="#fff" />
-              </motion.div>
-            </Box>
+              <Wrench size={22} color="#fff" />
+            </motion.div>
+          </div>
+          <div className="auth-brand-name">FacilityPro</div>
+        </RouterLink>
 
-            <Typography
-              variant="h6"
-              fontWeight={700}
-              letterSpacing="-0.3px"
-              sx={{ textAlign: 'center' }}
-            >
-              FacilityPro
-            </Typography>
-          </Link>
-        </Box>
+        <div className="auth-header">
+          <h1>Welcome Back</h1>
+          <p>Sign in to access your facility management dashboard</p>
+          <RouterLink className="auth-back" to="/">
+            <ArrowLeft size={14} />
+            Back to home
+          </RouterLink>
+        </div>
 
-        {/* Heading */}
-        <Box textAlign="center" mb={3}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            Welcome back
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Sign in to manage your facilities
-          </Typography>
+        {error && <div className="auth-error">{error}</div>}
 
-          <Typography variant="body2" color="text.secondary" textAlign="center" mt={1}>
-            <Link component={RouterLink} to="/" underline="hover" sx={{ color: 'var(--mp-brand)', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-              <ArrowLeft size={14} />
-              Back to home
-            </Link>
-          </Typography>
-        </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* Form */}
-        <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-              {...fieldProps}
-              label="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <TextField
-              {...fieldProps}
-              label="Organization code"
-            type={showOrgCode ? 'text' : 'password'}
-            value={orgCode}
-            onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
-            inputProps={{ maxLength: 12 }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label={showOrgCode ? 'Hide org code' : 'Show org code'}
-                    onClick={() => setShowOrgCode(!showOrgCode)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                  >
-                    {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <TextField
-              {...fieldProps}
-              label="Password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    onClick={() => setShowPassword(!showPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          {/* Options */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              mt: 1,
-              mb: 2,
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-              }
-              label={
-                <Typography variant="body2">
-                  Remember me
-                </Typography>
-              }
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="login-email">Email Address</label>
+            <input
+              id="login-email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
             />
+          </div>
 
-            <Link
-              href="/forgot-password"
-              variant="body2"
-              underline="hover"
-              sx={{ color: 'var(--mp-brand)', '&:hover': { color: 'var(--mp-brand-dark)', textDecoration: 'underline' } }}
-            >
+          <div className="auth-field auth-field--icon">
+            <label htmlFor="login-org-code">Organization Code</label>
+            <div className="auth-input-wrap">
+              <input
+                id="login-org-code"
+                type={showOrgCode ? 'text' : 'password'}
+                placeholder="Enter organization code"
+                value={orgCode}
+                onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
+                maxLength={12}
+                autoComplete="off"
+              />
+              <button
+                className="auth-icon-btn"
+                type="button"
+                aria-label={showOrgCode ? 'Hide org code' : 'Show org code'}
+                onClick={() => setShowOrgCode(!showOrgCode)}
+              >
+                {showOrgCode ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="auth-field auth-field--icon">
+            <label htmlFor="login-password">Password</label>
+            <div className="auth-input-wrap">
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                className="auth-icon-btn"
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="auth-row">
+            <label className="auth-check">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              Remember me
+            </label>
+            <RouterLink className="auth-link" to="/forgot-password">
               Forgot password?
-            </Link>
-          </Box>
+            </RouterLink>
+          </div>
 
-          <Button
-            type="submit"
-            fullWidth
-            size="large"
-            variant="contained"
-            sx={{
-              mt: 1,
-              py: 1.2,
-              fontWeight: 600,
-              textTransform: 'none',
-              backgroundColor: 'var(--mp-brand)',
-              color: '#ffffff',
-              '&:hover': {
-                backgroundColor: 'var(--mp-brand-dark)',
-              },
-            }}
-          >
-            Sign in
-          </Button>
+          <button className="auth-submit" type="submit">
+            Sign In
+          </button>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            textAlign="center"
-            mt={3}
-          >
-            Don't have an account?{' '}
-            <Link href="/register" fontWeight={600} sx={{ color: 'var(--mp-brand)', '&:hover': { color: 'var(--mp-brand-dark)' } }}>
+          <div className="auth-alt">
+            Don&apos;t have an account?{' '}
+            <RouterLink className="auth-link" to="/register">
               Sign up
-            </Link>
-          </Typography>
-        </Box>
+            </RouterLink>
+          </div>
+        </form>
 
-        <Box textAlign="center" mt={4} >
-                <Typography variant="caption" color="text.secondary" display="flex" justifyContent="center" gap={1}
-                alignItems="center">
-                 <Copyright size={12} /> 2026 FacilityPro. All rights reserved.
-                </Typography>
-                <Box mt={1} display="flex" justifyContent="center" gap={2}>
-                  <Link variant="caption" href="/terms">Terms of Service</Link>
-                  <Link variant="caption" href="/privacy">Privacy Policy</Link>
-                </Box>
-              </Box>
-      </Paper>
-    </Box>
+        <div className="auth-footer">
+          <div className="auth-footer-text">
+            <Copyright size={12} />
+            2026 FacilityPro. All rights reserved.
+          </div>
+          <div className="auth-footer-links">
+            <RouterLink to="/terms">Terms of Service</RouterLink>
+            <RouterLink to="/privacy">Privacy Policy</RouterLink>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

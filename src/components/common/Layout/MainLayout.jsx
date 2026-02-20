@@ -116,9 +116,9 @@ const MainLayout = ({ children }) => {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 px-2 hover:bg-slate-100 transition text-slate-900"
+                className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-slate-100 transition text-slate-900"
               >
-                <Avatar className="h-8 w-8 border border-white/70 bg-white shadow-sm">
+                <Avatar className="h-8 w-8 border-2 border-white bg-white shadow-sm">
                   <AvatarImage
                     src={user?.avatar}
                     alt={user?.name || "User avatar"}
@@ -129,10 +129,11 @@ const MainLayout = ({ children }) => {
                 </Avatar>
 
                 <div className="hidden sm:flex flex-col items-start leading-tight">
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                     {user?.name || "User"}
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </span>
-                  <span className="text-xs text-slate-600">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
                     {getRoleDisplay(user?.role)}
                   </span>
                 </div>
@@ -141,8 +142,11 @@ const MainLayout = ({ children }) => {
 
             <DropdownMenuContent
               align="end"
-              sideOffset={12}
-              className="w-56 rounded-lg border border-slate-200 shadow-lg"
+              className="w-60"
+              PaperProps={{
+                className: "rounded-xl border border-slate-200 shadow-xl",
+                sx: { mt: 1.25 }
+              }}
             >
               {/* User Info */}
               <div className="px-4 py-3 border-b border-slate-200">
@@ -166,7 +170,7 @@ const MainLayout = ({ children }) => {
 
               <DropdownMenuItem
                 onClick={() => navigate("/profile")}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-slate-700"
               >
                 <User className="h-4 w-4 text-slate-500" />
                 My Profile
@@ -174,7 +178,7 @@ const MainLayout = ({ children }) => {
 
               <DropdownMenuItem
                 onClick={() => navigate("/settings")}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-slate-700"
               >
                 <Settings className="h-4 w-4 text-slate-500" />
                 Settings

@@ -11,6 +11,8 @@ import AuthLayout from './components/common/Layout/AuthLayout';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
+import VerifyOrgEmail from './pages/Auth/VerifyOrgEmail';
+import ResetPassword from './pages/Auth/ResetPassword';
 
 // Landing / Public pages
 import LandingPage from './pages/Landing/LandingPage';
@@ -98,6 +100,8 @@ const AppRoutes = () => {
       <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
       <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
+      <Route path="/verify-org-email" element={<VerifyOrgEmail />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       
       {/* Public landing page */}
       <Route path="/" element={<LandingPage />} />

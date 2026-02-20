@@ -10,7 +10,7 @@ export const getDashboardData = async () => {
     if (shouldUseMock()) {
       throw new Error('mock');
     }
-    const response = await axiosInstance.get('/dashboard');
+    const response = await axiosInstance.get('/dashboard', { suppressToast: true });
     return response.data?.data || response.data;
   } catch (error) {
     // Return mock data if API fails
@@ -47,7 +47,7 @@ export const getRecentActivities = async () => {
     if (shouldUseMock()) {
       throw new Error('mock');
     }
-    const response = await axiosInstance.get('/dashboard/activities');
+    const response = await axiosInstance.get('/dashboard/activities', { suppressToast: true });
     return response.data;
   } catch (error) {
     // Return mock recent activities derived from local work orders

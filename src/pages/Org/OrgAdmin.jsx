@@ -21,7 +21,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import { fetchMembers, fetchInvites, disableOrg, enableOrg, setUserActive, revokeInvite } from '@/api/org';
+import { fetchMembers, fetchInvites, disableOrg, enableOrg, setUserActive, revokeInvite, createInvite } from '@/api/org';
 
 const OrgAdmin = () => {
   const [members, setMembers] = useState([]);
@@ -30,6 +30,8 @@ const OrgAdmin = () => {
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState('staff');
+  const [inviteExpiresDays, setInviteExpiresDays] = useState('7');
 
   const orgCode = useMemo(() => localStorage.getItem('orgCode') || '', []);
 
@@ -89,6 +91,26 @@ const OrgAdmin = () => {
       await enableOrg();
       toast.success('Organization enabled');
       await loadData();
+    } catch (error) {
+      // handled by interceptor
+    }
+  };
+
+  const handleCreateInvite = async () => {
+    try {
+      const days = Number(inviteExpiresDays);
+      const expiresAt = Number.isFinite(days) && days > 0
+        ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+      const created = await createInvite({ role: inviteRole, expiresAt });
+      setInvites((prev) => [{ ...created, createdBy: 'You' }, ...prev]);
+      if (created?.code && navigator?.clipboard?.writeText) {
+        const inviteLink = `${window.location.origin}/register?invite=${created.code}`;
+        navigator.clipboard.writeText(inviteLink);
+        toast.success('Invite created. Link copied to clipboard.');
+      } else {
+        toast.success('Invite created.');
+      }
     } catch (error) {
       // handled by interceptor
     }
@@ -214,7 +236,38 @@ const OrgAdmin = () => {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600} mb={2}>Invites</Typography>
+        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mb={2}>
+          <Typography variant="subtitle1" fontWeight={600}>Invites</Typography>
+          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Role</InputLabel>
+              <Select
+                label="Role"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+              >
+                <MenuItem value="facility_manager">Facility Manager</MenuItem>
+                <MenuItem value="technician">Technician</MenuItem>
+                <MenuItem value="staff">Staff</MenuItem>
+                <MenuItem value="vendor">Vendor</MenuItem>
+                <MenuItem value="finance">Finance</MenuItem>
+                <MenuItem value="procurement">Procurement</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              label="Expires (days)"
+              type="number"
+              value={inviteExpiresDays}
+              onChange={(e) => setInviteExpiresDays(e.target.value)}
+              inputProps={{ min: 1 }}
+              sx={{ width: 140 }}
+            />
+            <Button size="small" variant="contained" onClick={handleCreateInvite}>
+              Create Invite
+            </Button>
+          </Box>
+        </Box>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -239,8 +292,9 @@ const OrgAdmin = () => {
                       variant="outlined"
                       onClick={() => {
                         if (navigator?.clipboard?.writeText) {
-                          navigator.clipboard.writeText(invite.code);
-                          toast.info('Invite code copied');
+                          const inviteLink = `${window.location.origin}/register?invite=${invite.code}`;
+                          navigator.clipboard.writeText(inviteLink);
+                          toast.info('Invite link copied');
                         }
                       }}
                     >

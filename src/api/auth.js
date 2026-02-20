@@ -1,20 +1,11 @@
 import api from './axiosConfig';
 
-export async function login(credentials) {
-  // placeholder
-  return { success: true };
+export async function requestPasswordReset(email, orgCode) {
+  const response = await api.post('/auth/forgot-password', { email, orgCode }, { suppressToast: true });
+  return response.data?.data;
 }
 
-export async function logout() {
-  // placeholder
-  return { success: true };
-}
-
-export async function requestPasswordReset(email) {
-  try {
-    const response = await api.post('/auth/forgot-password', { email });
-    return response.data;
-  } catch (error) {
-    return { success: true };
-  }
+export async function resetPassword({ token, orgCode, password }) {
+  const response = await api.post('/auth/reset-password', { token, orgCode, password }, { suppressToast: true });
+  return response.data?.data;
 }
