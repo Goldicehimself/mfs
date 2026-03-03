@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import GreetingBanner from '@/components/common/GreetingBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import { getWorkOrders } from '../../api/workOrders';
 
@@ -90,6 +91,7 @@ const StaffPortal = () => {
 
   return (
     <div className="space-y-6">
+      <GreetingBanner subtitle="Track your assigned work orders and leave requests." />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">My Work</h1>

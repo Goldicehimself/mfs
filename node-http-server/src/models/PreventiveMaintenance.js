@@ -1,5 +1,6 @@
 // Preventive Maintenance Model
 const mongoose = require('mongoose');
+const constants = require('../constants/constants');
 
 const preventiveMaintenanceSchema = new mongoose.Schema({
   name: {
@@ -17,6 +18,11 @@ const preventiveMaintenanceSchema = new mongoose.Schema({
     type: String,
     enum: ['weekly', 'bi-weekly', 'monthly', 'quarterly', 'semi-annual', 'annual'],
     required: [true, 'Frequency is required']
+  },
+  priority: {
+    type: String,
+    enum: Object.values(constants.PRIORITY),
+    default: constants.PRIORITY.MEDIUM
   },
   lastPerformed: Date,
   nextDueDate: {
@@ -40,6 +46,10 @@ const preventiveMaintenanceSchema = new mongoose.Schema({
   active: {
     type: Boolean,
     default: true
+  },
+  requiresCertification: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,

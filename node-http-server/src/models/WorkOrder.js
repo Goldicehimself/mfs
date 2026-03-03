@@ -52,6 +52,10 @@ const workOrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  vendor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor'
+  },
   team: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -83,6 +87,10 @@ const workOrderSchema = new mongoose.Schema({
   photos: [String],
   tags: [String],
   location: String,
+  requiresCertification: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

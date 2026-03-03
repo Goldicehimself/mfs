@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getAssets,
   bulkImportAssets,
   deleteAsset,
   updateAsset,
   uploadAssetImage,
+  getAssetByCode,
+  bulkUpdateAssetStatus,
+  downloadAssetImportTemplate,
 } from '../../api/assets';
 import { useActivity } from '../../contexts/ActivityContext';
 
@@ -27,6 +30,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import Modal from '../common/Modal';
 import AssetQRScanner from './AssetQRScanner';
 import AssetImage from './AssetImage';
@@ -60,6 +64,7 @@ const STATUSES = ['active', 'inactive', 'maintenance', 'retired'];
 ========================= */
 export default function AssetList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { addActivity } = useActivity();
 
   const [assets, setAssets] = useState([]);
@@ -73,6 +78,9 @@ export default function AssetList() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [confirmDeleteAsset, setConfirmDeleteAsset] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState('active');
+  const [bulkStatusSubmitting, setBulkStatusSubmitting] = useState(false);
 
   const [filters, setFilters] = useState({ search: '' });
   const [importing, setImporting] = useState(false);
@@ -84,6 +92,14 @@ export default function AssetList() {
   useEffect(() => {
     fetchAssets();
   }, [currentPage, filters]);
+
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam !== null) {
+      setFilters(prev => ({ ...prev, search: searchParam }));
+      setCurrentPage(1);
+    }
+  }, [searchParams]);
 
   async function fetchAssets() {
     try {
@@ -161,13 +177,61 @@ export default function AssetList() {
     URL.revokeObjectURL(url);
   };
 
-  const handleScanResult = (scannedAssetId) => {
-    const asset = assets.find(a => a.id === scannedAssetId);
-    if (asset) {
-      setViewingAsset(asset);
-      setScannerOpen(false);
-    } else {
+  const handleScanResult = async (scannedValue) => {
+    try {
+      const asset = await getAssetByCode(scannedValue);
+      if (asset?.id) {
+        setScannerOpen(false);
+        navigate(`/assets/${asset.id}`);
+        return;
+      }
       alert('Asset not found in the system');
+    } catch (err) {
+      alert('Asset not found in the system');
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await downloadAssetImportTemplate();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'assets-import-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Failed to download template.');
+    }
+  };
+
+  const openBulkStatusModal = () => {
+    setBulkStatusOpen(true);
+  };
+
+  const handleBulkStatusSubmit = async () => {
+    if (!assets.length) {
+      alert('No assets on the current page to update.');
+      return;
+    }
+    try {
+      setBulkStatusSubmitting(true);
+      const ids = assets.map((asset) => asset.id);
+      await bulkUpdateAssetStatus({ ids, status: bulkStatus });
+      await fetchAssets();
+      setBulkStatusOpen(false);
+      addActivity({
+        type: 'system',
+        action: 'updated',
+        title: 'Bulk Status Update',
+        description: `Updated ${ids.length} assets to ${bulkStatus}`,
+        user: 'Current User',
+        status: 'completed',
+      });
+    } catch (error) {
+      alert('Failed to update asset statuses.');
+    } finally {
+      setBulkStatusSubmitting(false);
     }
   };
 
@@ -226,10 +290,17 @@ export default function AssetList() {
             onClick={() => importInputRef.current?.click()}
             disabled={importing}
             variant="outline" 
-            className="border-slate-300 dark:border-slate-600"
+            className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
           >
             <Upload className="mr-2 h-4 w-4" /> 
             {importing ? 'Importing...' : 'Import Assets'}
+          </Button>
+          <Button
+            onClick={handleDownloadTemplate}
+            variant="outline"
+            className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+          >
+            Download Template
           </Button>
           <input
             ref={importInputRef}
@@ -238,10 +309,18 @@ export default function AssetList() {
             onChange={handleImportAssets}
             className="hidden"
           />
-          <Button onClick={handleExportAssets} variant="outline" className="border-slate-300 dark:border-slate-600">
+          <Button
+            onClick={handleExportAssets}
+            variant="outline"
+            className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+          >
             Export List
           </Button>
-          <Button onClick={() => setScannerOpen(true)} variant="outline" className="border-slate-300 dark:border-slate-600">
+          <Button
+            onClick={() => setScannerOpen(true)}
+            variant="outline"
+            className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+          >
             <QrCode className="mr-2 h-4 w-4" /> Scanner
           </Button>
         </div>
@@ -299,11 +378,12 @@ export default function AssetList() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white dark:bg-slate-800 rounded-xl animate-pulse">
-                <div className="h-48 bg-slate-200 dark:bg-slate-700 rounded-t-xl" />
+              <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Skeleton className="h-48 rounded-t-xl" />
                 <div className="p-4 space-y-3">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-full" />
                 </div>
               </div>
             ))}
@@ -466,7 +546,7 @@ export default function AssetList() {
                 user: 'Current User',
                 status: 'in_progress',
               });
-              alert('Opening bulk operations interface...');
+              openBulkStatusModal();
             }}
             className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">📦</div>
@@ -500,7 +580,7 @@ export default function AssetList() {
                 user: 'Current User',
                 status: 'in_progress',
               });
-              alert('Opening bulk status update interface...');
+              openBulkStatusModal();
             }}
             className="p-6 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-center group cursor-pointer">
             <div className="text-2xl mb-2 opacity-60 group-hover:opacity-100">🔄</div>
@@ -533,6 +613,35 @@ export default function AssetList() {
         onClose={() => setScannerOpen(false)}
         onAssetScanned={handleScanResult}
       />
+
+      {bulkStatusOpen && (
+        <Modal>
+          <div style={{ maxWidth: 520, padding: 16 }}>
+            <h3 style={{ fontWeight: 700, marginBottom: 8 }}>Bulk Update Status</h3>
+            <p style={{ color: '#64748b', marginBottom: 16 }}>
+              This will update the status of {assets.length} assets on the current page.
+            </p>
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">New Status</label>
+            <select
+              className="mt-2 w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+            >
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <Button variant="outline" onClick={() => setBulkStatusOpen(false)} disabled={bulkStatusSubmitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkStatusSubmit} disabled={bulkStatusSubmitting}>
+                {bulkStatusSubmitting ? 'Updating...' : 'Update'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
 
 

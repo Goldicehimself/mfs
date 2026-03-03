@@ -35,6 +35,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { createFundRequest, fetchMyFundRequests, fetchFundRequests, approveFundRequest, rejectFundRequest } from '@/api/funds';
+import GreetingBanner from '@/components/common/GreetingBanner';
 
 // Mock data for finance
 const mockFinanceData = {
@@ -363,6 +364,7 @@ export default function FinancePortal() {
 
   return (
     <div className="space-y-6">
+      <GreetingBanner subtitle="Review invoices, expenses, and financial reports." />
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Finance Portal</h1>
@@ -470,35 +472,36 @@ export default function FinancePortal() {
                 value={fundFilters.status}
                 onValueChange={(value) => setFundFilters((prev) => ({ ...prev, status: value }))}
               >
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-zinc-900">
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
+              <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
               </Select>
               <Input
                 type="date"
                 value={fundFilters.from}
                 onChange={(e) => setFundFilters((prev) => ({ ...prev, from: e.target.value }))}
-                className="h-10"
+                className="h-10 text-gray-900 dark:text-gray-100"
               />
               <Input
                 type="date"
                 value={fundFilters.to}
                 onChange={(e) => setFundFilters((prev) => ({ ...prev, to: e.target.value }))}
-                className="h-10"
+                className="h-10 text-gray-900 dark:text-gray-100"
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={loadFundRequests}>
+                <Button size="sm" variant="outline" className="text-gray-700 dark:text-gray-200" onClick={loadFundRequests}>
                   Apply
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="text-gray-700 dark:text-gray-200"
                   onClick={() => {
                     setFundFilters({ status: 'all', from: '', to: '' });
                     setTimeout(loadFundRequests, 0);
@@ -518,13 +521,13 @@ export default function FinancePortal() {
                   placeholder="Amount"
                   value={requestAmount}
                   onChange={(e) => setRequestAmount(e.target.value)}
-                  className="h-10"
+                  className="h-10 text-gray-900 dark:text-gray-100"
                 />
                 <Input
                   placeholder="Purpose"
                   value={requestPurpose}
                   onChange={(e) => setRequestPurpose(e.target.value)}
-                  className="h-10"
+                  className="h-10 text-gray-900 dark:text-gray-100"
                 />
                 <Button
                   className="bg-blue-700 hover:bg-blue-800 text-white h-10"
@@ -581,7 +584,7 @@ export default function FinancePortal() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-red-300 text-red-700 hover:bg-red-50"
+                              className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-500/60 dark:text-red-300 dark:hover:bg-red-900/30"
                               onClick={() => handleReviewFundRequest(request._id, 'rejected')}
                             >
                               Reject
@@ -618,15 +621,15 @@ export default function FinancePortal() {
                     placeholder="Search invoices..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
                   />
                 </div>
 
                 <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
-                  <SelectTrigger className="h-10 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-200 dark:border-indigo-700/50 font-medium hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all cursor-pointer">
+                  <SelectTrigger className="h-10 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-200 dark:border-indigo-700/50 font-medium text-gray-900 dark:text-gray-100 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all cursor-pointer">
                     <SelectValue placeholder="Filter by Status" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-zinc-900">
+                  <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                     <SelectItem value="all" className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2 hover:from-indigo-700 hover:to-purple-700 cursor-pointer">
                       <span className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-white"></span>
@@ -677,19 +680,19 @@ export default function FinancePortal() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search expenses..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-                  />
-                </div>
+                <Input
+                  placeholder="Search expenses..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                />
+              </div>
 
-                <Select value={expenseStatusFilter} onValueChange={setExpenseStatusFilter}>
-                  <SelectTrigger className="h-10 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200 dark:border-amber-700/50 font-medium hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/50 dark:hover:to-orange-900/50 hover:border-amber-300 dark:hover:border-amber-600 transition-all cursor-pointer">
-                    <SelectValue placeholder="Filter by Status" />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-zinc-900">
+              <Select value={expenseStatusFilter} onValueChange={setExpenseStatusFilter}>
+                <SelectTrigger className="h-10 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200 dark:border-amber-700/50 font-medium text-gray-900 dark:text-gray-100 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/50 dark:hover:to-orange-900/50 hover:border-amber-300 dark:hover:border-amber-600 transition-all cursor-pointer">
+                  <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                     <SelectItem value="all" className="bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold py-2 hover:from-amber-700 hover:to-orange-700 cursor-pointer">
                       <span className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-white"></span>
@@ -900,7 +903,7 @@ export default function FinancePortal() {
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
                     placeholder="0.00"
-                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700"
+                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 <div>
@@ -918,7 +921,7 @@ export default function FinancePortal() {
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-zinc-800">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-gray-700 dark:text-gray-200"
                   onClick={() => setNewPaymentModalOpen(false)}
                 >
                   Cancel
@@ -1052,10 +1055,10 @@ export default function FinancePortal() {
                     Category
                   </label>
                   <Select>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100">
                       <SelectValue placeholder="Select category..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                       <SelectItem value="parts">Parts & Materials</SelectItem>
                       <SelectItem value="labor">Labor</SelectItem>
                       <SelectItem value="travel">Travel</SelectItem>
@@ -1072,7 +1075,7 @@ export default function FinancePortal() {
                     min="0"
                     step="0.01"
                     placeholder="0.00"
-                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700"
+                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 <div>
@@ -1081,14 +1084,14 @@ export default function FinancePortal() {
                   </label>
                   <Input
                     placeholder="Vendor name..."
-                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700"
+                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
               </div>
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-zinc-800">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-gray-700 dark:text-gray-200"
                   onClick={() => setNewExpenseModalOpen(false)}
                 >
                   Cancel

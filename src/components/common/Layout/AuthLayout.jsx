@@ -14,14 +14,14 @@ const AuthLayout = ({ children }) => {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'background.default',
-        padding: 2,
+        padding: { xs: 1.5, sm: 2 },
       }}
     >
       <Container maxWidth="sm">
-        <Paper className="bg-card shadow"
+        <Paper className="bg-card shadow mp-auth-surface"
           sx={{
-            padding: 4,
-            borderRadius: 2,
+            padding: { xs: 2.5, sm: 4 },
+            borderRadius: { xs: 3, sm: 2 },
             overflow: 'visible'
           }}
         >

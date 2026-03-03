@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import mockWorkOrders from "@/mocks/mockWorkOrders";
 import { getWorkOrders, updateWorkOrderStatus } from "@/api/workOrders";
 
 // ---------- helpers ----------
@@ -42,13 +41,20 @@ export default function MyAssignments() {
 
   useEffect(() => {
     let active = true;
-    getWorkOrders().then((data) => {
-      if (!active) return;
-      const list = Array.isArray(data)
-        ? data
-        : (data?.workOrders || data?.data || []);
-      setWorkOrders(list.length ? list : mockWorkOrders);
-    });
+    const load = async () => {
+      try {
+        const data = await getWorkOrders();
+        if (!active) return;
+        const list = Array.isArray(data)
+          ? data
+          : (data?.workOrders || data?.data || []);
+        setWorkOrders(list);
+      } catch (error) {
+        if (!active) return;
+        setWorkOrders([]);
+      }
+    };
+    load();
     return () => {
       active = false;
     };
@@ -200,7 +206,7 @@ export default function MyAssignments() {
                   Managers can view assignment totals but not individual assignments.
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+              <Button variant="outline" size="sm" className="text-zinc-700 dark:text-zinc-200" onClick={() => navigate("/reports")}>
                 View Reports
               </Button>
             </div>
@@ -265,7 +271,7 @@ export default function MyAssignments() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                   <Input
-                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700"
+                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                     placeholder="Search work orders by title..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -273,10 +279,10 @@ export default function MyAssignments() {
                 </div>
 
                 <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="w-full md:w-[180px] h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700">
+                  <SelectTrigger className="w-full md:w-[180px] h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100">
                     <SelectValue placeholder="Filter by Priority" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-zinc-900 dark:text-zinc-100">
                     <SelectItem value="all">All Priorities</SelectItem>
                     <SelectItem value="high">High Priority</SelectItem>
                     <SelectItem value="medium">Medium Priority</SelectItem>
@@ -297,7 +303,7 @@ export default function MyAssignments() {
                     variant={status === s.value ? "default" : "outline"}
                     size="sm"
                     onClick={() => setStatus(s.value)}
-                    className={status === s.value ? "bg-blue-700 hover:bg-blue-800" : ""}
+                    className={status === s.value ? "bg-blue-700 hover:bg-blue-800" : "text-zinc-700 dark:text-zinc-200"}
                   >
                     {s.label}
                   </Button>
@@ -342,7 +348,7 @@ export default function MyAssignments() {
               <Button 
                 variant="outline" 
                 onClick={() => setVisible(v => v + 6)}
-                className="px-8"
+                className="px-8 text-zinc-700 dark:text-zinc-200"
               >
                 Load More Work Orders
               </Button>
@@ -452,7 +458,7 @@ function WorkOrderCard({ wo, onView, onStart, isUpdating }) {
           ) : (
             <Button 
               variant="outline" 
-              className="flex-1"
+              className="flex-1 text-zinc-700 dark:text-zinc-200"
               onClick={onView}
             >
               ✓ View Details
@@ -460,7 +466,7 @@ function WorkOrderCard({ wo, onView, onStart, isUpdating }) {
           )}
           <Button 
             variant="outline" 
-            className="flex-1"
+            className="flex-1 text-zinc-700 dark:text-zinc-200"
             onClick={onView}
           >
             Details
@@ -498,11 +504,11 @@ function StatCard({ icon, title, value, color, trend }) {
 
 function DetailItem({ icon, label, value, highlight }) {
   return (
-    <div className={`flex items-start gap-2 ${highlight ? 'text-rose-600 dark:text-rose-400' : ''}`}>
-      <span className="mt-0.5 opacity-60">{icon}</span>
+    <div className={`flex items-start gap-2 ${highlight ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+      <span className="mt-0.5 opacity-70">{icon}</span>
       <div className="text-xs">
-        <p className="opacity-60 uppercase tracking-wide font-medium">{label}</p>
-        <p className={`font-semibold ${highlight ? 'font-bold text-sm' : ''}`}>{value}</p>
+        <p className="opacity-70 uppercase tracking-wide font-medium">{label}</p>
+        <p className={`font-semibold ${highlight ? 'font-bold text-sm' : 'text-zinc-900 dark:text-zinc-100'}`}>{value}</p>
       </div>
     </div>
   );

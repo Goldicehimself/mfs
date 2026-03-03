@@ -49,8 +49,20 @@
   font-size: 14px;
 }
 
+.auth-field--phone .react-international-phone {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .auth-field--phone .react-international-phone-country-selector-button {
   border-radius: 10px 0 0 10px;
+  margin-right: 8px;
+}
+
+.auth-field--phone .react-international-phone-input {
+  flex: 1;
+  margin-left: 0;
 }
 
 .auth-select {

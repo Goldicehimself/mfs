@@ -6,7 +6,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import App from './App.jsx';
-// import { ThemeProvider } from './contexts/ThemeContext.jsx';
+import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import './index.css';
 import './styles/global.css'; // restore KPI & helper styles from global.css
 
@@ -25,9 +25,9 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        {/* <ThemeProvider> */}
+        <ThemeProvider>
           <App />
-        {/* </ThemeProvider> */}
+        </ThemeProvider>
         <ToastContainer
           position="top-right"
           autoClose={5000}

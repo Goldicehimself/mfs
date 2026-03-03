@@ -142,3 +142,30 @@
 .react-international-phone-country-selector-dropdown__list-item:hover {
   background: rgba(0, 0, 0, 0.06) !important;
 }
+
+/* Dark mode for phone input */
+.dark .react-international-phone-input {
+  background-color: #0f172a;
+  border: 1px solid #1f2937;
+  color: #e2e8f0;
+}
+
+.dark .react-international-phone-country-selector-button {
+  background-color: #0f172a;
+  border: 1px solid #1f2937;
+  color: #e2e8f0;
+}
+
+.dark .react-international-phone-country-selector-dropdown {
+  background: #0f172a !important;
+  border: 1px solid #1f2937 !important;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.5) !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown__list-item {
+  background: #0f172a !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown__list-item:hover {
+  background: rgba(148, 163, 184, 0.15) !important;
+}

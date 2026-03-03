@@ -70,7 +70,11 @@ module.exports = {
     'assets:read',
     'assets:write',
     'vendors:read',
-    'reports:read'
+    'reports:read',
+    'inventory:read',
+    'inventory:write',
+    'service-requests:read',
+    'service-requests:write'
   ],
 
   DEFAULT_API_KEY_RATE_LIMIT: {

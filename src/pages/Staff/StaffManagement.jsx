@@ -25,107 +25,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import mockWorkOrders from '../../mocks/mockWorkOrders';
 import { fetchAllLeaves, fetchPendingLeaves, approveLeave, rejectLeave } from '@/api/leave';
 import { toast } from 'react-toastify';
-
-// Mock data for staff members
-const mockStaffData = {
-  department: {
-    name: 'Maintenance Department',
-    totalStaff: 12,
-    activeAssignments: 28,
-    completionRate: 92,
-    teamRating: 4.6
-  },
-  staffMembers: [
-    {
-      id: 'staff-001',
-      name: 'John Smith',
-      role: 'Senior Technician',
-      department: 'Maintenance',
-      status: 'active',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
-      email: 'john.smith@company.com',
-      phone: '+1 (555) 123-4567',
-      assignedOrders: 8,
-      completedOrders: 156,
-      performance: 94,
-      rating: 4.8,
-      certifications: 5,
-      lastActive: '2026-01-18T10:30:00',
-      joinDate: '2022-03-15'
-    },
-    {
-      id: 'staff-002',
-      name: 'Sarah Johnson',
-      role: 'Technician',
-      department: 'Maintenance',
-      status: 'active',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
-      email: 'sarah.johnson@company.com',
-      phone: '+1 (555) 234-5678',
-      assignedOrders: 6,
-      completedOrders: 98,
-      performance: 88,
-      rating: 4.5,
-      certifications: 3,
-      lastActive: '2026-01-18T11:00:00',
-      joinDate: '2023-06-20'
-    },
-    {
-      id: 'staff-003',
-      name: 'Mike Davis',
-      role: 'Technician',
-      department: 'Maintenance',
-      status: 'active',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike',
-      email: 'mike.davis@company.com',
-      phone: '+1 (555) 345-6789',
-      assignedOrders: 5,
-      completedOrders: 87,
-      performance: 85,
-      rating: 4.3,
-      certifications: 4,
-      lastActive: '2026-01-18T09:45:00',
-      joinDate: '2023-01-10'
-    },
-    {
-      id: 'staff-004',
-      name: 'Emily Wilson',
-      role: 'Junior Technician',
-      department: 'Maintenance',
-      status: 'active',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily',
-      email: 'emily.wilson@company.com',
-      phone: '+1 (555) 456-7890',
-      assignedOrders: 4,
-      completedOrders: 45,
-      performance: 82,
-      rating: 4.2,
-      certifications: 2,
-      lastActive: '2026-01-18T14:20:00',
-      joinDate: '2024-09-05'
-    },
-    {
-      id: 'staff-005',
-      name: 'David Brown',
-      role: 'Senior Technician',
-      department: 'Maintenance',
-      status: 'on_leave',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=david',
-      email: 'david.brown@company.com',
-      phone: '+1 (555) 567-8901',
-      assignedOrders: 2,
-      completedOrders: 142,
-      performance: 91,
-      rating: 4.7,
-      certifications: 6,
-      lastActive: '2026-01-15T16:00:00',
-      joinDate: '2021-11-22'
-    }
-  ]
-};
+import { fetchMembers } from '@/api/org';
+import { getWorkOrders, assignWorkOrder } from '@/api/workOrders';
 
 // StatCard Component
 const StatCard = ({ icon: Icon, label, value, color = 'indigo' }) => (
@@ -169,7 +72,17 @@ const StaffCard = ({ staff, onSelect }) => {
           className="h-12 w-12 rounded-full"
         />
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 dark:text-white">{staff.name}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-gray-900 dark:text-white">{staff.name}</h3>
+            {staff.role === 'technician' && (
+              <Badge className={staff.isCertified
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+              }>
+                {staff.isCertified ? 'Verified' : 'Unverified'}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">{staff.role}</p>
         </div>
         <Badge className={getStatusColor(staff.status)}>
@@ -207,7 +120,7 @@ const StaffCard = ({ staff, onSelect }) => {
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1 text-xs">
+        <Button variant="outline" size="sm" className="flex-1 text-xs text-gray-700 dark:text-gray-200">
           <Eye className="h-3 w-3 mr-1" />
           View
         </Button>
@@ -217,6 +130,8 @@ const StaffCard = ({ staff, onSelect }) => {
 };
 
 export default function StaffManagement() {
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -240,6 +155,86 @@ export default function StaffManagement() {
   const [decisionNotes, setDecisionNotes] = useState({});
   const [leaveLoading, setLeaveLoading] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const memberRes = await fetchMembers({ includeStats: true, limit: 200 });
+        const list = Array.isArray(memberRes) ? memberRes : (memberRes?.members || memberRes?.data || []);
+        if (active) setStaffMembers(list);
+      } catch (error) {
+        if (active) setStaffMembers([]);
+      }
+      try {
+        const ordersRes = await getWorkOrders({ page: 1, limit: 500 });
+        const list = Array.isArray(ordersRes)
+          ? ordersRes
+          : (ordersRes?.workOrders || ordersRes?.data || []);
+        if (active) setWorkOrders(list);
+      } catch (error) {
+        if (active) setWorkOrders([]);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const normalizedStaff = useMemo(() => {
+    return staffMembers.map((member) => {
+      const id = member.id || member._id;
+      const name = member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Staff';
+      const performance = Number.isFinite(member.performanceScore)
+        ? member.performanceScore
+        : 0;
+      const rating = Number.isFinite(member.rating)
+        ? member.rating
+        : 0;
+      const completedOrders = Number.isFinite(member.completedOrders)
+        ? member.completedOrders
+        : 0;
+      const assignedOrders = Number.isFinite(member.assignedOrders)
+        ? member.assignedOrders
+        : 0;
+      const certifications = Number.isFinite(member.certifications)
+        ? member.certifications
+        : (Array.isArray(member.certificates) ? member.certificates.length : 0);
+      return {
+        id,
+        name,
+        role: member.role || 'staff',
+        department: member.department || 'General',
+        status: member.active === false ? 'on_leave' : 'active',
+        avatar: member.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+        email: member.email || '—',
+        phone: member.phone || '—',
+        assignedOrders,
+        completedOrders,
+        performance,
+        rating,
+        certifications,
+        isCertified: certifications > 0,
+        lastActive: member.lastActive || member.lastLogin || member.updatedAt || member.createdAt,
+        joinDate: member.createdAt
+      };
+    });
+  }, [staffMembers]);
+
+  const kpi = useMemo(() => {
+    const totalStaff = normalizedStaff.length;
+    const activeAssignments = workOrders.filter((order) =>
+      ['open', 'assigned', 'in_progress', 'on_hold'].includes(order.status)
+    ).length;
+    const completed = workOrders.filter((order) => order.status === 'completed').length;
+    const completionRate = workOrders.length ? Math.round((completed / workOrders.length) * 100) : 0;
+    const rated = normalizedStaff.filter((staff) => staff.rating > 0);
+    const teamRating = rated.length
+      ? Math.round((rated.reduce((sum, staff) => sum + staff.rating, 0) / rated.length) * 10) / 10
+      : 0;
+    return { totalStaff, activeAssignments, completionRate, teamRating };
+  }, [normalizedStaff, workOrders]);
+
   const getCertificatesForStaff = (staff) => {
     if (!staff?.email) return [];
     try {
@@ -255,13 +250,18 @@ export default function StaffManagement() {
 
 
   const filteredStaff = useMemo(() => {
-    return mockStaffData.staffMembers.filter((staff) => {
+    return normalizedStaff.filter((staff) => {
       if (statusFilter !== 'all' && staff.status !== statusFilter) return false;
       if (roleFilter !== 'all' && staff.role !== roleFilter) return false;
       if (search && !staff.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [search, statusFilter, roleFilter]);
+  }, [search, statusFilter, roleFilter, normalizedStaff]);
+
+  const roleOptions = useMemo(() => {
+    const set = new Set(normalizedStaff.map((staff) => staff.role).filter(Boolean));
+    return Array.from(set);
+  }, [normalizedStaff]);
 
   const handleAddNote = () => {
     if (newNote.trim()) {
@@ -372,17 +372,28 @@ export default function StaffManagement() {
     URL.revokeObjectURL(url);
   };
 
-  const handleAssignWork = () => {
+  const handleAssignWork = async () => {
     if (!selectedWorkOrderId) {
       alert('Select a work order to assign.');
       return;
     }
 
-    const selectedOrder = mockWorkOrders.find((order) => order.id === selectedWorkOrderId);
+    const selectedOrder = workOrders.find((order) => (order.id || order._id) === selectedWorkOrderId);
     const orderLabel = selectedOrder ? `${selectedOrder.woNumber} - ${selectedOrder.title}` : selectedWorkOrderId;
     const dueLabel = assignmentDueDate ? ` (Due ${assignmentDueDate})` : '';
 
-    alert(`Work order assigned to ${selectedStaff.name}: ${orderLabel}${dueLabel}`);
+    try {
+      await assignWorkOrder(selectedWorkOrderId, selectedStaff.id);
+      setWorkOrders((prev) =>
+        prev.map((order) => (order.id === selectedWorkOrderId || order._id === selectedWorkOrderId
+          ? { ...order, assignedTo: { id: selectedStaff.id, name: selectedStaff.name }, status: 'assigned' }
+          : order
+        ))
+      );
+      alert(`Work order assigned to ${selectedStaff.name}: ${orderLabel}${dueLabel}`);
+    } catch (error) {
+      alert('Failed to assign work order.');
+    }
     setAssignmentModalOpen(false);
     setSelectedWorkOrderId('');
     setAssignmentDueDate('');
@@ -401,19 +412,19 @@ export default function StaffManagement() {
         <StatCard
           icon={Users}
           label="Total Staff"
-          value={mockStaffData.department.totalStaff}
+          value={kpi.totalStaff}
           color="indigo"
         />
         <StatCard
           icon={Target}
           label="Active Assignments"
-          value={mockStaffData.department.activeAssignments}
+          value={kpi.activeAssignments}
           color="blue"
         />
         <StatCard
           icon={TrendingUp}
           label="Completion Rate"
-          value={`${mockStaffData.department.completionRate}%`}
+          value={`${kpi.completionRate}%`}
           color="emerald"
         />
         <StatCard
@@ -421,7 +432,7 @@ export default function StaffManagement() {
           label="Team Rating"
           value={
             <span className="flex items-center gap-1">
-              {mockStaffData.department.teamRating}
+              {kpi.teamRating || '—'}
               <Star className="h-4 w-4 text-amber-500" />
             </span>
           }
@@ -434,6 +445,7 @@ export default function StaffManagement() {
           variant={managementView === 'staff' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setManagementView('staff')}
+          className={managementView === 'staff' ? '' : 'text-gray-700 dark:text-gray-200'}
         >
           Staff Directory
         </Button>
@@ -441,6 +453,7 @@ export default function StaffManagement() {
           variant={managementView === 'leave' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setManagementView('leave')}
+          className={managementView === 'leave' ? '' : 'text-gray-700 dark:text-gray-200'}
         >
           Leave Approvals
         </Button>
@@ -456,7 +469,7 @@ export default function StaffManagement() {
                   Pending requests need manager action.
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={exportLeaveHistory}>
+              <Button size="sm" variant="outline" className="text-gray-700 dark:text-gray-200" onClick={exportLeaveHistory}>
                 Export History
               </Button>
             </div>
@@ -467,15 +480,16 @@ export default function StaffManagement() {
                 placeholder="Staff ID"
                 value={leaveFilters.staff}
                 onChange={(e) => setLeaveFilters((prev) => ({ ...prev, staff: e.target.value }))}
+                className="text-gray-900 dark:text-gray-100"
               />
               <Select
                 value={leaveFilters.status}
                 onValueChange={(value) => setLeaveFilters((prev) => ({ ...prev, status: value }))}
               >
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-zinc-900">
+              <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
@@ -486,10 +500,10 @@ export default function StaffManagement() {
                 value={leaveFilters.type}
                 onValueChange={(value) => setLeaveFilters((prev) => ({ ...prev, type: value }))}
               >
-                <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-zinc-900">
+              <SelectTrigger className="h-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Annual">Annual</SelectItem>
                   <SelectItem value="Sick">Sick</SelectItem>
@@ -501,19 +515,22 @@ export default function StaffManagement() {
                 type="date"
                 value={leaveFilters.from}
                 onChange={(e) => setLeaveFilters((prev) => ({ ...prev, from: e.target.value }))}
+                className="text-gray-900 dark:text-gray-100"
               />
               <Input
                 type="date"
                 value={leaveFilters.to}
                 onChange={(e) => setLeaveFilters((prev) => ({ ...prev, to: e.target.value }))}
+                className="text-gray-900 dark:text-gray-100"
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={loadLeaves}>
+                <Button size="sm" variant="outline" className="text-gray-700 dark:text-gray-200" onClick={loadLeaves}>
                   Apply Filters
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="text-gray-700 dark:text-gray-200"
                   onClick={() => {
                     setLeaveFilters({ status: 'all', type: 'all', staff: '', from: '', to: '' });
                     setTimeout(loadLeaves, 0);
@@ -561,7 +578,7 @@ export default function StaffManagement() {
                         onChange={(event) =>
                           setDecisionNotes((prev) => ({ ...prev, [request._id]: event.target.value }))
                         }
-                        className="mt-1 w-full rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+                        className="mt-1 w-full rounded-md border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       />
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -575,7 +592,7 @@ export default function StaffManagement() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                        className="border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-500/60 dark:text-rose-300 dark:hover:bg-rose-900/30"
                         onClick={() => handleRejectLeave(request)}
                       >
                         Reject
@@ -634,15 +651,15 @@ export default function StaffManagement() {
                     placeholder="Search staff..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                    className="pl-9 h-10 bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
                   />
                 </div>
 
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-10 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border-emerald-200 dark:border-emerald-700/50 font-medium hover:from-emerald-100 hover:to-green-100 dark:hover:from-emerald-900/50 dark:hover:to-green-900/50 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all cursor-pointer">
+                  <SelectTrigger className="h-10 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 border-emerald-200 dark:border-emerald-700/50 font-medium text-gray-900 dark:text-gray-100 hover:from-emerald-100 hover:to-green-100 dark:hover:from-emerald-900/50 dark:hover:to-green-900/50 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all cursor-pointer">
                     <SelectValue placeholder="Filter by Status" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-zinc-900">
+                  <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                     <SelectItem value="all" className="bg-gradient-to-r from-emerald-600 to-green-600 text-white font-semibold py-2 hover:from-emerald-700 hover:to-green-700 cursor-pointer">
                       <span className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-white"></span>
@@ -655,19 +672,21 @@ export default function StaffManagement() {
                 </Select>
 
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="h-10 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-700/50 font-medium hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 hover:border-purple-300 dark:hover:border-purple-600 transition-all cursor-pointer">
+                  <SelectTrigger className="h-10 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200 dark:border-purple-700/50 font-medium text-gray-900 dark:text-gray-100 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 hover:border-purple-300 dark:hover:border-purple-600 transition-all cursor-pointer">
                     <SelectValue placeholder="Filter by Role" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-zinc-900">
+                  <SelectContent className="dark:bg-zinc-900 dark:text-gray-100">
                     <SelectItem value="all" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-2 hover:from-purple-700 hover:to-pink-700 cursor-pointer">
                       <span className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-white"></span>
                         All Roles
                       </span>
                     </SelectItem>
-                    <SelectItem value="Senior Technician" className="hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">Senior Technician</SelectItem>
-                    <SelectItem value="Technician" className="hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer">Technician</SelectItem>
-                    <SelectItem value="Junior Technician" className="hover:bg-cyan-50 dark:hover:bg-cyan-900/30 cursor-pointer">Junior Technician</SelectItem>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role} value={role} className="hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                        {role.replace(/_/g, ' ')}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -712,9 +731,19 @@ export default function StaffManagement() {
               <CardHeader className="border-b border-gray-200 dark:border-zinc-800">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-2xl text-gray-900 dark:text-white">
-                      {selectedStaff.name}
-                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-2xl text-gray-900 dark:text-white">
+                        {selectedStaff.name}
+                      </CardTitle>
+                      {selectedStaff.role === 'technician' && (
+                        <Badge className={selectedStaff.isCertified
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                        }>
+                          {selectedStaff.isCertified ? 'Verified' : 'Unverified'}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {selectedStaff.role} - {selectedStaff.department}
                     </p>
@@ -743,13 +772,13 @@ export default function StaffManagement() {
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Join Date</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {new Date(selectedStaff.joinDate).toLocaleDateString()}
+                      {formatDate(selectedStaff.joinDate)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Last Active</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {new Date(selectedStaff.lastActive).toLocaleDateString()}
+                      {formatDate(selectedStaff.lastActive)}
                     </p>
                   </div>
                 </div>
@@ -861,14 +890,14 @@ export default function StaffManagement() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 text-gray-700 dark:text-gray-200"
                     onClick={() => setPerformanceModalOpen(true)}
                   >
                     View Performance
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 text-gray-700 dark:text-gray-200"
                     onClick={() => setNoteModalOpen(true)}
                   >
                     Add Note
@@ -931,7 +960,7 @@ export default function StaffManagement() {
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-zinc-800">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-gray-700 dark:text-gray-200"
                   onClick={() => setPerformanceModalOpen(false)}
                 >
                   Close
@@ -970,15 +999,15 @@ export default function StaffManagement() {
                     Select Work Order
                   </label>
                   <Select value={selectedWorkOrderId} onValueChange={setSelectedWorkOrderId}>
-                    <SelectTrigger className="bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700">
-                      <SelectValue placeholder="Choose a work order..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-zinc-900">
-                      {mockWorkOrders.map((order) => (
-                        <SelectItem key={order.id} value={order.id}>
-                          {order.woNumber}: {order.title}
-                        </SelectItem>
-                      ))}
+                  <SelectTrigger className="bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100">
+                    <SelectValue placeholder="Choose a work order..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-900 dark:text-gray-100">
+                    {workOrders.map((order) => (
+                      <SelectItem key={order.id || order._id} value={order.id || order._id}>
+                        {(order.woNumber || order.workOrderNumber || order.id || order._id)}: {order.title}
+                      </SelectItem>
+                    ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -990,14 +1019,14 @@ export default function StaffManagement() {
                     type="date"
                     value={assignmentDueDate}
                     onChange={(event) => setAssignmentDueDate(event.target.value)}
-                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700"
+                    className="bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-zinc-800">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-gray-700 dark:text-gray-200"
                   onClick={() => setAssignmentModalOpen(false)}
                 >
                   Cancel
@@ -1052,7 +1081,7 @@ export default function StaffManagement() {
               <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-zinc-800">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-gray-700 dark:text-gray-200"
                   onClick={() => setNoteModalOpen(false)}
                 >
                   Cancel

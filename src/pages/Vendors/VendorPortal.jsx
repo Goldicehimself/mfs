@@ -1,78 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, DollarSign, CheckCircle2, Clock, AlertCircle, FileText, MessageSquare, Download, Eye, Calendar, Plus, LogOut, Star, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-// Mock data - Replace with actual API calls
-const mockVendorData = {
-  id: 'vendor_001',
-  name: 'ABC HVAC Services',
-  rating: 4.8,
-  totalSpend: 45000,
-  monthlySpend: 5000,
-  activeWorkOrders: 12,
-  completedOrders: 84,
-  nextPaymentDate: '2026-02-15',
-};
-
-const mockWorkOrders = [
-  {
-    id: 'WO001',
-    title: 'HVAC System Maintenance',
-    location: 'Building A - 3rd Floor',
-    status: 'in_progress',
-    priority: 'medium',
-    scheduledDate: '2026-01-20',
-    assignedTech: 'John Smith',
-    description: 'Quarterly HVAC maintenance and filter replacement',
-    estimatedHours: 4,
-    notesCount: 2,
-    attachmentsCount: 1,
-  },
-  {
-    id: 'WO002',
-    title: 'Emergency AC Repair',
-    location: 'Building B - 5th Floor',
-    status: 'completed',
-    priority: 'critical',
-    scheduledDate: '2026-01-18',
-    assignedTech: 'Jane Doe',
-    description: 'AC unit malfunction - refrigerant leak',
-    estimatedHours: 3,
-    notesCount: 5,
-    attachmentsCount: 2,
-    completedDate: '2026-01-18',
-  },
-  {
-    id: 'WO003',
-    title: 'Quarterly Inspection',
-    location: 'Building C - All Floors',
-    status: 'open',
-    priority: 'low',
-    scheduledDate: '2026-01-25',
-    assignedTech: 'Mike Johnson',
-    description: 'Complete system inspection and documentation',
-    estimatedHours: 6,
-    notesCount: 0,
-    attachmentsCount: 0,
-  },
-  {
-    id: 'WO004',
-    title: 'Filter Replacement',
-    location: 'Building A - 1st Floor',
-    status: 'in_progress',
-    priority: 'low',
-    scheduledDate: '2026-01-21',
-    assignedTech: 'Sarah Davis',
-    description: 'Replace HVAC filters in main lobby unit',
-    estimatedHours: 1.5,
-    notesCount: 1,
-    attachmentsCount: 0,
-  },
-];
+import GreetingBanner from '@/components/common/GreetingBanner';
+import { useQuery } from 'react-query';
+import { fetchVendors } from '@/api/vendors';
+import { getWorkOrders } from '@/api/workOrders';
 
 const mockServiceRequests = [
   {
@@ -106,60 +42,13 @@ const mockServiceRequests = [
   }
 ];
 
-const mockInvoices = [
-  {
-    id: 'INV001',
-    amount: 2500,
-    date: '2026-01-10',
-    dueDate: '2026-02-10',
-    status: 'pending',
-    description: 'Monthly maintenance contract',
-  },
-  {
-    id: 'INV002',
-    amount: 1850,
-    date: '2025-12-20',
-    dueDate: '2026-01-20',
-    status: 'paid',
-    description: 'Emergency repair service',
-  },
-  {
-    id: 'INV003',
-    amount: 3200,
-    date: '2025-12-05',
-    dueDate: '2026-01-05',
-    status: 'paid',
-    description: 'System installation',
-  },
-];
+const mockInvoices = [];
 
-const mockDocuments = [
-  {
-    id: 'DOC001',
-    name: 'Service Agreement.pdf',
-    type: 'Agreement',
-    uploadDate: '2025-01-15',
-    size: '2.4 MB',
-  },
-  {
-    id: 'DOC002',
-    name: 'Insurance Certificate.pdf',
-    type: 'Insurance',
-    uploadDate: '2025-12-01',
-    size: '1.1 MB',
-  },
-  {
-    id: 'DOC003',
-    name: 'Pricing Schedule.xlsx',
-    type: 'Pricing',
-    uploadDate: '2025-11-20',
-    size: '856 KB',
-  },
-];
+const mockDocuments = [];
 
 const VendorPortal = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [workOrders, setWorkOrders] = useState(mockWorkOrders);
+  const [workOrders, setWorkOrders] = useState([]);
   const [serviceRequests, setServiceRequests] = useState(mockServiceRequests);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -173,14 +62,69 @@ const VendorPortal = () => {
     estimatedCost: '',
   });
   const navigate = useNavigate();
+  const { data: vendorsResponse = [] } = useQuery('vendors', fetchVendors);
+  const { data: workOrdersResponse = [] } = useQuery(
+    ['vendorWorkOrders', vendorProfile?.id],
+    () => getWorkOrders(vendorProfile?.id ? { vendor: vendorProfile.id } : {}),
+    { enabled: !!vendorProfile?.id }
+  );
   
-  let logout = null;
-  try {
-    const auth = useAuth();
-    logout = auth?.logout;
-  } catch (err) {
-    console.error('Auth context not available:', err);
-  }
+  const auth = useAuth();
+  const logout = auth?.logout;
+
+  const vendors = useMemo(() => {
+    if (Array.isArray(vendorsResponse)) return vendorsResponse;
+    if (Array.isArray(vendorsResponse?.vendors)) return vendorsResponse.vendors;
+    return [];
+  }, [vendorsResponse]);
+
+  const vendorProfile = useMemo(() => {
+    if (!vendors.length) return null;
+    const email = (auth?.user?.email || '').toLowerCase();
+    return vendors.find((v) => (v.email || '').toLowerCase() === email) || vendors[0];
+  }, [vendors, auth?.user?.email]);
+
+  const normalizedWorkOrders = useMemo(() => {
+    const list = Array.isArray(workOrdersResponse)
+      ? workOrdersResponse
+      : (workOrdersResponse?.workOrders || workOrdersResponse?.data || []);
+    const vendorId = vendorProfile?.id;
+    return list
+      .filter((wo) => (vendorId ? wo.vendor?.id === vendorId || wo.vendor === vendorId : true))
+      .map((wo) => ({
+        id: wo.woNumber || wo.id,
+        title: wo.title,
+        location: wo.location || '—',
+        status: wo.status,
+        priority: wo.priority,
+        scheduledDate: wo.dueDate || wo.createdAt,
+        assignedTech: wo.assignedTo?.name || 'Unassigned',
+        description: wo.description || '',
+        estimatedHours: wo.estimatedHours || 0,
+        notesCount: Array.isArray(wo.comments) ? wo.comments.length : 0,
+        attachmentsCount: Array.isArray(wo.attachments) ? wo.attachments.length : 0,
+        completedDate: wo.completionDate || null
+      }));
+  }, [workOrdersResponse, auth?.user?.id]);
+
+  const derivedVendorData = useMemo(() => {
+    const active = normalizedWorkOrders.filter((wo) => wo.status !== 'completed').length;
+    const completed = normalizedWorkOrders.filter((wo) => wo.status === 'completed').length;
+    return {
+      id: vendorProfile?.id || 'vendor',
+      name: vendorProfile?.name || 'Vendor',
+      rating: vendorProfile?.rating || 0,
+      totalSpend: 0,
+      monthlySpend: 0,
+      activeWorkOrders: active,
+      completedOrders: completed,
+      nextPaymentDate: '—'
+    };
+  }, [normalizedWorkOrders, vendorProfile]);
+
+  useEffect(() => {
+    setWorkOrders(normalizedWorkOrders);
+  }, [normalizedWorkOrders]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -318,7 +262,7 @@ const VendorPortal = () => {
   const downloadInvoice = (invoice) => {
     const lines = [
       `Invoice: ${invoice.id}`,
-      `Vendor: ${mockVendorData.name}`,
+      `Vendor: ${derivedVendorData.name}`,
       `Issue Date: ${invoice.date}`,
       `Due Date: ${invoice.dueDate}`,
       `Amount: $${invoice.amount}`,
@@ -339,6 +283,7 @@ const VendorPortal = () => {
 
   return (
     <div className="space-y-6">
+      <GreetingBanner subtitle="Review assigned work orders, requests, and invoices." />
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
         <div className="flex items-center justify-between">
@@ -353,7 +298,7 @@ const VendorPortal = () => {
               <p className="text-sm text-indigo-700 dark:text-indigo-400">Your Rating</p>
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
-                  {mockVendorData.rating}
+                  {derivedVendorData.rating}
                 </span>
                 <Star className="h-5 w-5 text-amber-500" />
               </div>
@@ -367,31 +312,31 @@ const VendorPortal = () => {
         <KPICard
           icon={<DollarSign className="h-5 w-5" />}
           title="Monthly Spend"
-          value={`$${mockVendorData.monthlySpend.toLocaleString()}`}
+          value={`$${derivedVendorData.monthlySpend.toLocaleString()}`}
           color="indigo"
         />
         <KPICard
           icon={<TrendingUp className="h-5 w-5" />}
           title="Total Spend"
-          value={`$${mockVendorData.totalSpend.toLocaleString()}`}
+          value={`$${derivedVendorData.totalSpend.toLocaleString()}`}
           color="blue"
         />
         <KPICard
           icon={<Clock className="h-5 w-5" />}
           title="Active Work Orders"
-          value={mockVendorData.activeWorkOrders}
+          value={derivedVendorData.activeWorkOrders}
           color="amber"
         />
         <KPICard
           icon={<CheckCircle2 className="h-5 w-5" />}
           title="Completed"
-          value={mockVendorData.completedOrders}
+          value={derivedVendorData.completedOrders}
           color="emerald"
         />
         <KPICard
           icon={<Calendar className="h-5 w-5" />}
           title="Next Payment"
-          value={mockVendorData.nextPaymentDate}
+          value={derivedVendorData.nextPaymentDate}
           subtext="Due date"
           color="rose"
         />

@@ -61,10 +61,62 @@ const deleteVendor = async (organizationId, id) => {
   return vendor;
 };
 
+const importVendors = async (organizationId, vendors = []) => {
+  const valid = [];
+  const errors = [];
+
+  vendors.forEach((v, idx) => {
+    const row = idx + 1;
+    if (!v?.name) {
+      errors.push(`Row ${row}: Vendor name is required`);
+      return;
+    }
+    if (!v?.email) {
+      errors.push(`Row ${row}: Email is required`);
+      return;
+    }
+    valid.push({
+      name: v.name,
+      email: v.email,
+      phone: v.phone,
+      category: v.category,
+      address: v.address,
+      city: v.city,
+      state: v.state,
+      zipCode: v.zipCode,
+      contactPerson: v.contactPerson,
+      rating: typeof v.rating === 'number' ? v.rating : undefined,
+      notes: v.notes,
+      organization: organizationId
+    });
+  });
+
+  if (!valid.length) {
+    return { successful: 0, failed: errors.length, errors };
+  }
+
+  try {
+    const inserted = await Vendor.insertMany(valid, { ordered: false });
+    const successful = inserted.length;
+    const failed = Math.max(0, valid.length - successful) + errors.length;
+    return { successful, failed, errors };
+  } catch (err) {
+    const insertedCount = err?.result?.insertedCount || 0;
+    const writeErrors = err?.writeErrors || [];
+    const errorMessages = writeErrors.map((e) => e.errmsg || e.message || 'Insert error');
+    return {
+      successful: insertedCount,
+      failed: (valid.length - insertedCount) + errors.length,
+      errors: [...errors, ...errorMessages]
+    };
+  }
+};
+
 module.exports = {
   getVendors,
   getVendorById,
   createVendor,
   updateVendor,
-  deleteVendor
+  deleteVendor,
+  importVendors
 };

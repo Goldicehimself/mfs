@@ -7,6 +7,40 @@ const constants = require('../constants/constants');
 const { ValidationError, AuthenticationError, ConflictError } = require('../utils/errorHandler');
 const { normalizeSettings } = require('./orgService');
 const { sendEmail } = require('../utils/email');
+const { renderTemplate } = require('../utils/emailTemplates');
+
+const getSupportEmail = (organization) => {
+  const orgSupport = organization?.settings?.companyProfile?.supportEmail;
+  return orgSupport || process.env.SUPPORT_EMAIL || 'support@facilitypro.local';
+};
+
+const getRecipientName = (user) => {
+  const first = user?.firstName || '';
+  const last = user?.lastName || '';
+  const full = `${first} ${last}`.trim();
+  return full || user?.email || 'there';
+};
+
+const getRoleLabel = (role) => {
+  switch (role) {
+    case constants.ROLES.ADMIN:
+      return 'Admin';
+    case constants.ROLES.FACILITY_MANAGER:
+      return 'Facility Manager';
+    case constants.ROLES.TECHNICIAN:
+      return 'Technician';
+    case constants.ROLES.STAFF:
+      return 'Staff';
+    case constants.ROLES.VENDOR:
+      return 'Vendor';
+    case constants.ROLES.FINANCE:
+      return 'Finance';
+    case constants.ROLES.PROCUREMENT:
+      return 'Procurement';
+    default:
+      return 'Team Member';
+  }
+};
 
 const isEmailAllowedByPolicy = (email, securityPolicy) => {
   if (!securityPolicy?.restrictInviteDomains) return true;
@@ -52,7 +86,8 @@ const registerOrganization = async ({
     name: organizationName,
     industry,
     orgCode,
-    orgEmail: email
+    orgEmail: email,
+    status: 'pending'
   });
 
   await organization.save();
@@ -76,17 +111,42 @@ const registerOrganization = async ({
   await organization.save();
 
   const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const verifyLink = `${frontendBaseUrl}/verify-org-email?token=${rawToken}`;
+  const verifyLink = `${frontendBaseUrl}/verify-org-email?token=${rawToken}&orgCode=${orgCode}&email=${encodeURIComponent(email)}`;
+  const verifyHtml = renderTemplate('facilitypro-verify-email.html', {
+    recipient_name: getRecipientName({ firstName, lastName, email }),
+    org_name: organization.name,
+    org_code: orgCode,
+    verification_url: verifyLink,
+    support_email: getSupportEmail(organization),
+    year: new Date().getFullYear()
+  });
   await sendEmail({
     to: email,
-    subject: 'Verify your organization email',
-    text: `Please verify your organization email by visiting: ${verifyLink}`,
-    html: `<p>Please verify your organization email by clicking the link below:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+    subject: 'Verify your organization email and save your org code',
+    text: [
+      'Welcome to FacilityPro!',
+      '',
+      `Your organization code: ${orgCode}`,
+      'Use this code to log in and invite team members to join your organization.',
+      '',
+      'Verify your organization email by visiting:',
+      verifyLink
+    ].join('\n'),
+    html: verifyHtml || [
+      '<p>Welcome to FacilityPro!</p>',
+      `<p><strong>Your organization code:</strong> ${orgCode}</p>`,
+      '<p>Use this code to log in and invite team members to join your organization.</p>',
+      '<p>Please verify your organization email by clicking the link below:</p>',
+      `<p><a href="${verifyLink}">${verifyLink}</a></p>`
+    ].join('')
   });
 
   const token = generateToken(user);
   const userResponse = user.toObject();
   delete userResponse.password;
+
+  userResponse.organizationName = organization.name;
+  userResponse.organizationId = organization._id;
 
   return { organization, user: userResponse, token };
 };
@@ -178,10 +238,45 @@ const register = async ({
   const userResponse = user.toObject();
   delete userResponse.password;
 
-  return { user: userResponse, token };
+  userResponse.organizationName = organization.name;
+  userResponse.organizationId = organization._id;
+
+  const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const rawToken = crypto.randomBytes(24).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  user.emailVerificationTokenHash = tokenHash;
+  user.emailVerificationExpiresAt = expiresAt;
+  await user.save();
+  const verifyLink = `${frontendBaseUrl}/verify-user-email?token=${rawToken}&orgCode=${organization.orgCode}&email=${encodeURIComponent(user.email)}`;
+  const verifyHtml = renderTemplate('facilitypro-verify-email.html', {
+    recipient_name: getRecipientName(user),
+    org_name: organization.name,
+    org_code: organization.orgCode,
+    verification_url: verifyLink,
+    support_email: getSupportEmail(organization),
+    year: new Date().getFullYear()
+  });
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify your email address',
+    text: [
+      'Welcome to FacilityPro!',
+      '',
+      'Please verify your email address by visiting:',
+      verifyLink
+    ].join('\n'),
+    html: verifyHtml || [
+      '<p>Welcome to FacilityPro!</p>',
+      '<p>Please verify your email address by clicking the link below:</p>',
+      `<p><a href="${verifyLink}">${verifyLink}</a></p>`
+    ].join('')
+  });
+
+  return { user: userResponse, token, organizationCode: organization.orgCode };
 };
 
-const createInviteCode = async ({ organizationId, role, expiresAt, createdBy }) => {
+const createInviteCode = async ({ organizationId, role, expiresAt, createdBy, inviteEmail, inviter }) => {
   if (!organizationId) throw new ValidationError('Organization is required');
   if (!role) throw new ValidationError('Role is required');
 
@@ -202,6 +297,39 @@ const createInviteCode = async ({ organizationId, role, expiresAt, createdBy }) 
   });
 
   await organization.save();
+
+  if (inviteEmail) {
+    const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const inviteLink = `${frontendBaseUrl}/register?invite=${code}`;
+    const inviteHtml = renderTemplate('facilitypro-invite.html', {
+      recipient_name: inviteEmail,
+      org_name: organization.name,
+      inviter_name: inviter?.name || inviter?.email || 'FacilityPro Admin',
+      role_name: getRoleLabel(role),
+      invite_url: inviteLink,
+      org_code: organization.orgCode,
+      recipient_email: inviteEmail,
+      support_email: getSupportEmail(organization),
+      year: new Date().getFullYear()
+    });
+    await sendEmail({
+      to: inviteEmail,
+      subject: `You're invited to join ${organization.name} on FacilityPro`,
+      text: [
+        `You have been invited to join ${organization.name} on FacilityPro.`,
+        `Role: ${getRoleLabel(role)}`,
+        '',
+        'Accept the invite:',
+        inviteLink
+      ].join('\n'),
+      html: inviteHtml || [
+        `<p>You have been invited to join <strong>${organization.name}</strong> on FacilityPro.</p>`,
+        `<p>Role: ${getRoleLabel(role)}</p>`,
+        `<p><a href="${inviteLink}">Accept invite</a></p>`
+      ].join('')
+    });
+  }
+
   return { code, role, expiresAt: expiresAt || null };
 };
 
@@ -215,6 +343,9 @@ const login = async (email, password, orgCode, rememberMe = false) => {
   if (!organization) {
     throw new AuthenticationError('Invalid org code');
   }
+  if (!organization.orgEmailVerifiedAt) {
+    throw new AuthenticationError('Organization email is not verified');
+  }
   if (organization.status !== 'active') {
     throw new AuthenticationError('Organization is disabled');
   }
@@ -223,9 +354,13 @@ const login = async (email, password, orgCode, rememberMe = false) => {
   if (!user || !(await user.comparePassword(password))) {
     throw new AuthenticationError('Invalid email or password');
   }
+  if (!user.emailVerifiedAt) {
+    throw new AuthenticationError('User email is not verified');
+  }
 
-  // Update last login
+  // Update last login / last active
   user.lastLogin = new Date();
+  user.lastActive = user.lastLogin;
   await user.save();
 
   const expiresIn = rememberMe ? constants.JWT_EXPIRE_LONG : constants.JWT_EXPIRE_SHORT;
@@ -233,7 +368,80 @@ const login = async (email, password, orgCode, rememberMe = false) => {
   const userResponse = user.toObject();
   delete userResponse.password;
 
+  userResponse.organizationName = organization.name;
+  userResponse.organizationId = organization._id;
+
   return { user: userResponse, token };
+};
+
+const verifyUserEmail = async (token, { orgCode, email } = {}) => {
+  const normalizedToken = String(token || '').trim();
+  const tokenHash = crypto.createHash('sha256').update(normalizedToken).digest('hex');
+  const user = await User.findOne({
+    emailVerificationTokenHash: tokenHash,
+    emailVerificationExpiresAt: { $gt: new Date() }
+  });
+  if (!user) {
+    const normalizedOrgCode = orgCode ? String(orgCode).toUpperCase() : null;
+    const normalizedEmail = email ? String(email).toLowerCase() : null;
+    if (normalizedOrgCode && normalizedEmail) {
+      const org = await Organization.findOne({ orgCode: normalizedOrgCode });
+      if (org) {
+        const fallback = await User.findOne({ organization: org._id, email: normalizedEmail });
+        if (fallback?.emailVerifiedAt) {
+          return { userId: fallback._id, verifiedAt: fallback.emailVerifiedAt };
+        }
+      }
+    }
+    throw new ValidationError('Verification token is invalid or expired');
+  }
+
+  user.emailVerifiedAt = new Date();
+  user.emailVerificationTokenHash = null;
+  user.emailVerificationExpiresAt = null;
+  await user.save();
+  return { userId: user._id, verifiedAt: user.emailVerifiedAt };
+};
+
+const resendUserEmailVerification = async ({ orgCode, email } = {}) => {
+  const normalizedOrgCode = String(orgCode || '').toUpperCase();
+  const normalizedEmail = String(email || '').toLowerCase();
+  const org = await Organization.findOne({ orgCode: normalizedOrgCode });
+  if (!org) throw new ValidationError('Organization code is invalid');
+  const user = await User.findOne({ organization: org._id, email: normalizedEmail });
+  if (!user) throw new ValidationError('User not found for this organization');
+
+  const rawToken = crypto.randomBytes(24).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  user.emailVerificationTokenHash = tokenHash;
+  user.emailVerificationExpiresAt = expiresAt;
+  await user.save();
+
+  const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const verifyLink = `${frontendBaseUrl}/verify-user-email?token=${rawToken}&orgCode=${org.orgCode}&email=${encodeURIComponent(user.email)}`;
+  const verifyHtml = renderTemplate('facilitypro-verify-email.html', {
+    recipient_name: getRecipientName(user),
+    org_name: org.name,
+    org_code: org.orgCode,
+    verification_url: verifyLink,
+    support_email: getSupportEmail(org),
+    year: new Date().getFullYear()
+  });
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify your email address',
+    text: [
+      'Please verify your email address by visiting:',
+      verifyLink
+    ].join('\n'),
+    html: verifyHtml || [
+      '<p>Please verify your email address by clicking the link below:</p>',
+      `<p><a href="${verifyLink}">${verifyLink}</a></p>`
+    ].join('')
+  });
+
+  return { sent: true };
 };
 
 const requestPasswordReset = async (email, orgCode) => {
@@ -258,11 +466,19 @@ const requestPasswordReset = async (email, orgCode) => {
 
   const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const resetLink = `${frontendBaseUrl}/reset-password?token=${rawToken}&orgCode=${normalizedOrgCode}`;
+  const resetHtml = renderTemplate('facilitypro-password-reset.html', {
+    recipient_name: getRecipientName(user),
+    org_name: organization.name,
+    reset_url: resetLink,
+    reset_expiry: '1 hour',
+    support_email: getSupportEmail(organization),
+    year: new Date().getFullYear()
+  });
   await sendEmail({
     to: user.email,
     subject: 'Reset your FacilityPro password',
     text: `Reset your password using this link: ${resetLink}`,
-    html: `<p>Reset your password using the link below:</p><p><a href="${resetLink}">${resetLink}</a></p>`
+    html: resetHtml || `<p>Reset your password using the link below:</p><p><a href="${resetLink}">${resetLink}</a></p>`
   });
 
   return { sent: true };
@@ -304,6 +520,8 @@ module.exports = {
   registerOrganization,
   createInviteCode,
   login,
+  verifyUserEmail,
+  resendUserEmailVerification,
   requestPasswordReset,
   resetPassword,
   validateToken,

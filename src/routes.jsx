@@ -12,6 +12,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import VerifyOrgEmail from './pages/Auth/VerifyOrgEmail';
+import VerifyUserEmail from './pages/Auth/VerifyUserEmail';
 import ResetPassword from './pages/Auth/ResetPassword';
 
 // Landing / Public pages
@@ -49,6 +50,8 @@ import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
 import Profile from './pages/Settings/Profile';
 import OrgAdmin from './pages/Org/OrgAdmin';
+import Help from './pages/Help/Help';
+import PublicHelp from './pages/Help/PublicHelp';
 
 // Role-based route wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -101,12 +104,14 @@ const AppRoutes = () => {
       <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
       <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
       <Route path="/verify-org-email" element={<VerifyOrgEmail />} />
+      <Route path="/verify-user-email" element={<VerifyUserEmail />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       
       {/* Public landing page */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/help-center" element={<PublicHelp />} />
 
       {/* Protected Routes (dashboard accessible at /dashboard) */}
       
@@ -299,6 +304,12 @@ const AppRoutes = () => {
       <Route path="/org-admin" element={
         <ProtectedRoute allowedRoles={["admin"]}>
           <MainLayout><OrgAdmin /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/help" element={
+        <ProtectedRoute>
+          <MainLayout><Help /></MainLayout>
         </ProtectedRoute>
       } />
       

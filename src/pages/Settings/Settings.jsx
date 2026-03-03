@@ -3,6 +3,7 @@ import { Save, Clock, Calendar, Bell, Lock, Database, Download } from 'lucide-re
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -22,11 +23,13 @@ import {
   FinanceSettings,
   StaffSettings,
 } from './RoleSpecificSettings';
+import Help from '../Help/Help';
 
 const Settings = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   // System Configuration State
   const [timeZone, setTimeZone] = useState('UTC-5 (Eastern Time)');
@@ -101,6 +104,33 @@ const Settings = () => {
   const [createdWebhookSecret, setCreatedWebhookSecret] = useState('');
   const [loadingIntegrations, setLoadingIntegrations] = useState(false);
 
+  // Billing State
+  const [billingPlan, setBillingPlan] = useState('starter');
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [seatCount, setSeatCount] = useState(5);
+  const [seatsIncluded, setSeatsIncluded] = useState(5);
+  const [extraSeatPrice, setExtraSeatPrice] = useState(4);
+  const [trialEndsAt, setTrialEndsAt] = useState(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState('trialing');
+  const [invoices] = useState([
+    { id: 'inv_001', date: '2026-02-01', amount: 39, status: 'paid' },
+    { id: 'inv_000', date: '2026-01-01', amount: 39, status: 'paid' }
+  ]);
+
+  const planPricing = {
+    starter: { monthly: 19, seatsIncluded: 5 },
+    pro: { monthly: 39, seatsIncluded: 10 },
+    enterprise: { monthly: 0, seatsIncluded: 0 }
+  };
+
+  const annualDiscount = 0.2;
+  const includedSeats = planPricing[billingPlan]?.seatsIncluded ?? seatsIncluded;
+  const baseMonthly = planPricing[billingPlan]?.monthly ?? 0;
+  const extraSeats = Math.max(0, Number(seatCount || 0) - includedSeats);
+  const extraMonthly = extraSeats * Number(extraSeatPrice || 0);
+  const totalMonthly = baseMonthly + extraMonthly;
+  const totalAnnual = (baseMonthly * 12 * (1 - annualDiscount)) + (extraSeats * Number(extraSeatPrice || 0) * 12 * (1 - annualDiscount));
+
   const sessionTimeoutOptions = [
     { label: '30 minutes', minutes: 30 },
     { label: '1 hour', minutes: 60 },
@@ -159,7 +189,9 @@ const Settings = () => {
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'integrations', label: 'Integrations', icon: '🔗', roles: ['admin'] },
     { id: 'company', label: 'Company Profile', icon: '🏢', roles: ['admin', 'facility_manager'] },
+    { id: 'billing', label: 'Billing', icon: '💳', roles: ['admin'] },
     { id: 'role-specific', label: 'Role Settings', icon: '👤' },
+    { id: 'help', label: 'Help & Support', icon: '🆘' },
   ];
 
   // Filter tabs based on user role
@@ -179,6 +211,7 @@ const Settings = () => {
 
   useEffect(() => {
     const loadSettings = async () => {
+      setLoadingSettings(true);
       try {
         const response = await getOrgSettings();
         const settings = response?.settings || response || {};
@@ -226,8 +259,20 @@ const Settings = () => {
         if (typeof companyProfile.industry === 'string') setCompanyIndustry(companyProfile.industry);
         if (typeof companyProfile.supportEmail === 'string') setSupportContactEmail(companyProfile.supportEmail);
         if (typeof companyProfile.supportPhone === 'string') setSupportContactPhone(companyProfile.supportPhone);
+
+        const billing = settings.billing || {};
+        const planFromSettings = billing.plan || 'starter';
+        setBillingPlan(planFromSettings);
+        setBillingCycle(billing.billingCycle || 'monthly');
+        setSeatsIncluded(billing.seatsIncluded ?? (planPricing[planFromSettings]?.seatsIncluded || 5));
+        setExtraSeatPrice(billing.extraSeatPrice ?? 4);
+        setSeatCount(billing.seatCount ?? (planPricing[planFromSettings]?.seatsIncluded || 5));
+        setTrialEndsAt(billing.trialEndsAt || null);
+        setSubscriptionStatus(billing.status || 'trialing');
       } catch (error) {
         toast.error('Failed to load organization settings.');
+      } finally {
+        setLoadingSettings(false);
       }
     };
 
@@ -289,6 +334,15 @@ const Settings = () => {
           supportEmail: supportContactEmail.trim(),
           supportPhone: supportContactPhone.trim(),
         },
+        billing: {
+          plan: billingPlan,
+          billingCycle,
+          seatsIncluded: Number(seatsIncluded || includedSeats),
+          seatCount: Number(seatCount || includedSeats),
+          extraSeatPrice: Number(extraSeatPrice || 0),
+          trialEndsAt: trialEndsAt || null,
+          status: subscriptionStatus
+        }
       });
       toast.success('Settings saved successfully!');
       setHasChanges(false);
@@ -437,8 +491,20 @@ const Settings = () => {
         </div>
 
         <CardContent className="p-8">
+          {loadingSettings && (
+            <div className="space-y-6">
+              <Skeleton className="h-6 w-40" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+          )}
+
           {/* General Tab */}
-          {activeTab === 'general' && (
+          {!loadingSettings && activeTab === 'general' && (
             <div className="space-y-8">
               {/* Role Badge */}
               <div className="flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
@@ -1297,7 +1363,7 @@ const Settings = () => {
           )}
 
           {/* Integrations Tab */}
-          {activeTab === 'integrations' && (
+          {!loadingSettings && activeTab === 'integrations' && (
             <div className="space-y-8">
               <div>
                 <div className="flex items-center gap-3 mb-6">
@@ -1562,8 +1628,121 @@ const Settings = () => {
             </div>
           )}
 
+          {/* Billing Tab */}
+          {!loadingSettings && activeTab === 'billing' && (
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-900 rounded-lg">
+                    <Database className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Billing</h3>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Plan</p>
+                        <p className="text-lg font-semibold capitalize">{billingPlan}</p>
+                      </div>
+                      <Badge className={`capitalize ${subscriptionStatus === 'active' ? 'bg-emerald-600 text-white' : subscriptionStatus === 'past_due' ? 'bg-amber-500 text-white' : subscriptionStatus === 'canceled' ? 'bg-rose-600 text-white' : 'bg-blue-700 text-white'}`}>
+                        {subscriptionStatus}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Billing Cycle</label>
+                        <select
+                          value={billingCycle}
+                          onChange={(e) => handleChange(setBillingCycle)(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                        >
+                          <option value="monthly">Monthly</option>
+                          <option value="annual">Annual (20% off)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seats</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={seatCount}
+                          onChange={(e) => handleChange(setSeatCount)(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {includedSeats} seats included, ${extraSeatPrice}/seat for extras
+                        </p>
+                      </div>
+                    </div>
+
+                    {trialEndsAt && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Trial ends on {new Date(trialEndsAt).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Estimated Total</h4>
+                    {billingCycle === 'monthly' ? (
+                      <div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                          ${totalMonthly.toFixed(2)}/mo
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Base ${baseMonthly}/mo + ${extraSeatPrice}/seat for {extraSeats} extra seat{extraSeats === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                          ${totalAnnual.toFixed(2)}/yr
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          20% annual discount applied
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline">Manage Billing</Button>
+                      <Button className="bg-blue-700 hover:bg-blue-800 text-white">Upgrade Plan</Button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">TODO: connect payment provider</p>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Invoices</h4>
+                    <Badge className="bg-slate-200 text-slate-700">Last 3</Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {invoices.map((invoice) => (
+                      <div key={invoice.id} className="flex items-center justify-between text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">{invoice.id}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{new Date(invoice.date).toLocaleDateString()}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100">${invoice.amount.toFixed(2)}</div>
+                          <Badge className={`mt-1 capitalize ${invoice.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : invoice.status === 'open' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">TODO: load invoices from billing provider</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Role-Specific Tab */}
-          {activeTab === 'role-specific' && (
+          {!loadingSettings && activeTab === 'role-specific' && (
             <div className="space-y-8">
               {user?.role === 'admin' && <AdminSettings />}
               {user?.role === 'facility_manager' && <FacilityManagerSettings />}
@@ -1571,6 +1750,13 @@ const Settings = () => {
               {user?.role === 'vendor' && <VendorSettings />}
               {user?.role === 'finance' && <FinanceSettings />}
               {user?.role === 'staff' && <StaffSettings />}
+            </div>
+          )}
+
+          {/* Help & Support Tab */}
+          {!loadingSettings && activeTab === 'help' && (
+            <div className="space-y-8">
+              <Help variant="compact" />
             </div>
           )}
 

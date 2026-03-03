@@ -59,6 +59,7 @@ const Register = () => {
   
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [orgCreatedCode, setOrgCreatedCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showOrgCode, setShowOrgCode] = useState(false);
@@ -162,35 +163,37 @@ const Register = () => {
     if (!result.success) {
       setServerError('Registration failed.');
     } else if (submitMode === 'org' && result.orgCode) {
+      setOrgCreatedCode(result.orgCode);
       toast.success(
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontWeight: 600 }}>Organization created</div>
-          <div style={{ fontSize: 13 }}>
-            Org Code: <strong>{result.orgCode}</strong>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (navigator?.clipboard?.writeText) {
-                navigator.clipboard.writeText(result.orgCode);
-                toast.info('Org code copied');
-              }
-            }}
-            style={{
-              alignSelf: 'flex-start',
-              padding: '6px 10px',
-              borderRadius: 6,
-              border: '1px solid #e2e8f0',
-              background: '#fff',
-              cursor: 'pointer',
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            Copy org code
-          </button>
-        </div>,
-        { autoClose: 9000 }
+            <div style={{ fontSize: 13 }}>
+              This is your org code for login and invitations:
+              <strong style={{ marginLeft: 6 }}>{result.orgCode}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (navigator?.clipboard?.writeText) {
+                  navigator.clipboard.writeText(result.orgCode);
+                  toast.info('Org code copied');
+                }
+              }}
+              style={{
+                alignSelf: 'flex-start',
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              Copy org code
+            </button>
+          </div>,
+          { autoClose: 9000 }
       );
     }
   };
@@ -217,6 +220,43 @@ const Register = () => {
         </div>
 
         {serverError && <div className="auth-error">{serverError}</div>}
+        {orgCreatedCode && (
+          <div className="auth-banner auth-banner--invite" style={{ marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Organization created successfully</div>
+            <div style={{ fontSize: 13, marginBottom: 8 }}>
+              This is your org code for login and invitations:
+              <strong style={{ marginLeft: 6 }}>{orgCreatedCode}</strong>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator?.clipboard?.writeText) {
+                    navigator.clipboard.writeText(orgCreatedCode);
+                    toast.info('Org code copied');
+                  }
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Copy org code
+              </button>
+              <RouterLink className="auth-link" to="/login">
+                Go to Login
+              </RouterLink>
+            </div>
+            <div style={{ fontSize: 12, marginTop: 8, color: '#475569' }}>
+              We sent a verification email with your org code and instructions.
+            </div>
+          </div>
+        )}
         {showDomainHint && (
           <div className="auth-banner auth-banner--invite">
             Invites are restricted to approved email domains for this organization.
@@ -228,6 +268,7 @@ const Register = () => {
           </div>
         )}
 
+        {!orgCreatedCode && (
         <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
           <input type="hidden" {...register('mode')} />
 
@@ -531,6 +572,7 @@ const Register = () => {
             </RouterLink>
           </div>
         </form>
+        )}
 
         <div className="auth-footer">
           <div className="auth-footer-text">

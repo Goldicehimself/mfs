@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Box,
@@ -11,12 +11,24 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useActivity } from '../../contexts/ActivityContext';
+import { getAssets } from '../../api/assets';
+import { fetchMembers } from '../../api/org';
+import { createPreventiveMaintenance } from '../../api/preventiveMaintenance';
+import { useAuth } from '../../contexts/AuthContext';
+import { FormControlLabel, Checkbox } from '@mui/material';
 
 const PMTaskCreate = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const navigate = useNavigate();
   const { addActivity } = useActivity();
+  const { user } = useAuth();
+  const canFlagHighRisk = ['admin', 'facility_manager'].includes(user?.role);
+  const [assets, setAssets] = useState([]);
+  const [members, setMembers] = useState([]);
   const [form, setForm] = useState({
     title: '',
     asset: '',
@@ -26,6 +38,7 @@ const PMTaskCreate = () => {
     assignee: '',
     estimatedHours: '',
     description: '',
+    requiresCertification: false,
   });
   const [errors, setErrors] = useState({});
 
@@ -40,7 +53,6 @@ const PMTaskCreate = () => {
     if (!form.asset.trim()) nextErrors.asset = 'Asset is required';
     if (!form.frequency) nextErrors.frequency = 'Frequency is required';
     if (!form.dueDate) nextErrors.dueDate = 'Due date is required';
-    if (!form.assignee.trim()) nextErrors.assignee = 'Assignee is required';
     if (form.estimatedHours && Number(form.estimatedHours) <= 0) {
       nextErrors.estimatedHours = 'Enter a valid number of hours';
     }
@@ -48,42 +60,67 @@ const PMTaskCreate = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const assetRes = await getAssets({ page: 1, limit: 200 });
+        if (active) setAssets(assetRes?.data || []);
+      } catch (error) {
+        if (active) setAssets([]);
+      }
+      try {
+        const memberRes = await fetchMembers();
+        const list = Array.isArray(memberRes) ? memberRes : (memberRes?.members || memberRes?.data || []);
+        if (active) setMembers(list);
+      } catch (error) {
+        if (active) setMembers([]);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validate()) return;
-
-    const newTask = {
-      id: `pm-${Date.now()}`,
-      ...form,
-      createdAt: new Date().toISOString(),
-      status: 'scheduled',
+    const selectedAsset = assets.find((asset) => asset.id === form.asset);
+    const assetLabel = selectedAsset?.name || 'Asset';
+    const payload = {
+      name: form.title,
+      asset: form.asset,
+      frequency: form.frequency,
+      nextDueDate: form.dueDate,
+      priority: form.priority,
+      estimatedHours: form.estimatedHours ? Number(form.estimatedHours) : undefined,
+      description: form.description || undefined,
+      assignedTo: form.assignee || undefined,
+      requiresCertification: !!form.requiresCertification
     };
-
-    try {
-      const existing = JSON.parse(localStorage.getItem('pm_tasks') || '[]');
-      const next = [newTask, ...existing];
-      localStorage.setItem('pm_tasks', JSON.stringify(next));
-    } catch (error) {
-      localStorage.setItem('pm_tasks', JSON.stringify([newTask]));
-    }
 
     addActivity({
       type: 'pm_scheduled',
       action: 'created',
       title: `PM Task Created: ${form.title}`,
-      description: `${form.asset} - ${form.frequency}`,
+      description: `${assetLabel} - ${form.frequency}`,
       user: 'Current User',
       status: 'pending',
     });
-
-    alert('PM task created successfully.');
-    navigate('/preventive-maintenance');
+    try {
+      await createPreventiveMaintenance(payload);
+      alert('PM task created successfully.');
+      navigate('/preventive-maintenance');
+    } catch (error) {
+      alert('Failed to create PM task. Please try again.');
+    }
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4, background: isDark ? '#0b1120' : 'transparent' }}>
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: '#111827' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
           Create PM Task
         </Typography>
         <Button
@@ -98,7 +135,7 @@ const PMTaskCreate = () => {
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{ p: 3, borderRadius: 2, border: '1px solid #e5e7eb', backgroundColor: '#fff' }}
+        sx={{ p: 3, borderRadius: 2, border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`, backgroundColor: isDark ? '#0f172a' : '#fff' }}
       >
         <Grid container spacing={2.5}>
           <Grid item xs={12} md={6}>
@@ -112,14 +149,20 @@ const PMTaskCreate = () => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Asset"
-              value={form.asset}
-              onChange={handleChange('asset')}
-              error={Boolean(errors.asset)}
-              helperText={errors.asset}
-              fullWidth
-            />
+            <FormControl fullWidth error={Boolean(errors.asset)}>
+              <InputLabel>Asset</InputLabel>
+              <Select
+                label="Asset"
+                value={form.asset}
+                onChange={handleChange('asset')}
+              >
+                {assets.map((asset) => (
+                  <MenuItem key={asset.id} value={asset.id}>
+                    {asset.name} {asset.assetNumber ? `(${asset.assetNumber})` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth error={Boolean(errors.frequency)}>
@@ -130,10 +173,11 @@ const PMTaskCreate = () => {
                 onChange={handleChange('frequency')}
               >
                 <MenuItem value="weekly">Weekly</MenuItem>
-                <MenuItem value="biweekly">Biweekly</MenuItem>
+                <MenuItem value="bi-weekly">Biweekly</MenuItem>
                 <MenuItem value="monthly">Monthly</MenuItem>
                 <MenuItem value="quarterly">Quarterly</MenuItem>
-                <MenuItem value="annually">Annually</MenuItem>
+                <MenuItem value="semi-annual">Semi-Annual</MenuItem>
+                <MenuItem value="annual">Annually</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -165,14 +209,23 @@ const PMTaskCreate = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Assignee"
-              value={form.assignee}
-              onChange={handleChange('assignee')}
-              error={Boolean(errors.assignee)}
-              helperText={errors.assignee}
-              fullWidth
-            />
+            <FormControl fullWidth>
+              <InputLabel>Assignee</InputLabel>
+              <Select
+                label="Assignee"
+                value={form.assignee}
+                onChange={handleChange('assignee')}
+              >
+                <MenuItem value="">
+                  Unassigned
+                </MenuItem>
+                {members.map((member) => (
+                  <MenuItem key={member.id || member._id} value={member.id || member._id}>
+                    {member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
@@ -185,6 +238,22 @@ const PMTaskCreate = () => {
               fullWidth
             />
           </Grid>
+          {canFlagHighRisk && (
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={Boolean(form.requiresCertification)}
+                    onChange={(event) => setForm((prev) => ({
+                      ...prev,
+                      requiresCertification: event.target.checked
+                    }))}
+                  />
+                }
+                label="Requires certification (high-risk)"
+              />
+            </Grid>
+          )}
           <Grid item xs={12}>
             <TextField
               label="Description"

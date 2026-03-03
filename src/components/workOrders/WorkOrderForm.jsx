@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createWorkOrder } from '../../api/workOrders';
 import { useQuery, useQueryClient } from 'react-query';
 import { getAssets } from '../../api/assets';
+import { fetchVendors } from '../../api/vendors';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -26,9 +27,11 @@ export default function WorkOrderForm() {
       parts: [],
       requestedBy: user?.name || '',
       assignedTo: '',
+      vendor: '',
       dueDate: '',
       estimatedDuration: '',
       recurring: false,
+      requiresCertification: false,
     },
   });
 
@@ -37,6 +40,7 @@ export default function WorkOrderForm() {
   const [assetQuery, setAssetQuery] = useState('');
   const selectedAsset = watch('asset');
   const selectedAssignee = watch('assignedTo');
+  const selectedVendor = watch('vendor');
 
   const { data: assets = [], isLoading: assetsLoading } = useQuery(
     ['assets', assetQuery],
@@ -54,6 +58,17 @@ export default function WorkOrderForm() {
     { keepPreviousData: true, staleTime: 1000 * 60 * 5 }
   );
 
+  const { data: vendorsResponse = [] } = useQuery('vendors', fetchVendors, {
+    staleTime: 1000 * 60 * 5
+  });
+  const canFlagHighRisk = ['admin', 'facility_manager'].includes(user?.role);
+
+  const vendors = useMemo(() => {
+    if (Array.isArray(vendorsResponse)) return vendorsResponse;
+    if (Array.isArray(vendorsResponse?.vendors)) return vendorsResponse.vendors;
+    return [];
+  }, [vendorsResponse]);
+
   const onSubmit = async (data) => {
     const attachments = fileItems.map((item) => item.name);
     const photos = fileItems.filter((item) => item.isImage).map((item) => item.name);
@@ -61,6 +76,7 @@ export default function WorkOrderForm() {
       ...data,
       asset: data.asset?.id || data.asset || undefined,
       assignedTo: data.assignedTo?.id || data.assignedTo || undefined,
+      vendor: data.vendor?.id || data.vendor || undefined,
       parts,
       attachments,
       photos,
@@ -175,7 +191,7 @@ export default function WorkOrderForm() {
                     <input 
                       {...field}
                       placeholder="e.g., Fix HVAC unit in Building A"
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
                 />
@@ -191,7 +207,7 @@ export default function WorkOrderForm() {
                     name="priority"
                     control={control}
                     render={({ field }) => (
-                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="low">🟢 Low</option>
                         <option value="medium">🔵 Medium</option>
                         <option value="high">🟠 High</option>
@@ -208,7 +224,7 @@ export default function WorkOrderForm() {
                     control={control}
                     rules={{ required: 'Service category is required' }}
                     render={({ field }) => (
-                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                      <select {...field} className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="">Select category...</option>
                         <option value="electrical">⚡ Electrical</option>
                         <option value="plumbing">💧 Plumbing</option>
@@ -221,6 +237,23 @@ export default function WorkOrderForm() {
               </div>
               {errors.serviceCategory && (
                 <p className="text-xs text-red-600 mt-1">{errors.serviceCategory.message}</p>
+              )}
+              {canFlagHighRisk && (
+                <div className="mt-4">
+                  <label className="flex items-center gap-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    <Controller
+                      name="requiresCertification"
+                      control={control}
+                      render={({ field }) => (
+                        <input {...field} type="checkbox" className="h-4 w-4 rounded border-gray-200 accent-indigo-600" />
+                      )}
+                    />
+                    Requires certification (high-risk)
+                  </label>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Only certified technicians can start or complete these tasks.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -238,7 +271,7 @@ export default function WorkOrderForm() {
                   value={assetQuery}
                   placeholder="Search for asset..."
                   onChange={(e) => setAssetQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {assetsLoading && assetQuery.trim() && (
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">Searching assets...</p>
@@ -259,7 +292,7 @@ export default function WorkOrderForm() {
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
                       >
                         <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{asset.name}</p>
-                        <p className="text-xs text-zinc-500">{asset.category || asset.model}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{asset.category || asset.model}</p>
                       </button>
                     ))}
                   </div>
@@ -274,6 +307,7 @@ export default function WorkOrderForm() {
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="text-zinc-700 dark:text-zinc-200"
                       onClick={() => {
                         setValue('asset', '', { shouldDirty: true, shouldTouch: true });
                         setAssetQuery('');
@@ -294,7 +328,7 @@ export default function WorkOrderForm() {
                     <input 
                       {...field}
                       placeholder="Building, Floor, Room (e.g., Building A, 3rd Floor, Room 301)"
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
                 />
@@ -319,7 +353,7 @@ export default function WorkOrderForm() {
                       {...field}
                       rows={4}
                       placeholder="Provide detailed information about the problem..."
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
                 />
@@ -338,7 +372,7 @@ export default function WorkOrderForm() {
                       {...field}
                       rows={2}
                       placeholder="Any special notes or safety instructions..."
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
                 />
@@ -365,13 +399,13 @@ export default function WorkOrderForm() {
                         placeholder="Part name" 
                         value={part.name} 
                         onChange={(e) => updatePart(idx, 'name', e.target.value)} 
-                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm"
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
                       />
                       <input 
                         placeholder="Qty" 
                         value={part.qty} 
                         onChange={(e) => updatePart(idx, 'qty', e.target.value)}
-                        className="w-24 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm"
+                        className="w-24 px-3 py-2 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
                       />
                       <button type="button" onClick={() => removePart(idx)} className="text-red-600 hover:text-red-700 p-2">
                         <Delete size={18} />
@@ -391,9 +425,9 @@ export default function WorkOrderForm() {
             <CardContent className="p-6">
               <label className="block">
                 <div className="border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <Upload className="h-8 w-8 text-gray-400 dark:text-zinc-500 mx-auto mb-2" />
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Drop files here or click to browse</p>
-                  <p className="text-xs text-gray-500 mt-1">Supports: JPG, PNG, PDF (Max 10MB each)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supports: JPG, PNG, PDF (Max 10MB each)</p>
                   <input type="file" multiple onChange={onFilesChange} className="hidden" />
                 </div>
               </label>
@@ -452,7 +486,7 @@ export default function WorkOrderForm() {
                   render={({ field }) => (
                     <input 
                       {...field}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
                 />
@@ -477,7 +511,7 @@ export default function WorkOrderForm() {
                         const next = assignees.find(a => a.id === e.target.value) || '';
                         field.onChange(next);
                       }}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Unassigned</option>
                       {assignees.map((t) => (
@@ -497,6 +531,35 @@ export default function WorkOrderForm() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Assign Vendor (optional)</label>
+                <Controller
+                  name="vendor"
+                  control={control}
+                  render={({ field }) => (
+                    <select
+                      {...field}
+                      value={field.value?.id || ''}
+                      onChange={(e) => {
+                        const next = vendors.find(v => v.id === e.target.value) || '';
+                        field.onChange(next);
+                      }}
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">No vendor</option>
+                      {vendors.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  )}
+                />
+                {!!selectedVendor && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                    Vendor: <span className="font-medium text-zinc-800 dark:text-zinc-200">{selectedVendor.name}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">Due Date</label>
                 <Controller
                   name="dueDate"
@@ -508,7 +571,7 @@ export default function WorkOrderForm() {
                     },
                   }}
                   render={({ field }) => (
-                    <input {...field} type="date" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input {...field} type="date" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   )}
                 />
                 {errors.dueDate && (
@@ -528,7 +591,7 @@ export default function WorkOrderForm() {
                     },
                   }}
                   render={({ field }) => (
-                    <input {...field} placeholder="e.g., 2 hours" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input {...field} placeholder="e.g., 2 hours" className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   )}
                 />
                 {errors.estimatedDuration && (
@@ -542,7 +605,7 @@ export default function WorkOrderForm() {
                     name="recurring"
                     control={control}
                     render={({ field }) => (
-                      <input {...field} type="checkbox" className="w-4 h-4 rounded border-gray-200" />
+                      <input {...field} type="checkbox" className="w-4 h-4 rounded border-gray-200 accent-indigo-600" />
                     )}
                   />
                   <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Recurring Maintenance</span>
@@ -553,7 +616,7 @@ export default function WorkOrderForm() {
                 <Button type="submit" className="flex-1 bg-blue-700 hover:bg-blue-800 text-white">
                   Create Order
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/work-orders')} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => navigate('/work-orders')} className="flex-1 text-zinc-700 dark:text-zinc-200">
                   Cancel
                 </Button>
               </div>

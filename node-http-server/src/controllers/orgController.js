@@ -5,12 +5,13 @@ const { ValidationError } = require('../utils/errorHandler');
 
 const listMembers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, role, search } = req.query;
+    const { page = 1, limit = 20, role, search, includeStats } = req.query;
     const result = await orgService.listMembers(req.user.organization, {
       page: parseInt(page),
       limit: parseInt(limit),
       role,
-      search
+      search,
+      includeStats: includeStats === 'true'
     });
     response.success(res, 'Organization members retrieved', result);
   } catch (error) {
@@ -102,8 +103,8 @@ const getPublicSecurityPolicy = async (req, res, next) => {
 
 const verifyOrgEmail = async (req, res, next) => {
   try {
-    const { token } = req.validatedQuery || req.query;
-    const result = await orgService.verifyOrgEmail(token);
+    const { token, orgCode, email } = req.validatedQuery || req.query;
+    const result = await orgService.verifyOrgEmail(token, { orgCode, email });
     response.success(res, 'Organization email verified', result);
   } catch (error) {
     next(error);

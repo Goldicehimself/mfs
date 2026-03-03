@@ -34,6 +34,8 @@ const fundRoutes = require('./src/routes/fundRoutes');
 const emailRoutes = require('./src/routes/emailRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const auditRoutes = require('./src/routes/auditRoutes');
+const inventoryRoutes = require('./src/routes/inventoryRoutes');
+const serviceRequestRoutes = require('./src/routes/serviceRequestRoutes');
 
 const EXPRESSPORT = constants.PORT;
 const app = express();
@@ -117,6 +119,8 @@ app.use('/api/funds', fundRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/service-requests', serviceRequestRoutes);
 
 // 404 handler
 app.use((req, res) => {

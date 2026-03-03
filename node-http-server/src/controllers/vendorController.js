@@ -36,6 +36,16 @@ const createVendor = async (req, res, next) => {
   }
 };
 
+const importVendors = async (req, res, next) => {
+  try {
+    const { vendors = [] } = req.validatedData || req.body;
+    const result = await vendorService.importVendors(req.user.organization, vendors);
+    response.success(res, 'Vendors imported successfully', result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateVendor = async (req, res, next) => {
   try {
     const vendor = await vendorService.updateVendor(req.user.organization, req.params.id, req.body);
@@ -59,5 +69,6 @@ module.exports = {
   getVendorById,
   createVendor,
   updateVendor,
-  deleteVendor
+  deleteVendor,
+  importVendors
 };

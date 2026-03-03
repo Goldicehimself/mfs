@@ -46,7 +46,18 @@ export const getWorkOrders = async (params = {}) => {
     }
     return payload;
   } catch (error) {
-    return await workOrderService.getWorkOrders(params);
+    if (!error?.response) {
+      return await workOrderService.getWorkOrders(params);
+    }
+    return {
+      workOrders: [],
+      pagination: {
+        total: 0,
+        page: params?.page || 1,
+        limit: params?.limit || 20,
+        totalPages: 0
+      }
+    };
   }
 };
 

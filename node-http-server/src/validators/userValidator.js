@@ -24,7 +24,8 @@ const registerOrgSchema = Joi.object({
 
 const inviteSchema = Joi.object({
   role: Joi.string().required().valid('facility_manager', 'technician', 'staff', 'vendor', 'finance', 'procurement'),
-  expiresAt: Joi.date().optional()
+  expiresAt: Joi.date().optional(),
+  email: Joi.string().email().optional()
 });
 
 const loginSchema = Joi.object({
@@ -45,6 +46,17 @@ const resetPasswordSchema = Joi.object({
   password: Joi.string().required().min(6).max(50)
 });
 
+const verifyUserEmailQuerySchema = Joi.object({
+  token: Joi.string().min(20).required(),
+  orgCode: Joi.string().alphanum().min(6).max(12).optional(),
+  email: Joi.string().email().optional()
+});
+
+const resendUserEmailBodySchema = Joi.object({
+  orgCode: Joi.string().alphanum().min(6).max(12).required(),
+  email: Joi.string().email().required()
+});
+
 const updateUserSchema = Joi.object({
   firstName: Joi.string().optional().min(2).max(50),
   lastName: Joi.string().optional().min(2).max(50),
@@ -62,5 +74,7 @@ module.exports = {
   loginSchema,
   updateUserSchema,
   forgotPasswordSchema,
-  resetPasswordSchema
+  resetPasswordSchema,
+  verifyUserEmailQuerySchema,
+  resendUserEmailBodySchema
 };

@@ -36,6 +36,19 @@ export const getAsset = async (id) => {
   }
 };
 
+export const getAssetByCode = async (code) => {
+  try {
+    const response = await axiosInstance.get('/assets/lookup', { params: { code } });
+    return normalizeAsset(response.data?.data);
+  } catch (error) {
+    // fallback: try local mock search by assetNumber/serialNumber/qrCode
+    const all = await assetService.getAssets({ page: 1, limit: 1000 });
+    const list = all.data || [];
+    const trimmed = String(code || '').trim();
+    return list.find(a => a.assetNumber === trimmed || a.serialNumber === trimmed || a.qrCode === trimmed) || null;
+  }
+};
+
 export const createAsset = async (data) => {
   try {
     const response = await axiosInstance.post('/assets', data);
@@ -61,6 +74,11 @@ export const deleteAsset = async (id) => {
   } catch (error) {
     return await assetService.deleteAsset(id);
   }
+};
+
+export const bulkUpdateAssetStatus = async ({ ids = [], status }) => {
+  const response = await axiosInstance.post('/assets/bulk-status', { ids, status });
+  return response.data?.data;
 };
 
 export const getAssetHistory = async (id) => {
@@ -96,6 +114,13 @@ export const bulkImportAssets = async (file) => {
   } catch (error) {
     throw error;
   }
+};
+
+export const downloadAssetImportTemplate = async () => {
+  const response = await axiosInstance.get('/assets/import/template', {
+    responseType: 'blob',
+  });
+  return response.data;
 };
 
 export const getAssetCategories = async () => {

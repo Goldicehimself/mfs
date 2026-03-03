@@ -110,6 +110,10 @@ export default function WorkOrderDetailView() {
         workOrder.assignedTo?.email || workOrder.assignee?.email || "—",
       assignedToPhone:
         workOrder.assignedTo?.phone || workOrder.assignee?.phone || "—",
+      assignedToRole: workOrder.assignedTo?.role || workOrder.assignee?.role || null,
+      assignedToCertified: Array.isArray(workOrder.assignedTo?.certificates)
+        ? workOrder.assignedTo.certificates.length > 0
+        : false,
       reportedByName:
         workOrder.reportedBy?.name ||
         workOrder.requestedBy?.name ||
@@ -263,27 +267,38 @@ export default function WorkOrderDetailView() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-400">
+              <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Assigned To
               </p>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">
-                {normalized.assignedToName}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">
+                  {normalized.assignedToName}
+                </p>
+                {normalized.assignedToRole === 'technician' && (
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                    normalized.assignedToCertified
+                      ? 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-200 dark:bg-emerald-950/60'
+                      : 'border-amber-200 text-amber-700 bg-amber-50 dark:border-amber-800 dark:text-amber-200 dark:bg-amber-950/60'
+                  }`}>
+                    {normalized.assignedToCertified ? 'Verified' : 'Unverified'}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-400">
+              <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Email
               </p>
               <p>{normalized.assignedToEmail}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-400">
+              <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Phone
               </p>
               <p>{normalized.assignedToPhone}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-400">
+              <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Reported By
               </p>
               <p>{normalized.reportedByName}</p>
@@ -416,9 +431,9 @@ export default function WorkOrderDetailView() {
 function SummaryItem({ icon, label, value }) {
   return (
     <div className="flex items-start gap-2 text-sm">
-      <span className="mt-0.5 text-slate-400">{icon}</span>
+      <span className="mt-0.5 text-slate-400 dark:text-slate-500">{icon}</span>
       <div>
-        <p className="text-xs uppercase tracking-wide text-slate-400">
+        <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
           {label}
         </p>
         <p className="font-semibold text-slate-900 dark:text-slate-100">

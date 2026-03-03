@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle,
@@ -8,10 +8,14 @@ import {
   BarChart3,
   ShieldCheck,
   Menu,
+  X,
+  Sun,
+  Moon,
   Settings,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Optimized variants created by tools/generate-screenshots.js
 const DashboardWebpSrcSet = [480,768,1024,1440].map(w => `${new URL(`../../assets/screenshots/optimized/elaadmin-dashboard-template-${w}.webp`, import.meta.url).href} ${w}w`).join(', ');
@@ -29,6 +33,8 @@ const CalendarLarge = new URL('../../assets/screenshots/optimized/2-2-calendar-p
 const LandingPage = () => {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
  // Parallax motion values
   const rawMouseX = useMotionValue(0);
@@ -100,16 +106,70 @@ const LandingPage = () => {
             <span className="font-semibold text-slate-900">FacilityPro</span>
           </div>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="ghost" onClick={() => navigate("/login")}>Sign in</Button>
             <Button className="rounded-full px-5" style={{ backgroundColor: "var(--mp-brand)", color: "#fff" }} onClick={() => navigate("/register")}>
               Get Started
             </Button>
           </div>
 
-          <button className="md:hidden p-2 rounded-md hover:bg-slate-100">
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <button
+              type="button"
+              className="p-2 rounded-md hover:bg-slate-100"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-nav"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="mobile-nav"
+          className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden border-t border-slate-100 bg-white`}
+        >
+          <div className="mx-auto max-w-7xl px-6 py-4 flex flex-col gap-3">
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/login");
+              }}
+            >
+              Sign in
+            </Button>
+            <Button
+              className="rounded-full px-5"
+              style={{ backgroundColor: "var(--mp-brand)", color: "#fff" }}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate("/register");
+              }}
+            >
+              Get Started
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -490,7 +550,7 @@ const LandingPage = () => {
               Simple, Transparent Pricing
             </h2>
             <p className="mt-4 text-slate-600">
-              Choose the plan that fits your organization's needs. Scale as you grow.
+              Seat-based pricing with a 14-day Pro trial. Save 20% with annual billing.
             </p>
           </div>
 
@@ -498,28 +558,31 @@ const LandingPage = () => {
             {[
               {
                 name: "Starter",
-                price: "$49",
+                price: "$19",
                 period: "/month",
-                description: "Perfect for small facilities",
+                description: "For small teams getting started",
                 features: [
-                  "Up to 50 assets",
-                  "Basic work orders",
-                  "Mobile app access",
+                  "5 seats included",
+                  "$4 per extra seat",
+                  "Work orders, assets, vendors",
+                  "Basic reporting",
                   "Email support"
                 ],
                 popular: false
               },
               {
                 name: "Professional",
-                price: "$149",
+                price: "$39",
                 period: "/month",
-                description: "For growing organizations",
+                description: "Best for growing teams",
                 features: [
-                  "Unlimited assets",
-                  "Advanced analytics",
-                  "Vendor management",
-                  "Priority support",
-                  "API access"
+                  "10 seats included",
+                  "$4 per extra seat",
+                  "Advanced reporting",
+                  "PM scheduling",
+                  "Notifications automation",
+                  "API access",
+                  "Priority support"
                 ],
                 popular: true
               },
@@ -529,16 +592,28 @@ const LandingPage = () => {
                 period: "",
                 description: "For large-scale operations",
                 features: [
-                  "Everything in Professional",
+                  "SSO & audit logs",
+                  "Advanced security controls",
                   "Custom integrations",
-                  "Dedicated support",
-                  "Advanced security",
-                  "SLA guarantees"
+                  "Dedicated onboarding",
+                  "SLA support"
                 ],
                 popular: false
               }
             ].map((plan, index) => (
-              <div key={index} className={`rounded-xl border bg-white p-8 ${plan.popular ? 'border-blue-500 shadow-lg' : 'border-slate-200'}`}>
+              <div
+                key={index}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate("/pricing")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate("/pricing");
+                  }
+                }}
+                className={`rounded-xl border bg-white p-8 cursor-pointer transition-shadow hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-300 ${plan.popular ? 'border-blue-500 shadow-lg' : 'border-slate-200'}`}
+              >
                 {plan.popular && (
                   <div className="text-center mb-4">
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -564,15 +639,33 @@ const LandingPage = () => {
                 </ul>
                 <div className="mt-8">
                   {plan.name === "Enterprise" ? (
-                    <Button variant="outline" className="w-full rounded-full" style={{ borderColor: "var(--mp-brand)", color: "var(--mp-brand)" }}>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full"
+                      style={{ borderColor: "var(--mp-brand)", color: "var(--mp-brand)" }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate("/help-center");
+                      }}
+                    >
                       Contact Sales
                     </Button>
                   ) : (
-                    <Button className="w-full rounded-full" style={{ backgroundColor: "var(--mp-brand)", color: "#fff" }}>
+                    <Button
+                      className="w-full rounded-full"
+                      style={{ backgroundColor: "var(--mp-brand)", color: "#fff" }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate("/register");
+                      }}
+                    >
                       Get Started
                     </Button>
                   )}
                 </div>
+                {plan.name !== "Enterprise" && (
+                  <p className="mt-3 text-xs text-slate-500 text-center">20% off annual billing</p>
+                )}
               </div>
             ))}
           </div>
@@ -633,7 +726,15 @@ const LandingPage = () => {
               <h4 className="font-semibold text-slate-900 mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-slate-600">
                 <li><a href="#" className="hover:text-slate-900">Features</a></li>
-                <li><a href="#" className="hover:text-slate-900">Pricing</a></li>
+                <li>
+                  <button
+                    type="button"
+                    className="hover:text-slate-900"
+                    onClick={() => navigate("/pricing")}
+                  >
+                    Pricing
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-slate-900">Security</a></li>
                 <li><a href="#" className="hover:text-slate-900">Integrations</a></li>
               </ul>
@@ -652,7 +753,7 @@ const LandingPage = () => {
             <div>
               <h4 className="font-semibold text-slate-900 mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li><a href="#" className="hover:text-slate-900">Help Center</a></li>
+                <li><button type="button" className="hover:text-slate-900" onClick={() => navigate("/help-center")}>Help Center</button></li>
                 <li><a href="#" className="hover:text-slate-900">Documentation</a></li>
                 <li><a href="#" className="hover:text-slate-900">Community</a></li>
                 <li><a href="#" className="hover:text-slate-900">Status</a></li>

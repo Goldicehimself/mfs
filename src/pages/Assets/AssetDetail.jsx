@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Typography, Box, Button, Grid, Avatar, Paper, Chip, Divider, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -15,6 +16,8 @@ import AssetImage from '../../components/assets/AssetImage';
 import { toast } from 'react-toastify';
 
 const AssetDetail = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -270,11 +273,11 @@ const AssetDetail = () => {
   const images = (asset.imageUrls && asset.imageUrls.length > 0) ? asset.imageUrls : [asset.imageUrl || '/placeholder-asset.svg'];
 
   return (
-    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', pb: 4 }}>
+    <Box sx={{ bgcolor: isDark ? '#0b1120' : '#f8fafc', minHeight: '100vh', pb: 4 }}>
       {/* Professional Header Bar */}
       <Box sx={{ 
-        bgcolor: 'white', 
-        borderBottom: '1px solid #e2e8f0',
+        bgcolor: isDark ? '#0f172a' : 'white', 
+        borderBottom: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
         py: 2,
         px: 3,
         mb: 3,
@@ -289,10 +292,10 @@ const AssetDetail = () => {
               >
                 <ArrowBackIcon />
               </IconButton>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>Asset Details</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e293b' }}>Asset Details</Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: '#64748b', ml: 5 }}>
-              {asset.code || asset.id} • {asset.category}
+            <Typography variant="body2" sx={{ color: isDark ? '#94a3b8' : '#64748b', ml: 5 }}>
+              {asset.code || asset.id} â€¢ {asset.category}
             </Typography>
           </div>
           
@@ -322,8 +325,8 @@ const AssetDetail = () => {
         <Paper sx={{ 
           p: 3, 
           mb: 3,
-          bgcolor: 'white',
-          border: '1px solid #e2e8f0',
+          bgcolor: isDark ? '#0f172a' : 'white',
+          border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
           borderRadius: 2
         }}>
           <Grid container spacing={3} alignItems="flex-start">
@@ -331,8 +334,8 @@ const AssetDetail = () => {
               <Paper sx={{ 
                 borderRadius: 2, 
                 overflow: 'hidden',
-                bgcolor: '#f1f5f9',
-                border: '1px solid #e2e8f0'
+                bgcolor: isDark ? '#0b1220' : '#f1f5f9',
+                border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0'
               }}>
                 <AssetImage
                   src={selectedImage}
@@ -351,7 +354,7 @@ const AssetDetail = () => {
 
             <Grid item xs={12} md={8}>
               <div>
-                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: '#1e293b' }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: isDark ? '#e2e8f0' : '#1e293b' }}>
                   {asset.name}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
@@ -372,27 +375,27 @@ const AssetDetail = () => {
 
                 <Grid container spacing={2} sx={{ mt: 0 }}>
                   <Grid item xs={6}>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>MANUFACTURER</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>MANUFACTURER</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {asset.manufacturer || '—'}
+                      {asset.manufacturer || 'â€”'}
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>MODEL</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>MODEL</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {asset.model || '—'}
+                      {asset.model || 'â€”'}
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>SERIAL NUMBER</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>SERIAL NUMBER</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {asset.serial || '—'}
+                      {asset.serial || 'â€”'}
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>LOCATION</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>LOCATION</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {asset.propertyLocation || '—'}
+                      {asset.propertyLocation || 'â€”'}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -410,64 +413,64 @@ const AssetDetail = () => {
           <Paper sx={{ 
             p: 3, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Equipment Information</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#e2e8f0' : '#1e293b' }}>Equipment Information</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>CATEGORY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.category || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.type || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>CATEGORY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.category || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.type || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>MANUFACTURER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.manufacturer || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>MODEL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.model || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>MANUFACTURER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.manufacturer || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>MODEL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.model || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SERIAL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serial || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>INSTALLATION DATE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.installationDate || asset.purchaseDate || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>SERIAL NUMBER</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serial || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>INSTALLATION DATE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.installationDate || asset.purchaseDate || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>PROPERTY LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.propertyLocation || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>BUILDING LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.buildingLocation || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>PROPERTY LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.propertyLocation || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>BUILDING LOCATION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.buildingLocation || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={12}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SERVICE AREA</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serviceArea || '—'}</Typography></Grid>
+              <Grid item xs={12}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>SERVICE AREA</Typography><Typography sx={{ fontWeight: 500 }}>{asset.serviceArea || 'â€”'}</Typography></Grid>
             </Grid>
           </Paper>
 
           <Paper sx={{ 
             p: 3, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Specifications & Technical Details</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#e2e8f0' : '#1e293b' }}>Specifications & Technical Details</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>COOLING CAPACITY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.coolingCapacity || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>REFRIGERANT TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.refrigerantType || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>COOLING CAPACITY</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.coolingCapacity || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>REFRIGERANT TYPE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.refrigerantType || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>POWER CONSUMPTION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.powerConsumption || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>SEER RATING</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.seerRating || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>POWER CONSUMPTION</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.powerConsumption || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>SEER RATING</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.seerRating || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>DIMENSIONS</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.dimensions || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>WEIGHT</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.weight || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>DIMENSIONS</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.dimensions || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>WEIGHT</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.weight || 'â€”'}</Typography></Grid>
 
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>OPERATING TEMPERATURE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.operatingTempRange || '—'}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>COMPLIANCE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.compliance || '—'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>OPERATING TEMPERATURE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.operatingTempRange || 'â€”'}</Typography></Grid>
+              <Grid item xs={6}><Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>COMPLIANCE</Typography><Typography sx={{ fontWeight: 500 }}>{asset.specs?.compliance || 'â€”'}</Typography></Grid>
             </Grid>
           </Paper>
 
           <Paper sx={{ 
             p: 3, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Warranty & Documentation</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#e2e8f0' : '#1e293b' }}>Warranty & Documentation</Typography>
             <Grid container spacing={2}>
               <Grid item xs={8}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>WARRANTY STATUS</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: isDark ? '#94a3b8' : '#64748b' }}>WARRANTY STATUS</Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Chip label={`ACTIVE — Expires ${asset.warranty?.expires}`} color="success" />
+                  <Chip label={`ACTIVE â€” Expires ${asset.warranty?.expires}`} color="success" />
                 </Stack>
                 <Typography sx={{ mt: 2 }}>{asset.warranty?.coverage}</Typography>
               </Grid>
@@ -498,12 +501,12 @@ const AssetDetail = () => {
           <Paper sx={{ 
             p: 3, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Maintenance History</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e293b' }}>Maintenance History</Typography>
               {/* Future: filter controls */}
             </Box>
 
@@ -520,20 +523,20 @@ const AssetDetail = () => {
           <Paper sx={{ 
             p: 2, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Maintenance Schedule</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e293b' }}>Maintenance Schedule</Typography>
               <Button startIcon={<AddIcon />} size="small" onClick={() => openScheduleModal(null)}>Add</Button>
             </Box>
             <Stack spacing={1}>
               {asset.maintenanceSchedule?.map(s => (
-                <Paper key={s.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
+                <Paper key={s.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: isDark ? '#0b1220' : '#f8fafc', border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0' }} elevation={0}>
                   <div>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{s.title}</Typography>
-                    <Typography variant="caption" color="text.secondary">{s.frequency} • Next: {s.next}</Typography>
+                    <Typography variant="caption" color="text.secondary">{s.frequency} â€¢ Next: {s.next}</Typography>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Chip label={s.status === 'due_soon' ? 'DUE' : s.status === 'scheduled' ? 'SCHEDULED' : 'OK'} size="small" color={s.status === 'due_soon' ? 'warning' : 'default'} />
@@ -548,11 +551,11 @@ const AssetDetail = () => {
           <Paper sx={{ 
             p: 2, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Performance Metrics</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#e2e8f0' : '#1e293b' }}>Performance Metrics</Typography>
             <div style={{ marginTop: 12 }}>
               <Typography variant="caption" color="text.secondary">Total Downtime</Typography>
               <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.totalDowntimeHours} hours</Typography>
@@ -560,7 +563,7 @@ const AssetDetail = () => {
               <Divider sx={{ my: 1 }} />
 
               <Typography variant="caption" color="text.secondary">Maintenance Incidents</Typography>
-              <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.maintenanceIncidents?.preventive} Preventive • {asset.performanceMetrics?.maintenanceIncidents?.corrective} Corrective</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{asset.performanceMetrics?.maintenanceIncidents?.preventive} Preventive â€¢ {asset.performanceMetrics?.maintenanceIncidents?.corrective} Corrective</Typography>
 
               <Divider sx={{ my: 1.5 }} />
 
@@ -582,14 +585,14 @@ const AssetDetail = () => {
           <Paper sx={{ 
             p: 2, 
             mb: 3,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1e293b' }}>Related Work Orders</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#e2e8f0' : '#1e293b' }}>Related Work Orders</Typography>
             <Stack spacing={1}>
               {relatedWOs.length > 0 ? relatedWOs.map(wo => (
-                <Paper key={wo.id} sx={{ p: 1.5, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
+                <Paper key={wo.id} sx={{ p: 1.5, bgcolor: isDark ? '#0b1220' : '#f8fafc', border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0' }} elevation={0}>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{wo.woNumber || wo.id}</Typography>
                   <Typography variant="caption" color="text.secondary">{wo.title || wo.description}</Typography>
                 </Paper>
@@ -599,17 +602,17 @@ const AssetDetail = () => {
 
           <Paper sx={{ 
             p: 2,
-            bgcolor: 'white',
-            border: '1px solid #e2e8f0',
+            bgcolor: isDark ? '#0f172a' : 'white',
+            border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0',
             borderRadius: 2
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>Parts & Components</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e293b' }}>Parts & Components</Typography>
               <Button startIcon={<AddIcon />} size="small" onClick={() => openPartModal(null)}>Add</Button>
             </Box>
             <Stack spacing={1}>
               {asset.parts?.map(p => (
-                <Paper key={p.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }} elevation={0}>
+                <Paper key={p.id} sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: isDark ? '#0b1220' : '#f8fafc', border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0' }} elevation={0}>
                   <div>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{p.name}</Typography>
                     <Typography variant="caption" color="text.secondary">Stock: {p.inStock} / Min: {p.minLevel}</Typography>
@@ -635,7 +638,7 @@ const AssetDetail = () => {
       >
         <DialogTitle sx={{ fontWeight: 700, fontSize: '1.3rem', pb: 0.5 }}>Edit Asset Details</DialogTitle>
         <Box sx={{ px: 3, py: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1.1rem' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e293b', fontSize: '1.1rem' }}>
             {editForm.name || 'New Asset'}
           </Typography>
         </Box>
@@ -643,7 +646,7 @@ const AssetDetail = () => {
           <Grid container spacing={3}>
             {/* Image Upload Section */}
             <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2, bgcolor: '#f8fafc', textAlign: 'center', borderRadius: 2 }}>
+              <Paper sx={{ p: 2, bgcolor: isDark ? '#0b1220' : '#f8fafc', textAlign: 'center', borderRadius: 2 }}>
                 <Box sx={{ mb: 2 }}>
                   <AssetImage
                     src={selectedImage}
@@ -653,7 +656,7 @@ const AssetDetail = () => {
                       height: 180,
                       objectFit: 'cover',
                       borderRadius: 8,
-                      border: '1px solid #e2e8f0'
+                      border: isDark ? '1px solid #1f2937' : '1px solid #e2e8f0'
                     }}
                     imgProps={{ sizes: '(max-width: 640px) 100vw, 33vw' }}
                   />
@@ -796,17 +799,17 @@ const AssetDetail = () => {
                     onChange={(e) => setEditForm(f => ({ ...f, status: e.target.value }))}
                     variant="outlined"
                   >
-                    <MenuItem value="active">🟢 Active</MenuItem>
-                    <MenuItem value="inactive">⚪ Inactive</MenuItem>
-                    <MenuItem value="maintenance">🟡 Under Maintenance</MenuItem>
-                    <MenuItem value="retired">⚫ Retired</MenuItem>
+                    <MenuItem value="active">ðŸŸ¢ Active</MenuItem>
+                    <MenuItem value="inactive">âšª Inactive</MenuItem>
+                    <MenuItem value="maintenance">ðŸŸ¡ Under Maintenance</MenuItem>
+                    <MenuItem value="retired">âš« Retired</MenuItem>
                   </TextField>
                 </Grid>
               </Grid>
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 2, bgcolor: '#f8fafc' }}>
+        <DialogActions sx={{ p: 2, bgcolor: isDark ? '#0b1220' : '#f8fafc' }}>
           <Button onClick={() => setEditModalOpen(false)} variant="outlined">Cancel</Button>
           <Button onClick={saveAssetEdit} variant="contained" sx={{ fontWeight: 700 }}>Save Changes</Button>
         </DialogActions>
@@ -884,4 +887,7 @@ const AssetDetail = () => {
 };
 
 export default AssetDetail;
+
+
+
 

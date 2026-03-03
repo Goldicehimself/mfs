@@ -1,22 +1,30 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
 import { fetchVendors } from '../../api/vendors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import PerformanceMetrics from '@/components/vendors/PerformanceMetrics';
 import VendorList from '@/components/vendors/VendorList';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const VendorsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [sortBy, setSortBy] = useState('name');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
-  const { data: vendors = [] } = useQuery('vendors', fetchVendors);
+  const { data: vendorsResponse = [], isLoading } = useQuery('vendors', fetchVendors);
+
+  const vendors = useMemo(() => {
+    if (Array.isArray(vendorsResponse)) return vendorsResponse;
+    if (Array.isArray(vendorsResponse?.vendors)) return vendorsResponse.vendors;
+    return [];
+  }, [vendorsResponse]);
 
   // Categories from vendors data
   const categories = useMemo(() => {
@@ -61,6 +69,14 @@ const VendorsPage = () => {
     setPage(1);
   }, [searchTerm, selectedCategory, sortBy, pageSize, vendors.length]);
 
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam !== null) {
+      setSearchTerm(searchParam);
+      setPage(1);
+    }
+  }, [searchParams]);
+
   const totalItems = filteredVendors.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -96,7 +112,7 @@ const VendorsPage = () => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className="border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+              className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-600 dark:text-indigo-200 dark:hover:bg-indigo-900/30"
               onClick={() => navigate('/vendors/import')}
             >
               Import
@@ -113,7 +129,20 @@ const VendorsPage = () => {
       </div>
 
       {/* KPI Cards */}
-      <PerformanceMetrics stats={stats} />
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <Card key={idx} className="border-0 shadow-md">
+              <CardContent className="p-6 space-y-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <PerformanceMetrics stats={stats} />
+      )}
 
       {/* Search and Filters */}
       <Card className="border-0 shadow-md">
@@ -164,17 +193,36 @@ const VendorsPage = () => {
       </Card>
 
       {/* Vendors Table */}
-      <VendorList
-        vendors={paginatedVendors}
-        page={currentPage}
-        pageSize={pageSize}
-        totalItems={totalItems}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        onView={(vendor) => navigate(`/vendors/${vendor.id}`)}
-        onEdit={(vendor) => navigate(`/vendors/${vendor.id}/edit`)}
-      />
+      {isLoading ? (
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6 space-y-4">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="flex items-center justify-between border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-28 mt-2" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-24" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <VendorList
+          vendors={paginatedVendors}
+          page={currentPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          onView={(vendor) => navigate(`/vendors/${vendor.id}`)}
+          onEdit={(vendor) => navigate(`/vendors/${vendor.id}/edit`)}
+        />
+      )}
     </div>
   );
 };

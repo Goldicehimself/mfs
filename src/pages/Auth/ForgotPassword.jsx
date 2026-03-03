@@ -7,9 +7,12 @@ import {
   Alert,
   Link,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { requestPasswordReset } from '@/api/auth';
 
 const ForgotPassword = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [email, setEmail] = useState('');
   const [orgCode, setOrgCode] = useState('');
   const [message, setMessage] = useState('');
@@ -63,6 +66,13 @@ const ForgotPassword = () => {
         name="orgCode"
         value={orgCode}
         onChange={(e) => setOrgCode(e.target.value.toUpperCase())}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            background: isDark ? '#0f172a' : '#fff',
+            color: isDark ? '#e2e8f0' : '#0f172a',
+            '& fieldset': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+          },
+        }}
       />
       <TextField
         margin="normal"
@@ -75,6 +85,13 @@ const ForgotPassword = () => {
         autoFocus
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            background: isDark ? '#0f172a' : '#fff',
+            color: isDark ? '#e2e8f0' : '#0f172a',
+            '& fieldset': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+          },
+        }}
       />
       <Button
         type="submit"

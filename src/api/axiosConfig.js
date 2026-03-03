@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-// Use relative URL for Vite proxy in development, or full URL if specified
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Use Vite proxy in development to avoid CORS; use env URL in production.
+const API_BASE_URL = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_URL || '/api');
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,

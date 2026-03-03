@@ -37,8 +37,14 @@
    - UI best practices
    - Dark mode support
 
+### Email Templates
+6. **[public/email-templates/README.md](public/email-templates/README.md)** - 2 min read
+   - Template list
+   - Placeholder usage
+   - Backend integration notes
+
 ### Feature Documentation
-6. **[src/pages/Technicians/README.md](src/pages/Technicians/README.md)** - 10 min read
+7. **[src/pages/Technicians/README.md](src/pages/Technicians/README.md)** - 10 min read
    - Complete feature list
    - Component structure
    - Data structures

@@ -58,6 +58,15 @@ const updateOrgSettingsSchema = Joi.object({
     industry: Joi.string().allow('').max(100).optional(),
     supportEmail: Joi.string().email().allow('').optional(),
     supportPhone: Joi.string().allow('').max(50).optional()
+  }).optional(),
+  billing: Joi.object({
+    plan: Joi.string().valid('starter', 'pro', 'enterprise').optional(),
+    billingCycle: Joi.string().valid('monthly', 'annual').optional(),
+    seatsIncluded: Joi.number().integer().min(1).max(10000).optional(),
+    seatCount: Joi.number().integer().min(1).max(100000).optional(),
+    extraSeatPrice: Joi.number().min(0).max(1000).optional(),
+    trialEndsAt: Joi.date().optional(),
+    status: Joi.string().valid('trialing', 'active', 'past_due', 'canceled').optional()
   }).optional()
 }).min(1);
 
@@ -67,7 +76,9 @@ const publicSecurityPolicyQuerySchema = Joi.object({
 }).xor('orgCode', 'inviteCode');
 
 const verifyOrgEmailQuerySchema = Joi.object({
-  token: Joi.string().min(20).required()
+  token: Joi.string().min(20).required(),
+  orgCode: Joi.string().alphanum().min(6).max(12).optional(),
+  email: Joi.string().email().optional()
 });
 
 const resendOrgEmailBodySchema = Joi.object({

@@ -93,6 +93,16 @@ const integrationSettingsSchema = new mongoose.Schema({
   apiKeys: { type: [apiKeySchema], default: [] }
 }, { _id: false });
 
+const billingSettingsSchema = new mongoose.Schema({
+  plan: { type: String, default: 'starter' },
+  billingCycle: { type: String, default: 'monthly' },
+  seatsIncluded: { type: Number, default: 5 },
+  seatCount: { type: Number, default: 1 },
+  extraSeatPrice: { type: Number, default: 4 },
+  trialEndsAt: { type: Date, default: null },
+  status: { type: String, default: 'trialing' }
+}, { _id: false });
+
 const organizationSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   industry: { type: String, trim: true },
@@ -107,7 +117,8 @@ const organizationSchema = new mongoose.Schema({
     securityPolicy: { type: securityPolicySchema, default: () => ({}) },
     notifications: { type: notificationSettingsSchema, default: () => ({}) },
     companyProfile: { type: companyProfileSchema, default: () => ({}) },
-    integrations: { type: integrationSettingsSchema, default: () => ({}) }
+    integrations: { type: integrationSettingsSchema, default: () => ({}) },
+    billing: { type: billingSettingsSchema, default: () => ({}) }
   }
 }, {
   timestamps: true

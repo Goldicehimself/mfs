@@ -18,6 +18,7 @@ import {
   Divider,
   IconButton,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   ArrowBack,
   Save,
@@ -30,6 +31,8 @@ import {
 import { toast } from 'react-toastify';
 
 const ServiceRequestForm = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -109,17 +112,17 @@ const ServiceRequestForm = () => {
   ];
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, background: '#f8fafc', minHeight: '100vh' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, background: isDark ? '#0b1120' : '#f8fafc', minHeight: '100vh' }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <IconButton
             onClick={() => navigate('/service-requests')}
             sx={{
-              backgroundColor: 'white',
-              border: '1px solid #e2e8f0',
+              backgroundColor: isDark ? '#0f172a' : 'white',
+              border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
               '&:hover': {
-                backgroundColor: '#f8fafc',
+                backgroundColor: isDark ? '#111827' : '#f8fafc',
               }
             }}
           >
@@ -129,14 +132,14 @@ const ServiceRequestForm = () => {
             variant="h4"
             sx={{
               fontWeight: 700,
-              color: '#0f172a',
+              color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: { xs: '28px', md: '32px' },
             }}
           >
             New Service Request
           </Typography>
         </Box>
-        <Typography variant="body2" color="#64748b" sx={{ fontSize: '15px' }}>
+        <Typography variant="body2" color="#64748b" sx={{ fontSize: '15px', color: isDark ? '#94a3b8' : '#64748b' }}>
           Submit a maintenance request for your facility
         </Typography>
       </Box>
@@ -147,8 +150,8 @@ const ServiceRequestForm = () => {
           <Card
             elevation={0}
             sx={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: isDark ? '#0f172a' : '#ffffff',
+              border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
               borderRadius: '14px',
             }}
           >
@@ -349,32 +352,32 @@ const ServiceRequestForm = () => {
           <Card
             elevation={0}
             sx={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: isDark ? '#0f172a' : '#ffffff',
+              border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
               borderRadius: '14px',
               height: 'fit-content',
             }}
           >
             <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: isDark ? '#e2e8f0' : '#0f172a' }}>
                 Request Guidelines
               </Typography>
 
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#374151' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#cbd5f5' : '#374151' }}>
                   What to Include:
                 </Typography>
                 <Box component="ul" sx={{ pl: 2, m: 0 }}>
-                  <li style={{ marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>
+                  <li style={{ marginBottom: '8px', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px' }}>
                     Clear description of the issue
                   </li>
-                  <li style={{ marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>
+                  <li style={{ marginBottom: '8px', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px' }}>
                     When the problem started
                   </li>
-                  <li style={{ marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>
+                  <li style={{ marginBottom: '8px', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px' }}>
                     Location details
                   </li>
-                  <li style={{ marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>
+                  <li style={{ marginBottom: '8px', color: isDark ? '#94a3b8' : '#6b7280', fontSize: '14px' }}>
                     Any safety concerns
                   </li>
                 </Box>
@@ -383,25 +386,25 @@ const ServiceRequestForm = () => {
               <Divider sx={{ my: 3 }} />
 
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#374151' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: isDark ? '#cbd5f5' : '#374151' }}>
                   Response Times:
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Chip label="Urgent" size="small" sx={{ backgroundColor: '#fee2e2', color: '#991b1b' }} />
-                    <Typography variant="caption" sx={{ color: '#6b7280' }}>Within 1 hour</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Within 1 hour</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Chip label="High" size="small" sx={{ backgroundColor: '#fee2e2', color: '#991b1b' }} />
-                    <Typography variant="caption" sx={{ color: '#6b7280' }}>Within 4 hours</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Within 4 hours</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Chip label="Medium" size="small" sx={{ backgroundColor: '#fef3c7', color: '#92400e' }} />
-                    <Typography variant="caption" sx={{ color: '#6b7280' }}>Within 24 hours</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Within 24 hours</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Chip label="Low" size="small" sx={{ backgroundColor: '#dcfce7', color: '#166534' }} />
-                    <Typography variant="caption" sx={{ color: '#6b7280' }}>Within 48 hours</Typography>
+                    <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#6b7280' }}>Within 48 hours</Typography>
                   </Box>
                 </Box>
               </Box>

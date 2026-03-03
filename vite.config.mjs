@@ -13,17 +13,12 @@ export default defineConfig({
 
   server: {
     port: 5173,
-
-    ...(process.env.VITE_ENABLE_API_PROXY === "true"
-      ? {
-          proxy: {
-            "/api": {
-              target: process.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000",
-              changeOrigin: true,
-              secure: false,
-            },
-          },
-        }
-      : {}),
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

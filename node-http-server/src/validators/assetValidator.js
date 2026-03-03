@@ -37,5 +37,9 @@ const updateAssetSchema = Joi.object({
 
 module.exports = {
   createAssetSchema,
-  updateAssetSchema
+  updateAssetSchema,
+  bulkAssetStatusSchema: Joi.object({
+    ids: Joi.array().items(Joi.string()).min(1).required(),
+    status: Joi.string().required().valid('active', 'inactive', 'maintenance', 'retired')
+  })
 };

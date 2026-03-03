@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Box,
@@ -28,6 +28,7 @@ import {
   Alert,
   IconButton,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Search,
   Plus,
@@ -36,13 +37,20 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { getServiceRequests, getServiceRequestSummary, createServiceRequest, assignServiceRequest } from '../../api/serviceRequests';
+import { getAssets } from '../../api/assets';
+import { fetchMembers } from '../../api/org';
 
 const ServiceRequests = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [currentTab, setCurrentTab] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const queryClient = useQueryClient();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,12 +64,66 @@ const ServiceRequests = () => {
     asset: '',
   });
 
-  // KPI Data with better structure
+  const [requests, setRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState('');
+  const [assignNote, setAssignNote] = useState('');
+  const [assets, setAssets] = useState([]);
+  const [members, setMembers] = useState([]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const { data: requestData } = useQuery(
+    ['serviceRequests', { currentTab, searchQuery, sortBy, currentPage }],
+    () => getServiceRequests({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: searchQuery || undefined,
+      status: currentTab === 'all' ? undefined : currentTab,
+    })
+  );
+
+  useEffect(() => {
+    const list = Array.isArray(requestData)
+      ? requestData
+      : (requestData?.requests || requestData?.data || []);
+    setRequests(list);
+  }, [requestData]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const assetRes = await getAssets({ page: 1, limit: 200 });
+        if (active) setAssets(assetRes?.data || []);
+      } catch (error) {
+        if (active) setAssets([]);
+      }
+      try {
+        const memberRes = await fetchMembers();
+        const list = Array.isArray(memberRes) ? memberRes : (memberRes?.members || memberRes?.data || []);
+        if (active) setMembers(list);
+      } catch (error) {
+        if (active) setMembers([]);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const { data: summaryData } = useQuery(['serviceRequestSummary'], () => getServiceRequestSummary());
+  const summary = summaryData?.summary || requestData?.summary || {};
   const kpiData = [
     {
       label: 'Total Requests',
-      value: '247',
-      trend: '+8%',
+      value: String(summaryData?.total || requestData?.pagination?.total || 0),
+      trend: '',
       icon: Clock,
       color: '#4f46e5',
       bgColor: '#eef2ff',
@@ -69,8 +131,8 @@ const ServiceRequests = () => {
     },
     {
       label: 'Pending Review',
-      value: '43',
-      trend: '+12%',
+      value: String(summary.pending || 0),
+      trend: '',
       icon: AlertCircle,
       color: '#f59e0b',
       bgColor: '#fffbeb',
@@ -78,17 +140,17 @@ const ServiceRequests = () => {
     },
     {
       label: 'In Progress',
-      value: '67',
-      trend: '+5%',
+      value: String(summary['in-progress'] || 0),
+      trend: '',
       icon: TrendingUp,
       color: '#10b981',
       bgColor: '#f0fdf4',
       description: 'Currently being worked on',
     },
     {
-      label: 'Completed Today',
-      value: '15',
-      trend: '+3%',
+      label: 'Completed',
+      value: String(summary.completed || 0),
+      trend: '',
       icon: '✓',
       color: '#06b6d4',
       bgColor: '#ecfdf5',
@@ -96,87 +158,10 @@ const ServiceRequests = () => {
     },
   ];
 
-  // Mock Service Requests Data
-  const initialRequests = [
-    {
-      id: '#2847',
-      title: 'HVAC System Not Cooling',
-      description: 'Air conditioning unit in conference room',
-      requester: { name: 'Sarah Chen', role: 'Marketing', avatar: '👩', initials: 'SC' },
-      location: 'Conference Room A',
-      priority: 'high',
-      status: 'pending',
-      statusAssignee: 'pending 2 hours ago',
-    },
-    {
-      id: '#2846',
-      title: 'Leaky Faucet in Restroom',
-      description: 'Water dripping from main sink',
-      requester: { name: 'Mike Johnson', role: 'Operations', avatar: '👨', initials: 'MJ' },
-      location: 'Floor 2 Restroom',
-      priority: 'medium',
-      status: 'assigned',
-      statusAssignee: 'Assigned Tom Wilson',
-    },
-    {
-      id: '#2845',
-      title: 'Broken Office Chair',
-      description: 'Armrest detached, needs repair',
-      requester: { name: 'Lisa Park', role: 'Finance', avatar: '👩‍💼', initials: 'LP' },
-      location: 'Desk 238',
-      priority: 'low',
-      status: 'in-progress',
-      statusAssignee: '',
-    },
-    {
-      id: '#2844',
-      title: 'Light Bulb Replacement',
-      description: 'Ceiling light flickering in hallway',
-      requester: { name: 'Emma Davis', role: 'HR', avatar: '👩', initials: 'ED' },
-      location: 'Main Hallway',
-      priority: 'low',
-      status: 'completed',
-      statusAssignee: 'Yesterday',
-    },
-    {
-      id: '#2843',
-      title: 'Printer Paper Jam',
-      description: 'Main printer needs servicing',
-      requester: { name: 'Alex Rodriguez', role: 'IT', avatar: '👨', initials: 'AR' },
-      location: 'Copy Room',
-      priority: 'medium',
-      status: 'pending',
-      statusAssignee: 'pending 4 hours ago',
-    },
-  ];
-
-  const [requests, setRequests] = useState(initialRequests);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [viewOpen, setViewOpen] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignee, setAssignee] = useState('');
-  const [assignNote, setAssignNote] = useState('');
-
-  // Filter requests by tab
-  let filteredRequests =
-    currentTab === 'all'
-      ? requests
-      : requests.filter((r) => r.status === currentTab);
-
-  // Apply search filter
-  if (searchQuery) {
-    filteredRequests = filteredRequests.filter((request) =>
-      request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.requester.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
-
-  // Apply sorting
-  const sortedRequests = [...filteredRequests].sort((a, b) => {
+  // Apply sorting for current page
+  const sortedRequests = [...requests].sort((a, b) => {
     if (sortBy === 'date') {
-      // Sort by ID descending (assuming higher ID is newer)
-      return parseInt(b.id.replace('#', '')) - parseInt(a.id.replace('#', ''));
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     } else if (sortBy === 'priority') {
       const priorityOrder = { low: 1, medium: 2, high: 3 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -187,18 +172,15 @@ const ServiceRequests = () => {
     return 0;
   });
 
-  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
-  const displayedRequests = sortedRequests.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = requestData?.pagination?.totalPages || 1;
+  const displayedRequests = sortedRequests;
 
   const tabs = [
-    { label: 'All', value: 'all', count: requests.length },
-    { label: 'Pending', value: 'pending', count: requests.filter(r => r.status === 'pending').length },
-    { label: 'Assigned', value: 'assigned', count: requests.filter(r => r.status === 'assigned').length },
-    { label: 'In Progress', value: 'in-progress', count: requests.filter(r => r.status === 'in-progress').length },
-    { label: 'Completed', value: 'completed', count: requests.filter(r => r.status === 'completed').length },
+    { label: 'All', value: 'all', count: summaryData?.total || requestData?.pagination?.total || 0 },
+    { label: 'Pending', value: 'pending', count: summary.pending || 0 },
+    { label: 'Assigned', value: 'assigned', count: summary.assigned || 0 },
+    { label: 'In Progress', value: 'in-progress', count: summary['in-progress'] || 0 },
+    { label: 'Completed', value: 'completed', count: summary.completed || 0 },
   ];
 
   const getPriorityColor = (priority) => {
@@ -244,6 +226,17 @@ const ServiceRequests = () => {
     }));
   };
 
+  const createMutation = useMutation((payload) => createServiceRequest(payload), {
+    onSuccess: () => {
+      queryClient.invalidateQueries('serviceRequests');
+    }
+  });
+  const assignMutation = useMutation(({ id, assigneeId, note }) => assignServiceRequest(id, assigneeId, note), {
+    onSuccess: () => {
+      queryClient.invalidateQueries('serviceRequests');
+    }
+  });
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -252,14 +245,18 @@ const ServiceRequests = () => {
       // Validate required fields
       if (!formData.title || !formData.description || !formData.category) {
         toast.error('Please fill in all required fields');
+        setLoading(false);
         return;
       }
 
-      // In a real app, this would call an API to create the service request
-      console.log('Creating service request:', formData);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await createMutation.mutateAsync({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: formData.location,
+        priority: formData.priority,
+        asset: formData.asset || undefined
+      });
 
       toast.success('Service request submitted successfully!');
       handleModalClose();
@@ -292,51 +289,47 @@ const ServiceRequests = () => {
     setSelectedRequest(null);
   };
 
-  const handleAssignSubmit = () => {
+  const handleAssignSubmit = async () => {
     if (!assignee.trim()) {
       toast.error('Please enter an assignee');
       return;
     }
-
-    setRequests((prev) =>
-      prev.map((req) =>
-        req.id === selectedRequest.id
-          ? {
-              ...req,
-              status: 'assigned',
-              statusAssignee: `Assigned ${assignee.trim()}`,
-            }
-          : req
-      )
-    );
-
-    toast.success('Request assigned successfully');
-    handleCloseAssign();
+    try {
+      await assignMutation.mutateAsync({
+        id: selectedRequest.id,
+        assigneeId: assignee.trim(),
+        note: assignNote
+      });
+      toast.success('Request assigned successfully');
+      handleCloseAssign();
+    } catch (error) {
+      toast.error('Failed to assign request');
+    }
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, minHeight: '100vh' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, minHeight: '100vh', backgroundColor: isDark ? '#0b1120' : 'transparent' }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4, p: 3, background: 'linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(79, 70, 229, 0.05))', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: 2 }}>
+      <Box sx={{ mb: 4, p: 3, background: isDark ? 'linear-gradient(to right, rgba(99, 102, 241, 0.12), rgba(79, 70, 229, 0.12))' : 'linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(79, 70, 229, 0.05))', border: `1px solid ${isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)'}`, borderRadius: 2 }}>
         <Typography
           variant="h4"
           sx={{
             fontWeight: 700,
             mb: 0.5,
-            color: '#4f46e5',
+            color: isDark ? '#c7d2fe' : '#4f46e5',
             fontSize: { xs: '28px', md: '32px' },
           }}
         >
           Service Requests
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '15px', color: '#3f4a5a' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '15px', color: isDark ? '#94a3b8' : '#3f4a5a' }}>
           Manage and track maintenance service requests across your facility
         </Typography>
       </Box>
 
       {/* KPI Cards - Enhanced Design */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpiData.map((kpi, idx) => {
+                {kpiData.map((kpi, idx) => {
           const Icon = typeof kpi.icon === 'string' ? null : kpi.icon;
           return (
             <Grid item xs={12} sm={6} md={3} key={idx}>
@@ -344,8 +337,8 @@ const ServiceRequests = () => {
                 elevation={0}
                 sx={{
                   p: 3,
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
+                  background: isDark ? '#0f172a' : '#ffffff',
+                  border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
                   borderRadius: '12px',
                   transition: 'all 0.3s ease',
                   cursor: 'pointer',
@@ -371,24 +364,26 @@ const ServiceRequests = () => {
                   >
                     {Icon ? <Icon size={24} /> : <span style={{ fontSize: '24px' }}>{kpi.icon}</span>}
                   </Box>
-                  <Chip
-                    label={kpi.trend}
-                    size="small"
-                    sx={{
-                      background: kpi.trend.includes('+') ? '#dcfce7' : '#fee2e2',
-                      color: kpi.trend.includes('+') ? '#166534' : '#991b1b',
-                      fontWeight: 700,
-                      fontSize: '12px',
-                    }}
-                  />
+                  {kpi.trend ? (
+                    <Chip
+                      label={kpi.trend}
+                      size="small"
+                      sx={{
+                        background: kpi.trend.includes('+') ? '#dcfce7' : '#fee2e2',
+                        color: kpi.trend.includes('+') ? '#166534' : '#991b1b',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                      }}
+                    />
+                  ) : null}
                 </Box>
                 <Typography
                   variant="h5"
-                  sx={{ fontWeight: 700, color: '#0f172a', mb: 0.5 }}
+                  sx={{ fontWeight: 700, color: isDark ? '#f8fafc' : '#0f172a', mb: 0.5 }}
                 >
                   {kpi.value}
                 </Typography>
-                <Typography variant="caption" sx={{ color: '#64748b', fontSize: '13px' }}>
+                <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: '13px' }}>
                   {kpi.description}
                 </Typography>
               </Paper>
@@ -401,14 +396,14 @@ const ServiceRequests = () => {
       <Paper
         elevation={0}
         sx={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: isDark ? '#0f172a' : '#ffffff',
+          border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
           borderRadius: '14px',
           overflow: 'hidden',
         }}
       >
         {/* Toolbar */}
-        <Box sx={{ p: 4, borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+        <Box sx={{ p: 4, borderBottom: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`, background: isDark ? '#111827' : '#f8fafc' }}>
           {/* Tab Filters */}
           <Box sx={{ mb: 3 }}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
@@ -433,11 +428,11 @@ const ServiceRequests = () => {
                           border: 'none',
                         }
                       : {
-                          color: '#64748b',
-                          borderColor: '#e2e8f0',
+                          color: isDark ? '#cbd5f5' : '#64748b',
+                          borderColor: isDark ? '#1f2937' : '#e2e8f0',
                           '&:hover': {
-                            background: '#f1f5f9',
-                            borderColor: '#cbd5e1',
+                            background: isDark ? '#0f172a' : '#f1f5f9',
+                            borderColor: isDark ? '#334155' : '#cbd5e1',
                           },
                         }),
                   }}
@@ -466,20 +461,21 @@ const ServiceRequests = () => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search size={18} style={{ color: '#94a3b8' }} />
+                    <Search size={18} style={{ color: isDark ? '#94a3b8' : '#94a3b8' }} />
                   </InputAdornment>
                 ),
               }}
               sx={{
                 flex: 1,
                 '& .MuiOutlinedInput-root': {
-                  background: '#fff',
+                  background: isDark ? '#0f172a' : '#fff',
                   borderRadius: '8px',
+                  color: isDark ? '#e2e8f0' : '#0f172a',
                   '& fieldset': {
-                    borderColor: '#e2e8f0',
+                    borderColor: isDark ? '#1f2937' : '#e2e8f0',
                   },
                   '&:hover fieldset': {
-                    borderColor: '#cbd5e1',
+                    borderColor: isDark ? '#334155' : '#cbd5e1',
                   },
                 },
               }}
@@ -494,8 +490,10 @@ const ServiceRequests = () => {
                   minWidth: 150,
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '8px',
+                    background: isDark ? '#0f172a' : '#fff',
+                    color: isDark ? '#e2e8f0' : '#0f172a',
                     '& fieldset': {
-                      borderColor: '#e2e8f0',
+                      borderColor: isDark ? '#1f2937' : '#e2e8f0',
                     },
                   },
                 }}
@@ -530,27 +528,29 @@ const ServiceRequests = () => {
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>ID</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Request</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Requester</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Location</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Priority</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Actions</TableCell>
+              <TableRow sx={{ background: isDark ? '#111827' : '#f8fafc', borderBottom: `2px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>ID</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Request</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Requester</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Location</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Priority</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a', fontSize: '13px' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {displayedRequests.map((request, idx) => {
                 const priorityColor = getPriorityColor(request.priority);
                 const statusColor = getStatusColor(request.status);
+                const requesterName = request.requester?.name || [request.requester?.firstName, request.requester?.lastName].filter(Boolean).join(' ') || 'Unknown';
+                const requesterInitials = request.requester?.initials || requesterName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
                 return (
                   <TableRow
                     key={idx}
                     sx={{
-                      borderBottom: '1px solid #e2e8f0',
+                      borderBottom: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
                       '&:hover': {
-                        background: '#f8fafc',
+                        background: isDark ? '#0f172a' : '#f8fafc',
                       },
                       '&:last-child td, &:last-child th': {
                         border: 0,
@@ -572,7 +572,7 @@ const ServiceRequests = () => {
                           sx={{
                             fontWeight: 600,
                             fontSize: '14px',
-                            color: '#0f172a',
+                            color: isDark ? '#f8fafc' : '#0f172a',
                             mb: 0.5,
                           }}
                         >
@@ -580,7 +580,7 @@ const ServiceRequests = () => {
                         </Typography>
                         <Typography
                           variant="caption"
-                          sx={{ color: '#64748b', fontSize: '12px' }}
+                          sx={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }}
                         >
                           {request.description}
                         </Typography>
@@ -593,24 +593,24 @@ const ServiceRequests = () => {
                             width: 36,
                             height: 36,
                             fontSize: '16px',
-                            background: '#dbeafe',
-                            color: '#0c4a6e',
+                            background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+                            color: isDark ? '#93c5fd' : '#0c4a6e',
                             fontWeight: 600,
                           }}
                         >
-                          {request.requester.initials}
+                          {requesterInitials}
                         </Avatar>
                         <Box>
-                          <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
-                            {request.requester.name}
+                          <Typography sx={{ fontSize: '13px', fontWeight: 600, color: isDark ? '#e2e8f0' : '#0f172a' }}>
+                            {requesterName}
                           </Typography>
-                          <Typography sx={{ fontSize: '11px', color: '#64748b' }}>
-                            {request.requester.role}
+                          <Typography sx={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b' }}>
+                            {request.requester?.role || 'Requester'}
                           </Typography>
                         </Box>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ color: '#475569', fontSize: '13px' }}>
+                    <TableCell sx={{ color: isDark ? '#cbd5f5' : '#475569', fontSize: '13px' }}>
                       {request.location}
                     </TableCell>
                     <TableCell>
@@ -639,12 +639,12 @@ const ServiceRequests = () => {
                             border: `1px solid ${statusColor.border}`,
                           }}
                         />
-                        {request.statusAssignee && (
+                        {request.assignee?.name && (
                           <Typography
                             variant="caption"
-                            sx={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap' }}
+                            sx={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap' }}
                           >
-                            {request.statusAssignee}
+                            Assigned {request.assignee.name}
                           </Typography>
                         )}
                       </Box>
@@ -688,13 +688,13 @@ const ServiceRequests = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             p: 3,
-            borderTop: '1px solid #e2e8f0',
-            background: '#f8fafc',
+            borderTop: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}`,
+            background: isDark ? '#111827' : '#f8fafc',
           }}
         >
-          <Typography variant="caption" sx={{ color: '#64748b', fontSize: '13px', fontWeight: 500 }}>
+          <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: '13px', fontWeight: 500 }}>
             Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-            {Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} results
+            {Math.min(currentPage * itemsPerPage, requestData?.pagination?.total || 0)} of {requestData?.pagination?.total || 0} results
           </Typography>
           <Pagination
             count={totalPages}
@@ -730,7 +730,7 @@ const ServiceRequests = () => {
           sx={{
             fontWeight: 700,
             fontSize: '20px',
-            color: '#0f172a',
+            color: isDark ? '#e2e8f0' : '#0f172a',
             pb: 1,
           }}
         >
@@ -828,6 +828,26 @@ const ServiceRequests = () => {
                   }}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Asset (optional)</InputLabel>
+                  <Select
+                    value={formData.asset}
+                    onChange={(e) => handleFormInputChange('asset', e.target.value)}
+                    label="Asset (optional)"
+                    sx={{
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {assets.map((asset) => (
+                      <MenuItem key={asset.id} value={asset.id}>
+                        {asset.name} {asset.assetNumber ? `(${asset.assetNumber})` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
           </form>
         </DialogContent>
@@ -835,7 +855,7 @@ const ServiceRequests = () => {
           <Button
             onClick={handleModalClose}
             sx={{
-              color: '#64748b',
+              color: isDark ? '#cbd5f5' : '#64748b',
               fontWeight: 600,
               textTransform: 'none',
             }}
@@ -928,12 +948,29 @@ const ServiceRequests = () => {
         </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           <Stack spacing={2}>
-            <TextField
-              label="Assignee"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-              fullWidth
-            />
+            {members.length ? (
+              <FormControl fullWidth>
+                <InputLabel>Assignee</InputLabel>
+                <Select
+                  label="Assignee"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                >
+                  {members.map((member) => (
+                    <MenuItem key={member.id || member._id} value={member.id || member._id}>
+                      {member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <TextField
+                label="Assignee ID"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                fullWidth
+              />
+            )}
             <TextField
               label="Assignment Note"
               value={assignNote}

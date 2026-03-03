@@ -20,10 +20,13 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import { fetchMembers, fetchInvites, disableOrg, enableOrg, setUserActive, revokeInvite, createInvite } from '@/api/org';
 
 const OrgAdmin = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,46 +128,55 @@ const OrgAdmin = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ backgroundColor: isDark ? '#0b1120' : 'transparent' }}>
       <Box mb={3} display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Organization Admin</Typography>
+          <Typography variant="h5" fontWeight={700} color="text.primary">Organization Admin</Typography>
           <Typography variant="body2" color="text.secondary">
             Manage members, invites, and org status
           </Typography>
         </Box>
         <Box display="flex" gap={1} flexWrap="wrap">
-          <Button variant="outlined" onClick={handleEnableOrg}>Enable Org</Button>
+          <Button variant="outlined" onClick={handleEnableOrg} sx={{ color: isDark ? '#e2e8f0' : undefined }}>
+            Enable Org
+          </Button>
           <Button variant="contained" color="error" onClick={() => setDisableConfirmOpen(true)}>
             Disable Org
           </Button>
         </Box>
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3, backgroundColor: isDark ? '#0f172a' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={600}>Organization Code</Typography>
+            <Typography variant="subtitle1" fontWeight={600} color="text.primary">Organization Code</Typography>
             <Typography variant="body2" color="text.secondary">Share this with members to join.</Typography>
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
             <Chip label={orgCode || 'N/A'} color="primary" variant="outlined" />
-            <Button size="small" variant="outlined" onClick={copyOrgCode} disabled={!orgCode}>
+            <Button size="small" variant="outlined" onClick={copyOrgCode} disabled={!orgCode} sx={{ color: isDark ? '#e2e8f0' : undefined }}>
               Copy
             </Button>
           </Box>
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3, backgroundColor: isDark ? '#0f172a' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mb={2}>
-          <Typography variant="subtitle1" fontWeight={600}>Members</Typography>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">Members</Typography>
           <Box display="flex" gap={1} flexWrap="wrap">
             <TextField
               size="small"
               placeholder="Search members"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  background: isDark ? '#0f172a' : '#fff',
+                  color: isDark ? '#e2e8f0' : '#0f172a',
+                  '& fieldset': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+                },
+              }}
             />
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Role</InputLabel>
@@ -172,6 +184,11 @@ const OrgAdmin = () => {
                 label="Role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
+                sx={{
+                  background: isDark ? '#0f172a' : '#fff',
+                  color: isDark ? '#e2e8f0' : '#0f172a',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+                }}
               >
                 <MenuItem value="">All Roles</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
@@ -180,7 +197,7 @@ const OrgAdmin = () => {
                 <MenuItem value="vendor">Vendor</MenuItem>
               </Select>
             </FormControl>
-            <Button size="small" variant="outlined" onClick={loadData}>
+            <Button size="small" variant="outlined" onClick={loadData} sx={{ color: isDark ? '#e2e8f0' : undefined }}>
               Apply
             </Button>
           </Box>
@@ -188,17 +205,17 @@ const OrgAdmin = () => {
 
         <Table size="small">
           <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Action</TableCell>
+            <TableRow sx={{ backgroundColor: isDark ? '#111827' : '#f8fafc' }}>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Name</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Email</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Role</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Status</TableCell>
+              <TableCell align="right" sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {members.map((member) => (
-              <TableRow key={member._id}>
+              <TableRow key={member._id} sx={{ '& td': { color: isDark ? '#e2e8f0' : '#0f172a' } }}>
                 <TableCell>{member.firstName} {member.lastName}</TableCell>
                 <TableCell>{member.email}</TableCell>
                 <TableCell>{member.role}</TableCell>
@@ -216,6 +233,7 @@ const OrgAdmin = () => {
                     variant="outlined"
                     onClick={() => handleToggleUser(member)}
                     disabled={loading}
+                    sx={{ color: isDark ? '#e2e8f0' : undefined }}
                   >
                     {member.active ? 'Deactivate' : 'Activate'}
                   </Button>
@@ -235,9 +253,9 @@ const OrgAdmin = () => {
         </Table>
       </Paper>
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 2, backgroundColor: isDark ? '#0f172a' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
         <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mb={2}>
-          <Typography variant="subtitle1" fontWeight={600}>Invites</Typography>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">Invites</Typography>
           <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Role</InputLabel>
@@ -245,6 +263,11 @@ const OrgAdmin = () => {
                 label="Role"
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
+                sx={{
+                  background: isDark ? '#0f172a' : '#fff',
+                  color: isDark ? '#e2e8f0' : '#0f172a',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+                }}
               >
                 <MenuItem value="facility_manager">Facility Manager</MenuItem>
                 <MenuItem value="technician">Technician</MenuItem>
@@ -261,7 +284,14 @@ const OrgAdmin = () => {
               value={inviteExpiresDays}
               onChange={(e) => setInviteExpiresDays(e.target.value)}
               inputProps={{ min: 1 }}
-              sx={{ width: 140 }}
+              sx={{
+                width: 140,
+                '& .MuiOutlinedInput-root': {
+                  background: isDark ? '#0f172a' : '#fff',
+                  color: isDark ? '#e2e8f0' : '#0f172a',
+                  '& fieldset': { borderColor: isDark ? '#1f2937' : '#e2e8f0' },
+                },
+              }}
             />
             <Button size="small" variant="contained" onClick={handleCreateInvite}>
               Create Invite
@@ -270,17 +300,17 @@ const OrgAdmin = () => {
         </Box>
         <Table size="small">
           <TableHead>
-            <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Created By</TableCell>
-              <TableCell>Expires</TableCell>
-              <TableCell align="right">Actions</TableCell>
+            <TableRow sx={{ backgroundColor: isDark ? '#111827' : '#f8fafc' }}>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Code</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Role</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Created By</TableCell>
+              <TableCell sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Expires</TableCell>
+              <TableCell align="right" sx={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {invites.map((invite) => (
-              <TableRow key={invite.code}>
+              <TableRow key={invite.code} sx={{ '& td': { color: isDark ? '#e2e8f0' : '#0f172a' } }}>
                 <TableCell>{invite.code}</TableCell>
                 <TableCell>{invite.role}</TableCell>
                 <TableCell>{invite.createdBy || '—'}</TableCell>

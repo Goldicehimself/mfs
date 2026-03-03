@@ -13,6 +13,7 @@ import {
   IconButton,
   Popover,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -42,6 +43,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const theme = useTheme();
 
   const [openAssets, setOpenAssets] = React.useState(false);
   const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
@@ -259,7 +261,12 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
             <ListItemIcon sx={{ minWidth: 36 }}>
               {React.cloneElement(item.icon, { size: 18, className: 'icon' })}
             </ListItemIcon>
-            {!collapsed && <ListItemText primary={item.title} />}
+            {!collapsed && (
+              <ListItemText
+                primary={item.title}
+                primaryTypographyProps={{ sx: { color: 'text.primary' } }}
+              />
+            )}
             {!collapsed && (open ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
           </ListItemButton>
         </ListItem>
@@ -280,7 +287,12 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       {React.cloneElement(child.icon, { size: 16, className: 'icon' })}
                     </ListItemIcon>
-                    {!collapsed && <ListItemText primary={child.title} />}
+                    {!collapsed && (
+                      <ListItemText
+                        primary={child.title}
+                        primaryTypographyProps={{ sx: { color: 'text.primary' } }}
+                      />
+                    )}
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -333,6 +345,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
                 item.title
               )
             }
+            primaryTypographyProps={{ sx: { color: 'text.primary' } }}
           />
         )}
       </ListItemButton>
@@ -344,7 +357,21 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
     <Box className="h-full mp-sidebar">
       <Box className="mp-sidebar-header">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Box sx={{ width: 40, height: 40, borderRadius: 1, overflow: 'hidden', bgcolor: '#fff', boxShadow: '0 1px 4px rgba(30,58,138,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 1,
+              overflow: 'hidden',
+              bgcolor: theme.palette.mode === 'dark' ? '#0b1220' : '#fff',
+              boxShadow: theme.palette.mode === 'dark'
+                ? '0 1px 6px rgba(0,0,0,0.5)'
+                : '0 1px 4px rgba(30,58,138,0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 9, ease: 'linear', repeat: Infinity }} style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Wrench size={18} color="var(--mp-brand)" />
             </motion.div>
@@ -408,7 +435,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
                 sx={{
                   px: 2,
                   pb: 0.5,
-                  color: '#64748b',
+                  color: 'text.secondary',
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
@@ -419,7 +446,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
               <List sx={{ px: 1 }}>
                 {items.map(renderMenuItem)}
               </List>
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: 'divider' }} />
             </Box>
           );
         })
@@ -452,13 +479,15 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
             ml: 1,
             minWidth: 220,
             borderRadius: 2,
-            border: '1px solid #e2e8f0',
+            border: `1px solid ${theme.palette.divider}`,
             boxShadow: '0 12px 30px rgba(15,23,42,0.12)',
+            bgcolor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
           },
         }}
       >
         <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#475569', mb: 1 }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', mb: 1 }}>
             {hoverTitle}
           </Typography>
           <List disablePadding>
@@ -477,7 +506,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
                   <ListItemIcon sx={{ minWidth: 32 }}>
                     {React.cloneElement(child.icon, { size: 16, className: 'icon' })}
                   </ListItemIcon>
-                  <ListItemText primary={child.title} />
+                  <ListItemText primary={child.title} primaryTypographyProps={{ sx: { color: 'text.primary' } }} />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -485,7 +514,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
         </Box>
       </Popover>
 
-      <Box sx={{ mt: 'auto', px: 2, py: 1.5, borderTop: '1px solid #e2e8f0' }}>
+      <Box sx={{ mt: 'auto', px: 2, py: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
         <ListItemButton
           onClick={onToggleCollapse}
           className="mp-nav-item"
@@ -498,7 +527,7 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
           <ListItemIcon sx={{ minWidth: 36 }}>
             {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
           </ListItemIcon>
-          {!collapsed && <ListItemText primary="Collapse" />}
+          {!collapsed && <ListItemText primary="Collapse" primaryTypographyProps={{ sx: { color: 'text.primary' } }} />}
         </ListItemButton>
       </Box>
     </Box>

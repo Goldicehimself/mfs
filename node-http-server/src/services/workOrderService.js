@@ -14,7 +14,7 @@ const getWorkOrders = async (organizationId, filters = {}, page = 1, limit = 20)
   const scopedFilters = { ...filters, organization: organizationId };
   
   const query = WorkOrder.find(scopedFilters)
-    .populate('createdBy assignedTo asset team')
+    .populate('createdBy assignedTo asset team vendor')
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -37,7 +37,7 @@ const getWorkOrders = async (organizationId, filters = {}, page = 1, limit = 20)
 
 const getWorkOrderById = async (organizationId, id) => {
   const workOrder = await WorkOrder.findOne({ _id: id, organization: organizationId })
-    .populate('createdBy assignedTo asset team');
+    .populate('createdBy assignedTo asset team vendor');
   if (!workOrder) {
     throw new NotFoundError('WorkOrder');
   }
@@ -49,7 +49,7 @@ const createWorkOrder = async (organizationId, workOrderData) => {
   workOrderData.workOrderNumber = await generateWorkOrderNumber(organizationId);
   const workOrder = new WorkOrder(workOrderData);
   await workOrder.save();
-  await workOrder.populate('createdBy assignedTo asset');
+  await workOrder.populate('createdBy assignedTo asset vendor');
   return workOrder;
 };
 
@@ -58,7 +58,7 @@ const updateWorkOrder = async (organizationId, id, updateData) => {
   const workOrder = await WorkOrder.findOneAndUpdate({ _id: id, organization: organizationId }, updateData, {
     new: true,
     runValidators: true
-  }).populate('createdBy assignedTo asset');
+  }).populate('createdBy assignedTo asset vendor');
   
   if (!workOrder) {
     throw new NotFoundError('WorkOrder');
@@ -82,6 +82,44 @@ const assignWorkOrder = async (organizationId, id, assigneeId) => {
     assignedTo: assigneeId,
     status: 'assigned'
   });
+};
+
+const bulkAssignWorkOrders = async (organizationId, { ids = null, assigneeId = null, filters = {} } = {}) => {
+  const scopedFilters = { organization: organizationId };
+
+  if (Array.isArray(ids) && ids.length > 0) {
+    scopedFilters._id = { $in: ids };
+  } else {
+    if (filters.status && filters.status !== 'all') scopedFilters.status = filters.status;
+    if (filters.priority && filters.priority !== 'all') scopedFilters.priority = filters.priority;
+    if (filters.assignee && filters.assignee !== 'all') scopedFilters.assignedTo = filters.assignee;
+    if (filters.category && filters.category !== 'all') scopedFilters.category = filters.category;
+    if (filters.location && filters.location !== 'all') scopedFilters.location = filters.location;
+    if (filters.search && filters.search.trim()) {
+      const regex = new RegExp(filters.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      scopedFilters.$or = [
+        { workOrderNumber: regex },
+        { title: regex },
+        { description: regex }
+      ];
+    }
+  }
+
+  const updateData = {
+    assignedTo: assigneeId || null,
+    status: assigneeId ? 'assigned' : 'open',
+    updatedAt: new Date()
+  };
+
+  const result = await WorkOrder.updateMany(scopedFilters, updateData);
+  const updatedWorkOrders = await WorkOrder.find(scopedFilters)
+    .populate('createdBy assignedTo asset team vendor');
+
+  return {
+    updatedCount: result.modifiedCount ?? result.nModified ?? 0,
+    updatedIds: updatedWorkOrders.map((wo) => wo._id),
+    updatedWorkOrders
+  };
 };
 
 const deleteWorkOrder = async (organizationId, id) => {
@@ -122,7 +160,7 @@ const addComment = async (organizationId, id, userId, text) => {
   });
 
   await workOrder.save();
-  await workOrder.populate('comments.user createdBy assignedTo asset team');
+  await workOrder.populate('comments.user createdBy assignedTo asset team vendor');
   return workOrder;
 };
 
@@ -134,7 +172,7 @@ const addWorkOrderPhotos = async (organizationId, id, filePaths = []) => {
       updatedAt: new Date()
     },
     { new: true, runValidators: true }
-  ).populate('createdBy assignedTo asset');
+  ).populate('createdBy assignedTo asset vendor');
 
   if (!workOrder) {
     throw new NotFoundError('WorkOrder');
@@ -149,6 +187,7 @@ module.exports = {
   updateWorkOrder,
   updateWorkOrderStatus,
   assignWorkOrder,
+  bulkAssignWorkOrders,
   deleteWorkOrder,
   addComment,
   addWorkOrderPhotos,

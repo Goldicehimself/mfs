@@ -69,7 +69,7 @@ const RecentActivity = ({ activities: propActivities = null }) => {
             <ListItemText
               primary={
                 <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1f2937' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {activity.title}
                   </Typography>
                   {activity.status && (

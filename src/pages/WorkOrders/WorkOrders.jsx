@@ -7,6 +7,7 @@ import { getWorkOrders, deleteWorkOrder, bulkAssignWorkOrders, updateWorkOrderSt
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function WorkOrders() {
   const navigate = useNavigate();
@@ -40,6 +41,11 @@ export default function WorkOrders() {
     const priorityParam = searchParams.get('priority');
     if (priorityParam) {
       setPriorityFilter(priorityParam);
+    }
+    const searchParam = searchParams.get('search');
+    if (searchParam !== null) {
+      setSearch(searchParam);
+      setPage(0);
     }
   }, [searchParams]);
 
@@ -223,13 +229,13 @@ export default function WorkOrders() {
       </div>
 
       {/* Filters Card */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm dark:bg-zinc-900">
         <CardContent className="p-5 space-y-4">
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <input
-                className="w-full pl-9 pr-3 py-2 h-10 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg"
+                className="w-full pl-9 pr-3 py-2 h-10 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
                 type="text"
                 placeholder="Search work orders by ID or title..."
                 value={search}
@@ -237,7 +243,7 @@ export default function WorkOrders() {
               />
             </div>
 
-            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
               <option value="all">All Status</option>
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -245,7 +251,7 @@ export default function WorkOrders() {
               <option value="overdue">Overdue</option>
             </select>
 
-            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); }}>
               <option value="all">All Priorities</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>
@@ -253,12 +259,12 @@ export default function WorkOrders() {
               <option value="low">Low</option>
             </select>
 
-            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}>
               <option value="all">All Categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
 
-            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
+            <select className="h-10 px-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setPage(0); }}>
               <option value="all">All Technicians</option>
               {assigneeOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -269,18 +275,18 @@ export default function WorkOrders() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
+            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={dateRange} onChange={(e) => { setDateRange(e.target.value); setPage(0); }}>
               <option value="7">Last 7 Days</option>
               <option value="30">Last 30 Days</option>
               <option value="90">Last 90 Days</option>
             </select>
 
-            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
+            <select className="h-9 px-2 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100" value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(0); }}>
               <option value="all">All Locations</option>
               {locations.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
 
-            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setBulkModalOpen(true)}>
+            <Button variant="outline" size="sm" className="ml-auto text-zinc-700 dark:text-zinc-200" onClick={() => setBulkModalOpen(true)}>
               Bulk Assign
             </Button>
 
@@ -312,16 +318,32 @@ export default function WorkOrders() {
       </Card>
 
       {/* Table Card */}
-      <Card className="border-0 shadow-sm overflow-hidden">
+      <Card className="border-0 shadow-sm overflow-hidden dark:bg-zinc-900">
         {isLoading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-3"></div>
-            <p className="text-muted-foreground">Loading work orders...</p>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, idx) => (
+                <div key={idx} className="grid grid-cols-7 gap-3 items-center">
+                  <Skeleton className="h-4 w-4" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-20 hidden md:block" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-24 hidden lg:block" />
+                  <Skeleton className="h-8 w-20 justify-self-end" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : displayedWorkOrders.length === 0 ? (
           <div className="p-12 text-center">
             <AlertCircle className="h-12 w-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-            <p className="text-muted-foreground">No work orders found</p>
+            <p className="text-slate-500 dark:text-slate-400">No work orders found</p>
           </div>
         ) : (
           <>
@@ -329,7 +351,7 @@ export default function WorkOrders() {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
                   <tr>
-                    <th className="px-4 py-3 text-left"><input type="checkbox" className="h-4 w-4" checked={selected.length === displayedWorkOrders.length && displayedWorkOrders.length > 0} onChange={(e) => { if (e.target.checked) setSelected(displayedWorkOrders.map(w => w.id)); else setSelected([]); }} /></th>
+                    <th className="px-4 py-3 text-left"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={selected.length === displayedWorkOrders.length && displayedWorkOrders.length > 0} onChange={(e) => { if (e.target.checked) setSelected(displayedWorkOrders.map(w => w.id)); else setSelected([]); }} /></th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 cursor-pointer" onClick={() => toggleSort('woNumber')}>
                       <div className="flex items-center gap-2">ID {sortBy === 'woNumber' ? (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />) : <ArrowUpDown size={12} className="opacity-30" />}</div>
                     </th>
@@ -346,7 +368,7 @@ export default function WorkOrders() {
                 <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
                   {displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((wo) => (
                     <tr key={wo.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors border-l-4" style={{borderLeftColor: wo.priority === 'critical' ? '#ef4444' : wo.priority === 'high' ? '#f97316' : wo.priority === 'medium' ? '#3b82f6' : '#10b981'}}>
-                      <td className="px-4 py-3"><input type="checkbox" className="h-4 w-4" checked={selectAllMode || selected.includes(wo.id)} onChange={() => {
+                      <td className="px-4 py-3"><input type="checkbox" className="h-4 w-4 accent-indigo-600" checked={selectAllMode || selected.includes(wo.id)} onChange={() => {
                         if (selectAllMode) {
                           setSelectAllMode(false);
                           const pageIds = displayedWorkOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(w => w.id);
@@ -366,13 +388,13 @@ export default function WorkOrders() {
                               <img src={wo.assignedTo.avatar || '/avatar-placeholder.png'} alt="avatar" className="w-6 h-6 rounded-full" />
                               <span className="text-sm text-zinc-900 dark:text-zinc-100">{wo.assignedTo.name}</span>
                             </>
-                          ) : (<span className="text-sm text-zinc-500">Unassigned</span>)}
+                          ) : (<span className="text-sm text-zinc-500 dark:text-zinc-400">Unassigned</span>)}
                         </div>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell"><span className="text-sm text-zinc-600 dark:text-zinc-400">{wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : '—'}</span></td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`, { state: { workOrder: wo } })} className="text-xs">
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/work-orders/${wo.id}`, { state: { workOrder: wo } })} className="text-xs text-zinc-700 dark:text-zinc-200">
                             <Eye size={14} /> View
                           </Button>
                           {wo.status === 'open' && (
@@ -405,13 +427,13 @@ export default function WorkOrders() {
                               Complete
                             </Button>
                           )}
-                          {wo.status === 'completed' && <Button size="sm" variant="outline" className="text-xs">Completed</Button>}
-                          {wo.status === 'cancelled' && <Button size="sm" variant="outline" className="text-xs">Cancelled</Button>}
+                          {wo.status === 'completed' && <Button size="sm" variant="outline" className="text-xs text-zinc-700 dark:text-zinc-200">Completed</Button>}
+                          {wo.status === 'cancelled' && <Button size="sm" variant="outline" className="text-xs text-zinc-700 dark:text-zinc-200">Cancelled</Button>}
                           {(wo.status === 'open' || wo.status === 'in_progress' || wo.status === 'overdue') && (
                             <Button 
                               size="sm" 
                               variant="outline"
-                              className="text-xs"
+                              className="text-xs text-zinc-700 dark:text-zinc-200"
                               onClick={() => statusMutation.mutate({ id: wo.id, status: 'cancelled' })}
                               disabled={statusMutation.isLoading && updatingId === wo.id}
                             >
@@ -432,13 +454,13 @@ export default function WorkOrders() {
                 Showing {(page * rowsPerPage) + 1}-{Math.min((page + 1) * rowsPerPage, displayedWorkOrders.length)} of {displayedWorkOrders.length}
               </div>
               <div className="flex items-center gap-2">
-                <select className="h-8 px-2 text-sm border border-gray-200 dark:border-zinc-700 rounded" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
+                <select className="h-8 px-2 text-sm border border-gray-200 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-800" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}>
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                 </select>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={(page + 1) * rowsPerPage >= displayedWorkOrders.length}>Next</Button>
+                <Button variant="outline" size="sm" className="text-zinc-700 dark:text-zinc-200" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Prev</Button>
+                <Button variant="outline" size="sm" className="text-zinc-700 dark:text-zinc-200" onClick={() => setPage(p => p + 1)} disabled={(page + 1) * rowsPerPage >= displayedWorkOrders.length}>Next</Button>
               </div>
             </div>
           </>
@@ -448,7 +470,7 @@ export default function WorkOrders() {
       {/* Bulk Assign Modal */}
       {bulkModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-xl shadow-2xl overflow-hidden text-zinc-900 dark:text-zinc-100">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6">
               <h3 className="text-xl font-bold">
@@ -487,7 +509,7 @@ export default function WorkOrders() {
                   </div>
 
                   {/* Technician List */}
-                  <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-zinc-700">
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
                     {assignees.length === 0 ? (
                       <div className="p-8 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">No technicians found</p>
@@ -522,7 +544,7 @@ export default function WorkOrders() {
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-zinc-700">
-                    <Button variant="outline" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }}>
+                    <Button variant="outline" className="text-zinc-700 dark:text-zinc-200" onClick={() => { setBulkModalOpen(false); setConfirmStep(false); setAssigneeSelected(null); setAssigneeQuery(''); }}>
                       Cancel
                     </Button>
                     <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => {
@@ -559,7 +581,7 @@ export default function WorkOrders() {
 
                   {/* Confirmation Buttons */}
                   <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-zinc-700">
-                    <Button variant="outline" onClick={() => setConfirmStep(false)}>
+                    <Button variant="outline" className="text-zinc-700 dark:text-zinc-200" onClick={() => setConfirmStep(false)}>
                       Back
                     </Button>
                     <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => {

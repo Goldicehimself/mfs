@@ -105,7 +105,9 @@ const documentUpload = multer({
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain'
+      'text/plain',
+      'text/csv',
+      'application/csv'
     ];
     if (!allowedTypes.includes(file.mimetype)) {
       return cb(new Error('Invalid file type. Only PDF, Word, Excel, and TXT are allowed.'), false);
@@ -154,6 +156,7 @@ module.exports = {
   // Document uploads
   uploadDocumentSingle: documentUpload.single('document'),
   uploadDocumentMultiple: documentUpload.array('documents', 5),
+  uploadAssetImport: documentUpload.single('file'),
 
   // WorkOrder photo uploads
   uploadWorkOrderPhotoSingle: workOrderPhotoUpload.single('photo'),

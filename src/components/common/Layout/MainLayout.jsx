@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Menu, LogOut, Settings, User, Wrench, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Menu, LogOut, Settings, User, Wrench, ChevronsLeft, ChevronsRight, Search, Sun, Moon, Laptop } from "lucide-react";
 import { motion } from 'framer-motion';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +17,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import NavigationMenu from "../Navigation/NavigationMenu";
 import NotificationDropdown from "../Notifications/NotificationDropdown";
-import NotificationTester from "../Notifications/NotificationTester";
 
 const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem("mp_sidebar_collapsed");
     return saved === "true";
@@ -27,6 +29,7 @@ const MainLayout = ({ children }) => {
   const [sidebarHover, setSidebarHover] = useState(false);
   const hoverTimeoutRef = React.useRef(null);
   const { user, logout } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   /* =========================
@@ -53,16 +56,25 @@ const MainLayout = ({ children }) => {
     return roles[role] || role;
   };
 
+  const runGlobalSearch = (path) => {
+    const query = globalSearch.trim();
+    if (!query) return;
+    const params = new URLSearchParams({ search: query }).toString();
+    navigate(`${path}?${params}`);
+    setGlobalSearchOpen(false);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* ================= HEADER ================= */}
       <header
         className={`
+          mp-header
           sticky top-0 z-50 h-16
           flex items-center justify-between
-          px-6
-          border-b border-slate-200
-          bg-white
+          px-4 md:px-6
+          border-b border-slate-200 dark:border-slate-800
+          bg-white dark:bg-slate-950
           ${sidebarCollapsed && !sidebarHover ? "md:ml-20" : "md:ml-72"}
         `}
         style={{ fontFamily: '"Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif' }}
@@ -73,7 +85,7 @@ const MainLayout = ({ children }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden hover:bg-slate-100 transition text-slate-700"
+            className="md:hidden hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-200"
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
           >
@@ -93,13 +105,71 @@ const MainLayout = ({ children }) => {
               </div>
 
               <div>
-                <div className="text-base font-semibold tracking-tight text-slate-900">
+                <div className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
                   FacilityPro
                 </div>
-                <div className="text-xs text-slate-500">Maintenance Made Simple</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">Maintenance Made Simple</div>
               </div>
             </div>
 
+          </div>
+        </div>
+
+        {/* Center: Global Search */}
+        <div className="hidden lg:flex flex-1 justify-center px-6">
+          <div
+            className="relative w-full max-w-xl"
+            onFocus={() => setGlobalSearchOpen(true)}
+            onBlur={() => setTimeout(() => setGlobalSearchOpen(false), 120)}
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                runGlobalSearch("/work-orders");
+              }}
+            >
+              <input
+                type="search"
+                placeholder="Search work orders, assets, vendors..."
+                className="w-full h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 focus:border-slate-300 dark:focus:border-slate-600"
+                aria-label="Global search"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+              />
+            </form>
+
+            {globalSearchOpen && globalSearch.trim() && (
+              <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runGlobalSearch("/work-orders")}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50"
+                >
+                  Search Work Orders
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runGlobalSearch("/assets")}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50"
+                >
+                  Search Assets
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => runGlobalSearch("/vendors")}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50"
+                >
+                  Search Vendors
+                </button>
+                <div className="px-4 py-2 text-xs text-slate-500 bg-slate-50 border-t border-slate-200">
+                  TODO: global search across all modules
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -186,6 +256,33 @@ const MainLayout = ({ children }) => {
 
               <DropdownMenuSeparator />
 
+              <DropdownMenuItem disabled sx={{ fontSize: 12, opacity: 0.7 }}>
+                Appearance
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setTheme('light')}
+                className="cursor-pointer gap-2 text-slate-700"
+              >
+                <Sun className="h-4 w-4 text-slate-500" />
+                Light {theme === 'light' && '✓'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setTheme('dark')}
+                className="cursor-pointer gap-2 text-slate-700"
+              >
+                <Moon className="h-4 w-4 text-slate-500" />
+                Dark {theme === 'dark' && '✓'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setTheme('system')}
+                className="cursor-pointer gap-2 text-slate-700"
+              >
+                <Laptop className="h-4 w-4 text-slate-500" />
+                System {theme === 'system' && `(${resolvedTheme})`} {theme === 'system' && '✓'}
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={() => {
                   logout();
@@ -205,10 +302,10 @@ const MainLayout = ({ children }) => {
         className={`
           fixed left-0 top-0 z-40
           h-screen
-          bg-white border-r border-slate-200 shadow-sm
+          bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-sm
           overflow-y-auto
           transition-all duration-300
-          ${sidebarCollapsed && !sidebarHover ? "w-20" : "w-72"}
+          ${sidebarCollapsed && !sidebarHover ? "w-20" : "w-[85%] sm:w-72"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
@@ -246,11 +343,11 @@ const MainLayout = ({ children }) => {
 
       {/* ================= MAIN ================= */}
       <main className={`p-4 md:p-6 ${sidebarCollapsed && !sidebarHover ? "md:ml-20" : "md:ml-72"}`}>
-        {children}
+        <div className="mp-mobile-surface">
+          {children}
+        </div>
       </main>
 
-      {/* Notification Tester */}
-      <NotificationTester />
     </div>
   );
 };

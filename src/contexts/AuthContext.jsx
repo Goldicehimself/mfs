@@ -26,13 +26,6 @@ export const AuthProvider = ({ children }) => {
     return 'there';
   };
 
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   const getDialCode = (value) => {
     const match = String(value || '').trim().match(/^(\+\d{1,4})/);
     return match ? match[1] : null;
@@ -54,12 +47,6 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       // ignore local storage failures
     }
-  };
-
-  const showLoginGreeting = (value) => {
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
-    const firstName = getFirstName(value);
-    toast.success(`Welcome, ${firstName}. ${getTimeGreeting()} (${timeZone})`);
   };
 
   const normalizeUser = (value) => {
@@ -122,10 +109,13 @@ export const AuthProvider = ({ children }) => {
           const storage = rememberMe ? localStorage : sessionStorage;
           storage.setItem('token', token);
           storage.setItem('user', JSON.stringify(normalized));
-          storage.setItem('orgCode', orgCode);
+          if (normalized.role === 'admin') {
+            storage.setItem('orgCode', orgCode);
+          } else {
+            storage.removeItem('orgCode');
+          }
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           setUser(normalized);
-          showLoginGreeting(normalized);
           recordLoginHistory(normalized);
 
           // Redirect based on role
@@ -168,11 +158,14 @@ export const AuthProvider = ({ children }) => {
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', token);
       storage.setItem('user', JSON.stringify(apiUser));
-      storage.setItem('orgCode', orgCode);
+      if (apiUser.role === 'admin') {
+        storage.setItem('orgCode', orgCode);
+      } else {
+        storage.removeItem('orgCode');
+      }
       axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(apiUser);
-      showLoginGreeting(apiUser);
       recordLoginHistory(apiUser);
       
       // Redirect based on role
@@ -211,10 +204,13 @@ export const AuthProvider = ({ children }) => {
           const storage = rememberMe ? localStorage : sessionStorage;
           storage.setItem('token', token);
           storage.setItem('user', JSON.stringify(normalized));
-          storage.setItem('orgCode', orgCode);
+          if (normalized.role === 'admin') {
+            storage.setItem('orgCode', orgCode);
+          } else {
+            storage.removeItem('orgCode');
+          }
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           setUser(normalized);
-          showLoginGreeting(normalized);
           recordLoginHistory(normalized);
 
           // Redirect based on role
@@ -289,7 +285,17 @@ export const AuthProvider = ({ children }) => {
       }
       const payload = response.data?.data || {};
       const apiUser = normalizeUser(payload.user);
-      const orgCode = payload.organization?.orgCode || userData.orgCode;
+      const orgCode = payload.organization?.orgCode || payload.organizationCode || userData.orgCode;
+      if (userData.mode === 'org' && orgCode && userData.email) {
+        try {
+          localStorage.setItem('pendingOrgVerification', JSON.stringify({
+            orgCode,
+            email: userData.email
+          }));
+        } catch (e) {
+          // ignore localStorage errors
+        }
+      }
       // Ensure we have a local record for development fallback so users can sign in
       try {
         const users = getLocalUsers();
@@ -310,11 +316,21 @@ export const AuthProvider = ({ children }) => {
         // ignore local save failures
       }
 
-      // Do NOT auto-login after registration; inform the user and redirect to login
+      // Do NOT auto-login after registration
       if (userData.mode !== 'org') {
-        toast.success('Registration successful - please sign in');
+        if (userData.email) {
+          try {
+            localStorage.setItem('pendingUserVerification', JSON.stringify({
+              orgCode,
+              email: userData.email
+            }));
+          } catch (e) {
+            // ignore storage errors
+          }
+        }
+        toast.success('Registration successful - please verify your email');
+        navigate('/verify-user-email');
       }
-      navigate('/login');
       return { success: true, orgCode, mode: userData.mode };
     } catch (error) {
       // Fallback to localStorage-based registration

@@ -95,16 +95,8 @@ const mockVendors = [
   },
 ];
 
-const shouldUseMock = () => {
-  const token = localStorage.getItem('token');
-  return !token || token.startsWith('local-');
-};
-
 export async function fetchVendors() {
   try {
-    if (shouldUseMock()) {
-      return mockVendors;
-    }
     const response = await axiosInstance.get('/vendors');
     const payload = response.data?.data;
     if (Array.isArray(payload)) return payload.map(normalizeVendor);
@@ -113,66 +105,68 @@ export async function fetchVendors() {
     }
     return payload;
   } catch (error) {
-    return mockVendors;
+    if (!error?.response) {
+      return mockVendors;
+    }
+    return [];
   }
 }
 
 export async function getVendorById(id) {
   try {
-    if (shouldUseMock()) {
-      return mockVendors.find((v) => v.id === parseInt(id));
-    }
     const response = await axiosInstance.get(`/vendors/${id}`);
     return normalizeVendor(response.data?.data);
   } catch (error) {
-    return mockVendors.find((v) => v.id === parseInt(id));
+    if (!error?.response) {
+      return mockVendors.find((v) => v.id === parseInt(id));
+    }
+    return null;
   }
 }
 
 export async function createVendor(vendorData) {
   try {
-    if (shouldUseMock()) {
-      return { ...vendorData, id: Date.now() };
-    }
     const response = await axiosInstance.post('/vendors', vendorData);
     return normalizeVendor(response.data?.data);
   } catch (error) {
-    const newVendor = { ...vendorData, id: Date.now() };
-    return newVendor;
+    if (!error?.response) {
+      return { ...vendorData, id: Date.now() };
+    }
+    throw error;
   }
 }
 
 export async function updateVendor(id, vendorData) {
   try {
-    if (shouldUseMock()) {
-      return { ...vendorData, id };
-    }
     const response = await axiosInstance.put(`/vendors/${id}`, vendorData);
     return normalizeVendor(response.data?.data);
   } catch (error) {
+    if (!error?.response) {
+      return { ...vendorData, id };
+    }
     throw error;
   }
 }
 
 export async function deleteVendor(id) {
   try {
-    if (shouldUseMock()) {
-      return { success: true };
-    }
     await axiosInstance.delete(`/vendors/${id}`);
   } catch (error) {
+    if (!error?.response) {
+      return { success: true };
+    }
     throw error;
   }
 }
 
 export async function importVendors(vendors) {
   try {
-    if (shouldUseMock()) {
-      return { successful: vendors.length, failed: 0, errors: [] };
-    }
     const response = await axiosInstance.post('/vendors/import', { vendors });
     return response.data?.data;
   } catch (error) {
-    return { successful: vendors.length, failed: 0, errors: [] };
+    if (!error?.response) {
+      return { successful: vendors.length, failed: 0, errors: [] };
+    }
+    throw error;
   }
 }

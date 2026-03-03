@@ -34,6 +34,7 @@ import {
   FormControl,
   InputLabel,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   TrendingUp,
   TrendingDown,
@@ -46,6 +47,8 @@ import {
 import { fetchReports, exportReport } from '../../api/reports';
 
 const ReportsPage = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [timeRange, setTimeRange] = useState('Last 30 days');
   const [activeFilter, setActiveFilter] = useState('All Status');
 
@@ -94,11 +97,11 @@ const ReportsPage = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', py: 4 }}>
+    <Container maxWidth="xl" sx={{ minHeight: '100vh', background: isDark ? 'linear-gradient(135deg, #0b1120 0%, #111827 100%)' : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)', py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, color: '#1f2937' }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, color: 'text.primary' }}>
             Reports & Analytics
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 400 }}>
@@ -142,7 +145,7 @@ const ReportsPage = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Total Work Orders
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
                     {safeSummary.totalWorkOrders.toLocaleString()}
                   </Typography>
                 </Box>
@@ -176,7 +179,7 @@ const ReportsPage = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Completion Rate
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
                     {safeSummary.completionRate}%
                   </Typography>
                 </Box>
@@ -210,7 +213,7 @@ const ReportsPage = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Avg Response Time
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
                     {safeSummary.avgResponseTime}h
                   </Typography>
                 </Box>
@@ -244,7 +247,7 @@ const ReportsPage = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block', fontWeight: 600, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Total Costs
                   </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
                     ${(safeSummary.totalCosts / 1000).toFixed(1)}K
                   </Typography>
                 </Box>
@@ -281,7 +284,7 @@ const ReportsPage = () => {
                   <Avatar sx={{ bgcolor: '#4f46e520', color: '#4f46e5', width: 36, height: 36 }}>
                     <TrendingUp size={16} />
                   </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Work Order Trends</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>Work Order Trends</Typography>
                 </Box>
                 <Button 
                   size="small" 
@@ -295,14 +298,15 @@ const ReportsPage = () => {
               <Divider sx={{ mb: 2.5 }} />
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={workOrderTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1f2937' : '#e5e7eb'} />
+                  <XAxis dataKey="week" tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#6b7280' }} />
+                  <YAxis tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#6b7280' }} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: isDark ? '#0f172a' : '#fff',
+                      border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
                       borderRadius: '0.5rem',
+                      color: isDark ? '#e2e8f0' : '#111827',
                     }}
                   />
                   <Legend />
@@ -324,7 +328,7 @@ const ReportsPage = () => {
                   <Avatar sx={{ bgcolor: '#d9770620', color: '#d97706', width: 36, height: 36 }}>
                     <DollarSign size={16} />
                   </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Cost Breakdown</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>Cost Breakdown</Typography>
                 </Box>
                 <Button 
                   size="small" 
@@ -353,9 +357,10 @@ const ReportsPage = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: isDark ? '#0f172a' : '#fff',
+                      border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
                       borderRadius: '0.5rem',
+                      color: isDark ? '#e2e8f0' : '#111827',
                     }}
                     formatter={(value) => `$${value.toLocaleString()}`}
                   />
@@ -382,7 +387,7 @@ const ReportsPage = () => {
                   <Avatar sx={{ bgcolor: '#05966920', color: '#059669', width: 36, height: 36 }}>
                     <CheckCircle size={16} />
                   </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Asset Performance</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>Asset Performance</Typography>
                 </Box>
                 <Button 
                   size="small" 
@@ -397,48 +402,48 @@ const ReportsPage = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* Active Assets */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     Active Assets
                   </Typography>
                   <Chip label={`${safeAssetPerformance.assetsTrend >= 0 ? '+' : ''}${safeAssetPerformance.assetsTrend}%`} size="small" color={safeAssetPerformance.assetsTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
                   {safeAssetPerformance.activeAssets}
                 </Typography>
 
                 {/* Uptime */}
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     Uptime
                   </Typography>
                   <Chip label={`${safeAssetPerformance.uptimeTrend >= 0 ? '+' : ''}${safeAssetPerformance.uptimeTrend}%`} size="small" color={safeAssetPerformance.uptimeTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
                   {safeAssetPerformance.uptime}%
                 </Typography>
 
                 {/* Critical Issues */}
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     Critical Issues
                   </Typography>
                   <Chip label={`${safeAssetPerformance.criticalTrend >= 0 ? '+' : ''}${safeAssetPerformance.criticalTrend}%`} size="small" color={safeAssetPerformance.criticalTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
                   {safeAssetPerformance.criticalIssues}
                 </Typography>
 
                 {/* Repair Costs */}
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     Repair Costs
                   </Typography>
                   <Chip label={`${safeAssetPerformance.repairTrend >= 0 ? '+' : ''}${safeAssetPerformance.repairTrend}%`} size="small" color={safeAssetPerformance.repairTrend >= 0 ? 'success' : 'error'} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#111827' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary' }}>
                   ${(safeAssetPerformance.repairCosts / 1000).toFixed(1)}K
                 </Typography>
               </Box>
@@ -455,21 +460,22 @@ const ReportsPage = () => {
                   <Avatar sx={{ bgcolor: '#4f46e520', color: '#4f46e5', width: 36, height: 36 }}>
                     <Clock size={16} />
                   </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem' }}>Schedule Overview</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem' }}>Schedule Overview</Typography>
                 </Box>
                 <Button size="small" variant="text" sx={{ textTransform: 'none', fontWeight: 600, color: '#4f46e5', fontSize: '0.8rem' }}>Manage</Button>
               </Box>
               <Divider sx={{ mb: 2.5 }} />
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={scheduleOverview}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1f2937' : '#e5e7eb'} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#6b7280' }} />
+                  <YAxis tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#6b7280' }} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: isDark ? '#0f172a' : '#fff',
+                      border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
                       borderRadius: '0.5rem',
+                      color: isDark ? '#e2e8f0' : '#111827',
                     }}
                   />
                   <Line
@@ -511,7 +517,7 @@ const ReportsPage = () => {
             {/* Quick Filters */}
             <Card sx={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <CardContent sx={{ p: 2.5 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '0.95rem', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.95rem', mb: 2 }}>
                   Quick Filters
                 </Typography>
                 <Divider sx={{ mb: 2.5 }} />

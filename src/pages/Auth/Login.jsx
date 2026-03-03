@@ -24,8 +24,16 @@ const Login = () => {
     }
     try {
       await login(email, password, orgCode, rememberMe);
-    } catch {
-      setError('Invalid email or password.');
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.message || '';
+      const normalized = message.toLowerCase();
+      if (normalized.includes('organization email is not verified')) {
+        setError('Please verify your organization email before logging in.');
+      } else if (normalized.includes('user email is not verified')) {
+        setError('Please verify your email before logging in.');
+      } else {
+        setError('Invalid email or password.');
+      }
     }
   };
 

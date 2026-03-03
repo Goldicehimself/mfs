@@ -413,9 +413,9 @@ const Profile = () => {
 
   const getLoginStatusColor = (status) => {
     const value = String(status || '').toLowerCase();
-    if (value.includes('fail') || value.includes('error')) return 'bg-rose-100 text-rose-700';
-    if (value.includes('warn')) return 'bg-amber-100 text-amber-700';
-    return 'bg-emerald-100 text-emerald-700';
+    if (value.includes('fail') || value.includes('error')) return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200';
+    if (value.includes('warn')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200';
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200';
   };
 
   const displayPhone = (() => {
@@ -428,9 +428,12 @@ const Profile = () => {
     }
     return phoneValue;
   })();
+  const isCertifiedTechnician = user?.role === 'technician'
+    && Array.isArray(certificates)
+    && certificates.length > 0;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(99,102,241,0.12),_transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_65%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(99,102,241,0.12),_transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_65%)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(30,64,175,0.25),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(15,23,42,0.8),_transparent_45%),linear-gradient(180deg,#0b1120_0%,#0f172a_70%)]">
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <motion.button
@@ -438,34 +441,34 @@ const Profile = () => {
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 18 }}
             onClick={() => navigate(getHomeRoute(user?.role))}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:text-slate-900"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </motion.button>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+          <div className="hidden sm:flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
             <Shield className="h-4 w-4" />
             Profile settings are saved securely
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)]">
+        <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_18px_60px_-40px_rgba(15,23,42,0.65)] dark:border-slate-800 dark:bg-slate-900/90">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Profile Hub</p>
-              <h1 className="text-3xl font-semibold text-slate-900 mt-2">Profile Settings</h1>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">Profile Hub</p>
+              <h1 className="text-3xl font-semibold text-slate-900 mt-2 dark:text-slate-100">Profile Settings</h1>
+              <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
                 Keep your personal information up to date and manage access settings.
               </p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500">
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
-                <Shield className="h-3.5 w-3.5 text-slate-500" />
+            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 dark:border-slate-700">
+                <Shield className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                 Security status: Healthy
               </div>
-              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1">
-                <History className="h-3.5 w-3.5 text-slate-500" />
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 dark:border-slate-700">
+                <History className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                 Last update: {new Date().toLocaleDateString()}
               </div>
             </div>
@@ -473,14 +476,14 @@ const Profile = () => {
         </div>
 
         {loading && (
-          <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
+          <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-indigo-500" />
           </div>
         )}
 
         <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div className="space-y-6">
-            <Card className="border-slate-200/70 bg-white/90">
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Profile</CardTitle>
                 <CardDescription>Manage your identity and contact details.</CardDescription>
@@ -489,11 +492,11 @@ const Profile = () => {
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <Avatar className="h-20 w-20 border border-slate-200 bg-white">
+                      <Avatar className="h-20 w-20 border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
                         {avatarPreview ? (
                           <AvatarImage src={avatarPreview} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="text-2xl">
+                          <AvatarFallback className="text-2xl dark:text-slate-100">
                             {user.name?.charAt(0)?.toUpperCase() || 'U'}
                           </AvatarFallback>
                         )}
@@ -516,9 +519,20 @@ const Profile = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <h2 className="text-xl font-semibold text-slate-900">{user.name}</h2>
-                      <p className="text-sm text-slate-500">{getRoleDisplayName(user.role)}</p>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{user.name}</h2>
+                        {user?.role === 'technician' && (
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                            isCertifiedTechnician
+                              ? 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                              : 'border-amber-200 text-amber-700 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+                          }`}>
+                            {isCertifiedTechnician ? 'Verified' : 'Unverified'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{getRoleDisplayName(user.role)}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <span className="inline-flex items-center gap-1">
                           <Mail className="h-3.5 w-3.5" />
                           {user.email}
@@ -544,7 +558,7 @@ const Profile = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/70 bg-white/90">
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Personal Information</CardTitle>
                 <CardDescription>Update your basic information and contact details.</CardDescription>
@@ -599,10 +613,10 @@ const Profile = () => {
                       onValueChange={(value) => handleInputChange('gender', value)}
                       disabled={!isEditing}
                     >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100">
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="dark:bg-slate-900 dark:text-slate-100">
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
@@ -612,19 +626,19 @@ const Profile = () => {
                   <div className="space-y-2 md:col-span-2">
                     <Label>Role</Label>
                     <Select value={formData.role || ''} disabled>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="facility_manager">Facility Manager</SelectItem>
-                        <SelectItem value="technician">Maintenance Technician</SelectItem>
+                    <SelectTrigger className="bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent className="dark:bg-slate-900 dark:text-slate-100">
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="facility_manager">Facility Manager</SelectItem>
+                      <SelectItem value="technician">Maintenance Technician</SelectItem>
                         <SelectItem value="vendor">Vendor</SelectItem>
                         <SelectItem value="staff">Staff</SelectItem>
                         <SelectItem value="finance">Finance</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Role changes must be requested through your administrator.
                     </p>
                   </div>
@@ -636,7 +650,7 @@ const Profile = () => {
                       <Save className="mr-2 h-4 w-4" />
                       {loading ? 'Saving...' : 'Save Changes'}
                     </Button>
-                    <Button variant="outline" onClick={handleCancel} className="border-slate-200">
+                    <Button variant="outline" onClick={handleCancel} className="border-slate-200 dark:border-slate-700 dark:text-slate-200">
                       <X className="mr-2 h-4 w-4" />
                       Cancel
                     </Button>
@@ -645,7 +659,7 @@ const Profile = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/70 bg-white/90">
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Certificates</CardTitle>
                 <CardDescription>Upload and manage compliance documents.</CardDescription>
@@ -659,7 +673,7 @@ const Profile = () => {
                     <BadgeCheck className="mr-2 h-4 w-4" />
                     Upload Certificate
                   </Button>
-                  <span className="text-xs text-slate-500">PDF or image files supported.</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">PDF or image files supported.</span>
                   <input
                     type="file"
                     ref={certificateInputRef}
@@ -671,7 +685,7 @@ const Profile = () => {
                 </div>
 
                 {certificates.length === 0 ? (
-                  <p className="text-sm text-slate-500">No certificates uploaded yet.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No certificates uploaded yet.</p>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {certificates.map((cert) => {
@@ -688,20 +702,20 @@ const Profile = () => {
                       return (
                         <div
                           key={cert?.id || certPath}
-                          className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                          className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               {isPdf ? <FileText className="h-4 w-4" /> : <UserCircle className="h-4 w-4" />}
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-slate-900 truncate">{fileName}</p>
-                              <p className="text-xs text-slate-500">Uploaded</p>
+                              <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">{fileName}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Uploaded</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleRemoveCertificate(cert?.id || certPath)}
-                              className="text-slate-400 hover:text-slate-600"
+                              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                               title="Remove"
                             >
                               <X className="h-4 w-4" />
@@ -730,7 +744,7 @@ const Profile = () => {
           </div>
 
           <div className="space-y-6">
-            <Card className="border-slate-200/70 bg-white/90">
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Security</CardTitle>
                 <CardDescription>Manage password and authentication.</CardDescription>
@@ -738,16 +752,16 @@ const Profile = () => {
               <CardContent className="space-y-4">
                 <Button
                   variant="outline"
-                  className="w-full border-slate-200 text-slate-700 hover:bg-slate-50"
+                  className="w-full border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                   onClick={() => setPasswordDialog(true)}
                 >
                   <Lock className="mr-2 h-4 w-4" />
                   Change Password
                 </Button>
 
-                <label className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  <span className="flex items-center gap-2 text-slate-700">
-                    <Shield className="h-4 w-4 text-slate-500" />
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                  <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                    <Shield className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                     Enable 2FA
                   </span>
                   <input
@@ -757,36 +771,36 @@ const Profile = () => {
                     className="h-4 w-4 accent-blue-600"
                   />
                 </label>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Two-factor authentication adds an extra layer of security.
                 </p>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   Last login: {new Date().toLocaleDateString()}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/70 bg-white/90">
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Login History</CardTitle>
                 <CardDescription>Recent sign-ins for your account.</CardDescription>
               </CardHeader>
               <CardContent>
                 {loginHistoryLoading ? (
-                  <p className="text-sm text-slate-500">Loading login history...</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Loading login history...</p>
                 ) : loginHistory.length === 0 ? (
-                  <p className="text-sm text-slate-500">No login history yet.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No login history yet.</p>
                 ) : (
                   <div className="grid gap-3">
                     {loginHistory.map((entry) => (
-                      <div key={entry.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div key={entry.id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                             {entry.time.toLocaleString()}
                           </p>
-                          <History className="h-4 w-4 text-slate-400" />
+                          <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                         </div>
-                        <p className="text-xs text-slate-500">{entry.location}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{entry.location}</p>
                         <div className="mt-2">
                           <Badge className={getLoginStatusColor(entry.status)}>
                             {entry.status}
@@ -804,13 +818,13 @@ const Profile = () => {
 
       {passwordDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Change Password</h2>
               <button
                 type="button"
                 onClick={() => setPasswordDialog(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -851,7 +865,7 @@ const Profile = () => {
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPasswordDialog(false)}>
+              <Button variant="outline" onClick={() => setPasswordDialog(false)} className="dark:border-slate-700 dark:text-slate-200">
                 Cancel
               </Button>
               <Button onClick={handlePasswordChange} disabled={loading}>

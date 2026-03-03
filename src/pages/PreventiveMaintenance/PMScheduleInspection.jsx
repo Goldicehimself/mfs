@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Box,
@@ -11,12 +11,20 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { useActivity } from '../../contexts/ActivityContext';
+import { getAssets } from '../../api/assets';
+import { fetchMembers } from '../../api/org';
+import { createPreventiveMaintenance } from '../../api/preventiveMaintenance';
 
 const PMScheduleInspection = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const navigate = useNavigate();
   const { addActivity } = useActivity();
+  const [assets, setAssets] = useState([]);
+  const [members, setMembers] = useState([]);
   const [form, setForm] = useState({
     title: '',
     asset: '',
@@ -44,42 +52,66 @@ const PMScheduleInspection = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const assetRes = await getAssets({ page: 1, limit: 200 });
+        if (active) setAssets(assetRes?.data || []);
+      } catch (error) {
+        if (active) setAssets([]);
+      }
+      try {
+        const memberRes = await fetchMembers();
+        const list = Array.isArray(memberRes) ? memberRes : (memberRes?.members || memberRes?.data || []);
+        if (active) setMembers(list);
+      } catch (error) {
+        if (active) setMembers([]);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validate()) return;
-
-    const newInspection = {
-      id: `pm-inspection-${Date.now()}`,
-      ...form,
-      createdAt: new Date().toISOString(),
-      status: 'scheduled',
+    const selectedAsset = assets.find((asset) => asset.id === form.asset);
+    const assetLabel = selectedAsset?.name || 'Asset';
+    const payload = {
+      name: form.title,
+      asset: form.asset,
+      frequency: 'annual',
+      nextDueDate: form.scheduledDate,
+      priority: form.priority,
+      description: `${form.inspectionType} inspection${form.notes ? ` - ${form.notes}` : ''}`,
+      assignedTo: form.inspector || undefined,
+      estimatedHours: undefined
     };
-
-    try {
-      const existing = JSON.parse(localStorage.getItem('pm_inspections') || '[]');
-      const next = [newInspection, ...existing];
-      localStorage.setItem('pm_inspections', JSON.stringify(next));
-    } catch (error) {
-      localStorage.setItem('pm_inspections', JSON.stringify([newInspection]));
-    }
 
     addActivity({
       type: 'inspection',
       action: 'created',
       title: `Inspection Scheduled: ${form.title}`,
-      description: `${form.asset} - ${form.inspectionType}`,
+      description: `${assetLabel} - ${form.inspectionType}`,
       user: 'Current User',
       status: 'pending',
     });
-
-    alert('Inspection scheduled successfully.');
-    navigate('/preventive-maintenance');
+    try {
+      await createPreventiveMaintenance(payload);
+      alert('Inspection scheduled successfully.');
+      navigate('/preventive-maintenance');
+    } catch (error) {
+      alert('Failed to schedule inspection. Please try again.');
+    }
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4, background: isDark ? '#0b1120' : 'transparent' }}>
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: '#111827' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
           Schedule Inspection
         </Typography>
         <Button
@@ -94,7 +126,7 @@ const PMScheduleInspection = () => {
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{ p: 3, borderRadius: 2, border: '1px solid #e5e7eb', backgroundColor: '#fff' }}
+        sx={{ p: 3, borderRadius: 2, border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`, backgroundColor: isDark ? '#0f172a' : '#fff' }}
       >
         <Grid container spacing={2.5}>
           <Grid item xs={12} md={6}>
@@ -108,14 +140,20 @@ const PMScheduleInspection = () => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Asset"
-              value={form.asset}
-              onChange={handleChange('asset')}
-              error={Boolean(errors.asset)}
-              helperText={errors.asset}
-              fullWidth
-            />
+            <FormControl fullWidth error={Boolean(errors.asset)}>
+              <InputLabel>Asset</InputLabel>
+              <Select
+                label="Asset"
+                value={form.asset}
+                onChange={handleChange('asset')}
+              >
+                {assets.map((asset) => (
+                  <MenuItem key={asset.id} value={asset.id}>
+                    {asset.name} {asset.assetNumber ? `(${asset.assetNumber})` : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth error={Boolean(errors.inspectionType)}>
@@ -145,14 +183,20 @@ const PMScheduleInspection = () => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              label="Inspector"
-              value={form.inspector}
-              onChange={handleChange('inspector')}
-              error={Boolean(errors.inspector)}
-              helperText={errors.inspector}
-              fullWidth
-            />
+            <FormControl fullWidth error={Boolean(errors.inspector)}>
+              <InputLabel>Inspector</InputLabel>
+              <Select
+                label="Inspector"
+                value={form.inspector}
+                onChange={handleChange('inspector')}
+              >
+                {members.map((member) => (
+                  <MenuItem key={member.id || member._id} value={member.id || member._id}>
+                    {member.name || [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>

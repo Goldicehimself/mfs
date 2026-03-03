@@ -4,6 +4,12 @@ const User = require('../models/User');
 const crypto = require('crypto');
 const constants = require('../constants/constants');
 const { NotFoundError, ValidationError } = require('../utils/errorHandler');
+const { renderTemplate } = require('../utils/emailTemplates');
+
+const getSupportEmail = (organization) => {
+  const orgSupport = organization?.settings?.companyProfile?.supportEmail;
+  return orgSupport || process.env.SUPPORT_EMAIL || 'support@facilitypro.local';
+};
 
 const DEFAULT_SETTINGS = {
   securityPolicy: {
@@ -41,6 +47,15 @@ const DEFAULT_SETTINGS = {
   integrations: {
     webhooks: [],
     apiKeys: []
+  },
+  billing: {
+    plan: 'starter',
+    billingCycle: 'monthly',
+    seatsIncluded: 5,
+    seatCount: 1,
+    extraSeatPrice: 4,
+    trialEndsAt: null,
+    status: 'trialing'
   }
 };
 
@@ -78,6 +93,11 @@ const normalizeSettings = (organization) => {
     ...(current.integrations || {})
   };
 
+  const billing = {
+    ...DEFAULT_SETTINGS.billing,
+    ...(current.billing || {})
+  };
+
   if (!companyProfile.companyName && organization?.name) {
     companyProfile.companyName = organization.name;
   }
@@ -85,10 +105,78 @@ const normalizeSettings = (organization) => {
     companyProfile.industry = organization.industry;
   }
 
-  return { securityPolicy, notifications, companyProfile, integrations };
+  return { securityPolicy, notifications, companyProfile, integrations, billing };
 };
 
-const listMembers = async (organizationId, { page = 1, limit = 20, role, search } = {}) => {
+const getEntitlements = (billing = {}) => {
+  const plan = billing.plan || 'starter';
+  const planFeatures = {
+    starter: [
+      'work_orders',
+      'assets',
+      'vendors',
+      'basic_roles',
+      'basic_reporting',
+      'org_code_onboarding',
+      'email_support'
+    ],
+    pro: [
+      'work_orders',
+      'assets',
+      'vendors',
+      'basic_roles',
+      'basic_reporting',
+      'org_code_onboarding',
+      'email_support',
+      'advanced_reporting',
+      'pm_scheduling',
+      'notifications_automation',
+      'role_permissions_custom',
+      'file_attachments',
+      'api_access',
+      'priority_support'
+    ],
+    enterprise: [
+      'work_orders',
+      'assets',
+      'vendors',
+      'basic_roles',
+      'basic_reporting',
+      'org_code_onboarding',
+      'email_support',
+      'advanced_reporting',
+      'pm_scheduling',
+      'notifications_automation',
+      'role_permissions_custom',
+      'file_attachments',
+      'api_access',
+      'priority_support',
+      'sso',
+      'audit_logs',
+      'advanced_security',
+      'sla_support',
+      'custom_integrations',
+      'dedicated_onboarding',
+      'multi_location',
+      'custom_roles',
+      'data_export_automation',
+      'advanced_analytics'
+    ]
+  };
+
+  return {
+    plan,
+    features: planFeatures[plan] || planFeatures.starter,
+    seatsIncluded: billing.seatsIncluded ?? DEFAULT_SETTINGS.billing.seatsIncluded,
+    seatCount: billing.seatCount ?? DEFAULT_SETTINGS.billing.seatCount,
+    extraSeatPrice: billing.extraSeatPrice ?? DEFAULT_SETTINGS.billing.extraSeatPrice,
+    billingCycle: billing.billingCycle || DEFAULT_SETTINGS.billing.billingCycle,
+    trialEndsAt: billing.trialEndsAt || null,
+    status: billing.status || DEFAULT_SETTINGS.billing.status
+  };
+};
+
+const listMembers = async (organizationId, { page = 1, limit = 20, role, search, includeStats = false } = {}) => {
   const skip = (page - 1) * limit;
   const filter = { organization: organizationId };
   if (role) filter.role = role;
@@ -104,12 +192,30 @@ const listMembers = async (organizationId, { page = 1, limit = 20, role, search 
   }
 
   const [members, total] = await Promise.all([
-    User.find(filter).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit),
+    User.find(filter)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     User.countDocuments(filter)
   ]);
 
+  let membersWithStats = members;
+  if (includeStats) {
+    membersWithStats = members.map((member) => ({
+      ...member,
+      performanceScore: member.performanceScore ?? 0,
+      rating: member.rating ?? 0,
+      completedOrders: member.completedOrders ?? 0,
+      assignedOrders: member.assignedOrders ?? 0,
+      certifications: member.certificationsCount ?? (Array.isArray(member.certificates) ? member.certificates.length : 0),
+      lastActive: member.lastActive || member.lastLogin || member.updatedAt || member.createdAt
+    }));
+  }
+
   return {
-    members,
+    members: membersWithStats,
     pagination: {
       total,
       page,
@@ -188,7 +294,8 @@ const setUserActiveStatus = async (organizationId, userId, active) => {
 const getSettings = async (organizationId) => {
   const org = await Organization.findById(organizationId).select('settings name industry');
   if (!org) throw new NotFoundError('Organization');
-  return { settings: normalizeSettings(org) };
+  const settings = normalizeSettings(org);
+  return { settings, entitlements: getEntitlements(settings.billing) };
 };
 
 const updateSettings = async (organizationId, payload = {}) => {
@@ -233,6 +340,15 @@ const updateSettings = async (organizationId, payload = {}) => {
     }
   }
 
+  if (payload.billing) {
+    const updatedBilling = {
+      ...DEFAULT_SETTINGS.billing,
+      ...(org.settings.billing || {}),
+      ...(payload.billing || {})
+    };
+    org.settings.billing = updatedBilling;
+  }
+
   await org.save();
   return { settings: normalizeSettings(org) };
 };
@@ -255,18 +371,42 @@ const getPublicSecurityPolicy = async ({ orgCode, inviteCode } = {}) => {
   return { securityPolicy: settings.securityPolicy };
 };
 
-const verifyOrgEmail = async (token) => {
-  const tokenHash = crypto.createHash('sha256').update(String(token || '')).digest('hex');
+const verifyOrgEmail = async (token, { orgCode, email } = {}) => {
+  const normalizedToken = String(token || '').trim();
+  const tokenHash = crypto.createHash('sha256').update(normalizedToken).digest('hex');
   const org = await Organization.findOne({
-    orgEmailVerificationTokenHash: tokenHash,
-    orgEmailVerificationExpiresAt: { $gt: new Date() }
+    orgEmailVerificationTokenHash: tokenHash
   });
-  if (!org) throw new ValidationError('Verification token is invalid or expired');
+  if (!org) {
+    const normalizedOrgCode = orgCode ? String(orgCode).toUpperCase() : null;
+    const normalizedEmail = email ? String(email).toLowerCase() : null;
+    if (normalizedOrgCode && normalizedEmail) {
+      const fallbackOrg = await Organization.findOne({
+        orgCode: normalizedOrgCode,
+        orgEmail: normalizedEmail
+      });
+      if (fallbackOrg?.orgEmailVerifiedAt) {
+        return { orgId: fallbackOrg._id, verifiedAt: fallbackOrg.orgEmailVerifiedAt };
+      }
+    }
+    throw new ValidationError('Verification token is invalid. Please request a new verification email.');
+  }
+
+  if (!org.orgEmailVerificationExpiresAt || org.orgEmailVerificationExpiresAt <= new Date()) {
+    throw new ValidationError('Verification token expired. Please request a new verification email.');
+  }
 
   org.orgEmailVerifiedAt = new Date();
   org.orgEmailVerificationTokenHash = null;
   org.orgEmailVerificationExpiresAt = null;
+  if (org.status !== 'active') {
+    org.status = 'active';
+  }
   await org.save();
+  await User.updateMany(
+    { organization: org._id, email: org.orgEmail, emailVerifiedAt: null },
+    { $set: { emailVerifiedAt: new Date() } }
+  );
 
   return { orgId: org._id, verifiedAt: org.orgEmailVerifiedAt };
 };
@@ -289,12 +429,20 @@ const resendOrgEmailVerification = async ({ orgCode, email } = {}) => {
 
   const { sendEmail } = require('../utils/email');
   const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const verifyLink = `${frontendBaseUrl}/verify-org-email?token=${rawToken}`;
+  const verifyLink = `${frontendBaseUrl}/verify-org-email?token=${rawToken}&orgCode=${org.orgCode}&email=${encodeURIComponent(org.orgEmail)}`;
+  const verifyHtml = renderTemplate('facilitypro-verify-email.html', {
+    recipient_name: org.orgEmail,
+    org_name: org.name,
+    org_code: org.orgCode,
+    verification_url: verifyLink,
+    support_email: getSupportEmail(org),
+    year: new Date().getFullYear()
+  });
   await sendEmail({
     to: org.orgEmail,
     subject: 'Verify your organization email',
     text: `Please verify your organization email by visiting: ${verifyLink}`,
-    html: `<p>Please verify your organization email by clicking the link below:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+    html: verifyHtml || `<p>Please verify your organization email by clicking the link below:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
   });
 
   return { sent: true };
@@ -458,6 +606,7 @@ module.exports = {
   verifyOrgEmail,
   resendOrgEmailVerification,
   normalizeSettings,
+  getEntitlements,
   getIntegrations,
   createWebhook,
   deleteWebhook,

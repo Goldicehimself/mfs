@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import GreetingBanner from '@/components/common/GreetingBanner';
 import { useQuery } from 'react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { getWorkOrders } from '../../api/workOrders';
@@ -495,6 +496,7 @@ export default function TechnicianPortal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <GreetingBanner subtitle="Here’s your workload and priorities for today." />
         {/* Technician Details */}
         <TechnicianDetailsCard
           technician={{
