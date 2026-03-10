@@ -5,6 +5,7 @@ const response = require('../utils/response');
 const { AuthorizationError } = require('../utils/errorHandler');
 const { sendEmail } = require('../utils/email');
 const Organization = require('../models/Organization');
+const User = require('../models/User');
 const { renderTemplate } = require('../utils/emailTemplates');
 
 const getSupportEmail = (organization) => {
@@ -25,6 +26,61 @@ const createFundRequest = async (req, res, next) => {
       throw new AuthorizationError('Only finance can request funds');
     }
     const fund = await fundService.createFundRequest(req.user.organization, req.user.id, req.validatedData || req.body);
+    const adminRecipients = await notificationService.getRoleUserIds(['admin'], req.user.organization);
+    if (adminRecipients.length > 0) {
+      const requesterName = [req.user?.firstName, req.user?.lastName].filter(Boolean).join(' ').trim() || req.user?.email || 'Finance user';
+      await notificationService.createNotificationsForUsers(adminRecipients, {
+        organization: req.user.organization,
+        title: 'New fund request',
+        message: `${requesterName} requested ${fund.amount} for ${fund.purpose || 'a fund request'}`,
+        type: 'fund_request_created',
+        entityType: 'FundRequest',
+        entityId: fund._id,
+        link: '/finance-portal',
+        metadata: {
+          requesterId: req.user.id,
+          requesterName,
+          amount: fund.amount,
+          purpose: fund.purpose
+        }
+      });
+      const org = await Organization.findById(req.user.organization)
+        .select('name orgCode settings.companyProfile.supportEmail settings.notifications.notifyEmail')
+        .lean();
+      if (org?.settings?.notifications?.notifyEmail === false) {
+        response.created(res, 'Fund request submitted', fund);
+        return;
+      }
+      const admins = await User.find({ _id: { $in: adminRecipients }, active: true })
+        .select('email firstName lastName')
+        .lean();
+      const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      for (const admin of admins) {
+        if (!admin.email) continue;
+        const personalizedHtml = renderTemplate('facilitypro-transactional.html', {
+          preheader_text: 'A new fund request was submitted.',
+          header_badge: 'Finance Update',
+          headline: 'New fund request',
+          recipient_name: getRecipientName(admin),
+          body_copy: `${requesterName} submitted a fund request for ${fund.purpose || 'a request'} (${fund.amount}).`,
+          action_url: `${frontendBaseUrl}/finance-portal`,
+          action_label: 'Review request',
+          org_name: org?.name || 'FacilityPro',
+          org_code: org?.orgCode || '',
+          requester_name: req.user?.email || '',
+          request_time: new Date().toLocaleString(),
+          support_email: getSupportEmail(org),
+          footer_note: 'Review and approve or reject this request in the finance portal.',
+          year: new Date().getFullYear()
+        });
+        await sendEmail({
+          to: admin.email,
+          subject: 'New fund request submitted',
+          text: `${requesterName} submitted a fund request for ${fund.purpose || 'a request'} (${fund.amount}).`,
+          html: personalizedHtml || undefined
+        });
+      }
+    }
     response.created(res, 'Fund request submitted', fund);
   } catch (error) {
     next(error);

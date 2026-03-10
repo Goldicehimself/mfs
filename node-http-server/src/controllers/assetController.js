@@ -4,7 +4,7 @@ const response = require('../utils/response');
 const activityService = require('../services/activityService');
 const User = require('../models/User');
 const { ValidationError } = require('../utils/errorHandler');
-const fs = require('fs');
+const { uploadBuffer } = require('../services/cloudinaryService');
 
 const parseCsv = (content = '') => {
   const rows = [];
@@ -172,13 +172,13 @@ const deleteAsset = async (req, res, next) => {
 
 const importAssets = async (req, res, next) => {
   try {
-    if (!req.file?.path) {
+    if (!req.file?.buffer) {
       throw new ValidationError('CSV file is required');
     }
     if (!['text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel'].includes(req.file.mimetype)) {
       throw new ValidationError('Only CSV files are supported for import');
     }
-    const content = fs.readFileSync(req.file.path, 'utf8');
+    const content = req.file.buffer.toString('utf8');
     const rows = parseCsv(content);
     if (!rows.length) {
       throw new ValidationError('CSV file is empty');
@@ -207,6 +207,12 @@ const importAssets = async (req, res, next) => {
       };
     };
     const assets = dataRows.map(map);
+
+    await uploadBuffer(req.file, {
+      folder: 'facilitypro/asset-imports',
+      resourceType: 'raw'
+    });
+
     const result = await assetService.importAssets(req.user.organization, assets);
     response.success(res, 'Assets imported successfully', result);
   } catch (error) {

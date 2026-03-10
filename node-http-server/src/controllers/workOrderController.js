@@ -3,7 +3,6 @@ const workOrderService = require('../services/workOrderService');
 const response = require('../utils/response');
 const { ValidationError, AuthorizationError } = require('../utils/errorHandler');
 const constants = require('../constants/constants');
-const path = require('path');
 const notificationService = require('../services/notificationService');
 const activityService = require('../services/activityService');
 const webhookService = require('../services/webhookService');
@@ -12,6 +11,7 @@ const User = require('../models/User');
 const WorkOrder = require('../models/WorkOrder');
 const Asset = require('../models/Asset');
 const userStatsService = require('../services/userStatsService');
+const { countApprovedCertificates } = require('../utils/certificateUtils');
 
 const ensureUsersInOrg = async (organizationId, userIds = []) => {
   if (!userIds || userIds.length === 0) return;
@@ -34,7 +34,7 @@ const ensureTechnicianCertified = async (organizationId, userId, message) => {
     throw new ValidationError('Assigned user must belong to your organization and be active');
   }
   if (user.role === constants.ROLES.TECHNICIAN) {
-    const certified = Array.isArray(user.certificates) && user.certificates.length > 0;
+    const certified = countApprovedCertificates(user.certificates) > 0;
     if (!certified) {
       throw new AuthorizationError(message || 'Certification required for this action');
     }
@@ -214,6 +214,29 @@ const createWorkOrder = async (req, res, next) => {
       link: `/work-orders/${workOrder._id}`,
       createdAt: new Date().toISOString()
     });
+    const adminManagerIds = await notificationService.getRoleUserIds(
+      [constants.ROLES.ADMIN, constants.ROLES.FACILITY_MANAGER],
+      req.user.organization
+    );
+    const recipients = new Set(adminManagerIds.map((id) => id.toString()));
+    const assignedToId = workOrder.assignedTo?._id || workOrder.assignedTo || null;
+    if (assignedToId) recipients.add(assignedToId.toString());
+    (workOrder.team || []).forEach((member) => {
+      const memberId = member?._id || member;
+      if (memberId) recipients.add(memberId.toString());
+    });
+    recipients.delete(req.user.id);
+    if (recipients.size > 0) {
+      await notificationService.createNotificationsForUsers([...recipients], {
+        organization: req.user.organization,
+        title: 'Work order created',
+        message: `${workOrder.title} was created`,
+        type: 'workorder_created',
+        entityType: 'WorkOrder',
+        entityId: workOrder._id,
+        link: `/work-orders/${workOrder._id}`
+      });
+    }
     response.created(res, 'Work order created successfully', workOrder);
     if (workOrder.assignedTo) {
       userStatsService.refreshUserStats({
@@ -542,7 +565,7 @@ const addWorkOrderPhotos = async (req, res, next) => {
       throw new ValidationError('At least one photo is required');
     }
 
-    const filePaths = req.files.map((file) => file.path.split(path.sep).join('/'));
+    const filePaths = req.files.map((file) => file.path);
     const workOrder = await workOrderService.addWorkOrderPhotos(req.user.organization, req.params.id, filePaths);
     response.success(res, 'Work order photos uploaded successfully', workOrder);
   } catch (error) {

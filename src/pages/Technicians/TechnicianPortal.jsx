@@ -21,6 +21,8 @@ import {
   Trash2,
   Upload
 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { sendMessageToAdmins } from '../../api/notifications';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,32 +37,26 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import GreetingBanner from '@/components/common/GreetingBanner';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { getWorkOrders } from '../../api/workOrders';
+import { getProfile, deleteCertificate } from '../../api/profile';
+import ProtectedImage from '@/components/common/ProtectedImage';
 
-// Mock data for technician profile info
-const mockTechnicianData = {
-  technician: {
-    id: 'tech-001',
-    name: 'John Smith',
-    email: 'john.smith@company.com',
-    phone: '+1 (555) 123-4567',
-    department: 'Maintenance',
-    rating: 4.8,
-    completedOrders: 156,
-    onTimeCompletion: 94,
-    certifications: ['HVAC', 'Electrical', 'Plumbing'],
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
-  },
-  metrics: {
-    completedToday: 2,
-    inProgress: 2,
-    pending: 1,
-    totalThisMonth: 24,
-    averageCompletionTime: 2.3,
-    satisfactionRating: 4.8
+const getCertStatus = (cert) => {
+  if (!cert) return 'pending';
+  if (typeof cert === 'string') return 'approved';
+  return cert.status || 'approved';
+};
+
+const formatCertLabel = (value) => {
+  if (!value) return 'Certificate';
+  if (typeof value === 'string') {
+    const cleaned = value.split('?')[0];
+    const parts = cleaned.split('/');
+    return parts[parts.length - 1] || 'Certificate';
   }
+  return value.originalName || value.publicId || 'Certificate';
 };
 
 // Priority badge color map
@@ -101,9 +97,9 @@ const StatCard = ({ icon, title, value, subtext, color = 'indigo' }) => {
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-            {subtext && <p className="text-xs text-gray-500 mt-1">{subtext}</p>}
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{title}</p>
+            <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{value}</p>
+            {subtext && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtext}</p>}
           </div>
           <div className={`p-3 rounded-lg ${textColors[color]}`}>
             {icon}
@@ -212,16 +208,95 @@ const WorkOrderCard = ({ order, onViewDetails }) => {
 };
 
 // Technician Details Card Component
-const TechnicianDetailsCard = ({ technician, metrics }) => {
+const TechnicianDetailsCard = ({ technician, metrics, onDeleteCertificate }) => {
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
+
+  const handleMessage = () => {
+    setMessageOpen(true);
+  };
+
+  const handleDownloadProfile = () => {
+    const certifications = Array.isArray(technician.certifications)
+      ? technician.certifications.map((cert) => formatCertLabel(cert))
+      : [];
+    const csvHeader = [
+      'name',
+      'email',
+      'phone',
+      'department',
+      'rating',
+      'completedOrders',
+      'onTimeCompletion',
+      'avgCompletionHours',
+      'certifications',
+      'pending',
+      'inProgress',
+      'completedThisMonth'
+    ].join(',');
+    const rows = (certifications.length ? certifications : ['']).map((cert) => [
+      technician.name,
+      technician.email,
+      technician.phone,
+      technician.department,
+      technician.rating,
+      technician.completedOrders,
+      technician.onTimeCompletion,
+      technician.avgCompletionHours || 0,
+      cert,
+      metrics.pending,
+      metrics.inProgress,
+      metrics.totalThisMonth
+    ]);
+    const csvRows = rows
+      .map((row) =>
+        row
+          .map((value) => {
+            const safe = value === null || value === undefined ? '' : String(value);
+            const escaped = safe.replace(/"/g, '""');
+            return `"${escaped}"`;
+          })
+          .join(',')
+      )
+      .join('\n');
+    const csvContent = `${csvHeader}\n${csvRows}\n`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${technician.name || 'technician'}-profile.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+    try {
+      await sendMessageToAdmins(messageText.trim());
+      toast.success('Message sent to admin/facility manager');
+      setMessageText('');
+      setMessageOpen(false);
+    } catch (error) {
+      toast.error('Failed to send message');
+    }
+  };
+
   return (
     <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border-indigo-200 dark:border-indigo-800">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex gap-4">
-            <img
+            <ProtectedImage
               src={technician.avatar}
               alt={technician.name}
-              className="w-16 h-16 rounded-full border-2 border-indigo-300"
+              cacheKey={technician.updatedAt || technician.avatarUpdatedAt || ''}
+              className="w-16 h-16 rounded-full border-2 border-indigo-300 object-cover"
+              fallback="/avatar-placeholder.svg"
             />
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{technician.name}</h2>
@@ -242,10 +317,10 @@ const TechnicianDetailsCard = ({ technician, metrics }) => {
 
           <div className="text-right">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleMessage} disabled={!technician.email}>
                 <MessageSquare className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleDownloadProfile}>
                 <Download className="h-4 w-4" />
               </Button>
             </div>
@@ -262,7 +337,9 @@ const TechnicianDetailsCard = ({ technician, metrics }) => {
           </div>
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Certifications</p>
-            <p className="text-lg font-bold text-indigo-600">{technician.certifications.length}</p>
+            <p className="text-lg font-bold text-indigo-600">
+              {technician.certifications.filter((cert) => getCertStatus(cert) === 'approved').length}
+            </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">This Month</p>
@@ -274,22 +351,99 @@ const TechnicianDetailsCard = ({ technician, metrics }) => {
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certifications</p>
           <div className="flex gap-2 flex-wrap">
-            {technician.certifications.map((cert) => (
-              <Badge key={cert} variant="secondary" className="bg-white dark:bg-zinc-800">
-                <Wrench className="h-3 w-3 mr-1" />
-                {cert}
-              </Badge>
-            ))}
+            {technician.certifications.map((cert) => {
+              const status = getCertStatus(cert);
+              return (
+                <Badge
+                  key={typeof cert === 'string' ? cert : cert.publicId}
+                  variant="secondary"
+                  className={
+                    status === 'approved'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                      : status === 'rejected'
+                        ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+                  }
+                >
+                  <Wrench className="h-3 w-3 mr-1" />
+                  {formatCertLabel(cert)} ({status})
+                </Badge>
+              );
+            })}
           </div>
+          {technician.certifications.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {technician.certifications.map((cert) => {
+                const id = typeof cert === 'string' ? cert : cert.publicId;
+                return (
+                  <Button
+                    key={id}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => onDeleteCertificate(id)}
+                  >
+                    Delete {formatCertLabel(cert)}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
+
+      <AnimatePresence>
+        {messageOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setMessageOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-lg bg-white dark:bg-zinc-900 shadow-xl"
+            >
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-zinc-800">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Message {technician.name || 'Technician'}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Send an in-app message.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Type your message..."
+                  className="w-full h-32 p-3 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="flex gap-3 px-6 pb-6">
+                <Button variant="outline" className="flex-1" onClick={() => setMessageOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleSendMessage}>
+                  Send
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Card>
   );
 };
 
 // Main Technician Portal Component
 export default function TechnicianPortal() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -316,13 +470,36 @@ export default function TechnicianPortal() {
     ['workOrders', { scope: 'technician' }],
     () => getWorkOrders()
   );
+  const { data: profileData } = useQuery(['profile'], () => getProfile(), {
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+  });
+
+  const handleDeleteCertificate = async (publicId) => {
+    if (!publicId) return;
+    try {
+      await deleteCertificate(publicId);
+      const currentCerts = Array.isArray(profileData?.certificates)
+        ? profileData.certificates
+        : (Array.isArray(user?.certificates) ? user.certificates : []);
+      const nextCerts = currentCerts.filter((cert) => {
+        const id = typeof cert === 'string' ? cert : cert.publicId;
+        return id !== publicId;
+      });
+      updateUser({ certificates: nextCerts });
+      await queryClient.invalidateQueries(['profile']);
+      toast.success('Certificate deleted');
+    } catch (error) {
+      toast.error('Failed to delete certificate');
+    }
+  };
 
   const workOrdersList = Array.isArray(workOrders)
     ? workOrders
     : (workOrders?.workOrders || workOrders?.data || []);
 
   const currentUserId = user?.id || null;
-  const currentUserName = user?.name || mockTechnicianData.technician.name;
+  const currentUserName = user?.name || profileData?.name || 'Technician';
 
   const assignedOrders = useMemo(() => {
     return workOrdersList.filter((order) => {
@@ -493,6 +670,34 @@ export default function TechnicianPortal() {
     };
   }, [normalizedOrders]);
 
+  const technicianProfile = useMemo(() => {
+    const profile = profileData || user || {};
+    const firstName = profile.firstName || '';
+    const lastName = profile.lastName || '';
+    const name = profile.name || [firstName, lastName].filter(Boolean).join(' ') || 'Technician';
+    return {
+      name,
+      email: profile.email || '',
+      phone: profile.phone || '—',
+      department: profile.department || 'Technician',
+      rating: typeof profile.rating === 'number' ? profile.rating : 0,
+      completedOrders: profile.completedOrders ?? 0,
+      onTimeCompletion: profile.onTimeCompletionRate ?? 0,
+      certifications: Array.isArray(profile.certificates) ? profile.certificates : [],
+      avatar: profile.avatar || '',
+      avgCompletionHours: profile.avgCompletionHours ?? 0,
+    };
+  }, [profileData, user]);
+
+  const technicianMetrics = useMemo(() => ({
+    completedToday: 0,
+    inProgress: stats.inProgress,
+    pending: stats.pending,
+    totalThisMonth: stats.completed,
+    averageCompletionTime: technicianProfile.avgCompletionHours || 0,
+    satisfactionRating: technicianProfile.rating || 0
+  }), [stats, technicianProfile.rating, technicianProfile.avgCompletionHours]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -500,10 +705,11 @@ export default function TechnicianPortal() {
         {/* Technician Details */}
         <TechnicianDetailsCard
           technician={{
-            ...mockTechnicianData.technician,
+            ...technicianProfile,
             name: currentUserName,
           }}
-          metrics={mockTechnicianData.metrics}
+          metrics={technicianMetrics}
+          onDeleteCertificate={handleDeleteCertificate}
         />
 
         {/* KPI Cards */}
@@ -545,14 +751,14 @@ export default function TechnicianPortal() {
             <StatCard
               icon={<TrendingUp className="h-5 w-5" />}
               title="Avg Completion"
-              value={`${mockTechnicianData.metrics.averageCompletionTime}h`}
+              value={`${technicianMetrics.averageCompletionTime}h`}
               color="indigo"
               subtext="Per order"
             />
             <StatCard
               icon={<Star className="h-5 w-5" />}
               title="Satisfaction"
-              value={mockTechnicianData.metrics.satisfactionRating}
+              value={technicianMetrics.satisfactionRating}
               color="purple"
               subtext="Rating"
             />

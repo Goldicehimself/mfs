@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  gender: {
+    type: String,
+    trim: true
+  },
   password: {
     type: String,
     required: [true, 'Password is required'],
@@ -47,11 +51,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  avatarPublicId: {
+    type: String,
+    default: null
+  },
   department: {
     type: String,
     trim: true
   },
-  certificates: [String],
+  certificates: [mongoose.Schema.Types.Mixed],
   active: {
     type: Boolean,
     default: true
@@ -76,6 +84,18 @@ const userSchema = new mongoose.Schema({
   certificationsCount: {
     type: Number,
     default: 0
+  },
+  avgCompletionHours: {
+    type: Number,
+    default: 0
+  },
+  onTimeCompletionRate: {
+    type: Number,
+    default: 0
+  },
+  preferences: {
+    emailNotifications: { type: Boolean, default: false },
+    inAppNotifications: { type: Boolean, default: true }
   },
   lastActive: Date,
   resetPasswordTokenHash: {

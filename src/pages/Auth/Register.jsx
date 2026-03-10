@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, EyeOff, Wrench,Copyright } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Eye, EyeOff,Copyright } from 'lucide-react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -161,7 +160,9 @@ const Register = () => {
 
     setLoading(false);
     if (!result.success) {
-      setServerError('Registration failed.');
+      const msg = result.error || 'Registration failed.';
+      setServerError(msg);
+      toast.error(msg);
     } else if (submitMode === 'org' && result.orgCode) {
       setOrgCreatedCode(result.orgCode);
       toast.success(
@@ -202,16 +203,11 @@ const Register = () => {
     <div className="auth-page">
       <div className="auth-card auth-card--tall">
         <RouterLink className="auth-brand" to="/" aria-label="FacilityPro home">
-          <div className="auth-logo">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
-              className="auth-logo-spin"
-            >
-              <Wrench size={22} color="#fff" />
-            </motion.div>
-          </div>
-          <div className="auth-brand-name">FacilityPro</div>
+          <img
+            src="/facilitypro-logo.svg"
+            alt="FacilityPro logo"
+            className="auth-logo-img fp-logo"
+          />
         </RouterLink>
 
         <div className="auth-header">

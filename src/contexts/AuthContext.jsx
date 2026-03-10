@@ -55,11 +55,16 @@ export const AuthProvider = ({ children }) => {
     const lastName = value.lastName || value.last_name;
     const name = value.name || [firstName, lastName].filter(Boolean).join(' ');
     const role = value.role;
+    const avatar =
+      typeof value.avatar === 'string'
+        ? value.avatar.replace(/\\/g, '/')
+        : value.avatar;
     return {
       ...value,
       role,
       id: value.id || value._id,
       name,
+      avatar,
     };
   };
 
@@ -98,10 +103,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, orgCode, rememberMe = false) => {
     try {
+      const normalizedOrgCode = String(orgCode || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+      if (!normalizedOrgCode) {
+        toast.error('Organization code is required.');
+        throw new Error('Organization code is required');
+      }
       if (import.meta.env.VITE_USE_LOCAL_AUTH === 'true') {
         const users = getLocalUsers();
         const found = users.find(
-          u => u.email?.toLowerCase() === email?.toLowerCase() && u.orgCode === orgCode
+          u => u.email?.toLowerCase() === email?.toLowerCase() && u.orgCode === normalizedOrgCode
         );
         if (found && found.password === password) {
           const normalized = normalizeUser(found);
@@ -110,7 +122,7 @@ export const AuthProvider = ({ children }) => {
           storage.setItem('token', token);
           storage.setItem('user', JSON.stringify(normalized));
           if (normalized.role === 'admin') {
-            storage.setItem('orgCode', orgCode);
+            storage.setItem('orgCode', normalizedOrgCode);
           } else {
             storage.removeItem('orgCode');
           }
@@ -146,8 +158,15 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Login failed');
       }
 
-      const response = await axiosInstance.post('/auth/login', { email, password, orgCode, rememberMe });
+      const response = await axiosInstance.post('/auth/login', { email, password, orgCode: normalizedOrgCode, rememberMe });
       const payload = response.data?.data || {};
+      const emailSent =
+        typeof payload.emailSent === 'boolean'
+          ? payload.emailSent
+          : typeof payload.sent === 'boolean'
+            ? payload.sent
+            : true;
+      const verificationLink = payload.verificationLink || '';
       const token = payload.token;
       const apiUser = normalizeUser(payload.user);
       
@@ -159,7 +178,7 @@ export const AuthProvider = ({ children }) => {
       storage.setItem('token', token);
       storage.setItem('user', JSON.stringify(apiUser));
       if (apiUser.role === 'admin') {
-        storage.setItem('orgCode', orgCode);
+        storage.setItem('orgCode', normalizedOrgCode);
       } else {
         storage.removeItem('orgCode');
       }
@@ -267,8 +286,9 @@ export const AuthProvider = ({ children }) => {
           email: userData.email,
           password: userData.password,
           phone: userData.phone,
+          gender: userData.gender,
           phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
-        });
+        }, { suppressToast: true });
       } else {
         const payload = {
           firstName: firstName || 'User',
@@ -277,13 +297,21 @@ export const AuthProvider = ({ children }) => {
           password: userData.password,
           role: mappedRole,
           phone: userData.phone,
+          gender: userData.gender,
           phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
         };
         if (userData.orgCode) payload.orgCode = userData.orgCode;
         if (userData.inviteCode) payload.inviteCode = userData.inviteCode;
-        response = await axiosInstance.post('/auth/register', payload);
+        response = await axiosInstance.post('/auth/register', payload, { suppressToast: true });
       }
       const payload = response.data?.data || {};
+      const emailSent =
+        typeof payload.emailSent === 'boolean'
+          ? payload.emailSent
+          : typeof payload.sent === 'boolean'
+            ? payload.sent
+            : true;
+      const verificationLink = payload.verificationLink || '';
       const apiUser = normalizeUser(payload.user);
       const orgCode = payload.organization?.orgCode || payload.organizationCode || userData.orgCode;
       if (userData.mode === 'org' && orgCode && userData.email) {
@@ -292,6 +320,9 @@ export const AuthProvider = ({ children }) => {
             orgCode,
             email: userData.email
           }));
+          if (verificationLink) {
+            localStorage.setItem('pendingOrgVerificationLink', verificationLink);
+          }
         } catch (e) {
           // ignore localStorage errors
         }
@@ -324,52 +355,19 @@ export const AuthProvider = ({ children }) => {
               orgCode,
               email: userData.email
             }));
+            if (verificationLink) {
+              localStorage.setItem('pendingUserVerificationLink', verificationLink);
+            }
           } catch (e) {
             // ignore storage errors
           }
         }
-        toast.success('Registration successful - please verify your email');
         navigate('/verify-user-email');
       }
-      return { success: true, orgCode, mode: userData.mode };
+      return { success: true, orgCode, mode: userData.mode, emailSent, verificationLink };
     } catch (error) {
-      // Fallback to localStorage-based registration
-      try {
-        const users = getLocalUsers();
-        if (users.find(u => u.email === userData.email)) {
-          const msg = 'Email already registered (local)';
-          toast.error(msg);
-          return { success: false, error: msg };
-        }
-
-        const localOrgCode = userData.orgCode || `LOCAL${Date.now().toString().slice(-4)}`;
-        const newUser = {
-          id: `local-${Date.now()}`,
-          name: [firstName, lastName].filter(Boolean).join(' '),
-          email: userData.email,
-          role: userData.role || 'technician',
-          avatar: userData.avatar || null,
-          // NOTE: storing plaintext password for local dev only
-          password: userData.password,
-          orgCode: localOrgCode,
-          phone: userData.phone || null,
-          phoneCountryCode: userData.phoneCountryCode || getDialCode(userData.phone),
-        };
-
-        users.push(newUser);
-        saveLocalUsers(users);
-
-        // Do NOT set token or auto-login for local registrations; redirect to login instead
-        if (userData.mode !== 'org') {
-          toast.success('Registration successful (local) - please sign in');
-        }
-        navigate('/login');
-        return { success: true, orgCode: localOrgCode, mode: userData.mode };
-      } catch (e) {
-        // Show a short, generic message only (do not display server-provided messages).
-        toast.error('Registration failed');
-        return { success: false, error: error.message };
-      }
+      const serverMessage = error?.response?.data?.message || '';
+      return { success: false, error: serverMessage || error.message };
     }
   };
 
@@ -387,7 +385,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updates) => {
-    const updatedUser = normalizeUser({ ...user, ...updates });
+    const nextUpdates = { ...updates };
+    if (updates?.avatar && !updates?.updatedAt) {
+      nextUpdates.avatarUpdatedAt = new Date().toISOString();
+    }
+    const updatedUser = normalizeUser({ ...user, ...nextUpdates });
     setUser(updatedUser);
     const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
     storage.setItem('user', JSON.stringify(updatedUser));

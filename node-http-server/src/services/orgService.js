@@ -5,11 +5,16 @@ const crypto = require('crypto');
 const constants = require('../constants/constants');
 const { NotFoundError, ValidationError } = require('../utils/errorHandler');
 const { renderTemplate } = require('../utils/emailTemplates');
+const { isLegacyUploadPath, sanitizeAvatarValue, sanitizeUserObject } = require('../utils/userSanitizer');
+const { countApprovedCertificates, countPendingCertificates } = require('../utils/certificateUtils');
 
 const getSupportEmail = (organization) => {
   const orgSupport = organization?.settings?.companyProfile?.supportEmail;
   return orgSupport || process.env.SUPPORT_EMAIL || 'support@facilitypro.local';
 };
+
+const DEBUG_VERIFY_EMAIL = String(process.env.DEBUG_VERIFY_EMAIL || '').toLowerCase() === 'true';
+const getEmailBaseUrl = () => process.env.EMAIL_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const DEFAULT_SETTINGS = {
   securityPolicy: {
@@ -201,15 +206,25 @@ const listMembers = async (organizationId, { page = 1, limit = 20, role, search,
     User.countDocuments(filter)
   ]);
 
-  let membersWithStats = members;
+  const legacyIds = members
+    .filter((member) => isLegacyUploadPath(member.avatar))
+    .map((member) => member._id);
+  if (legacyIds.length) {
+    await User.updateMany({ _id: { $in: legacyIds } }, { $set: { avatar: null } });
+  }
+
+  const sanitizedMembers = members.map(sanitizeUserObject);
+
+  let membersWithStats = sanitizedMembers;
   if (includeStats) {
-    membersWithStats = members.map((member) => ({
+    membersWithStats = sanitizedMembers.map((member) => ({
       ...member,
       performanceScore: member.performanceScore ?? 0,
       rating: member.rating ?? 0,
       completedOrders: member.completedOrders ?? 0,
       assignedOrders: member.assignedOrders ?? 0,
-      certifications: member.certificationsCount ?? (Array.isArray(member.certificates) ? member.certificates.length : 0),
+      certifications: member.certificationsCount ?? countApprovedCertificates(member.certificates),
+      certificationsPending: countPendingCertificates(member.certificates),
       lastActive: member.lastActive || member.lastLogin || member.updatedAt || member.createdAt
     }));
   }
@@ -288,7 +303,45 @@ const setUserActiveStatus = async (organizationId, userId, active) => {
   ).select('-password');
 
   if (!user) throw new NotFoundError('User');
+  if (isLegacyUploadPath(user.avatar)) {
+    user.avatar = sanitizeAvatarValue(user.avatar);
+    await user.save();
+  }
   return user;
+};
+
+const updateCertificateStatus = async (organizationId, userId, { publicId, status, reviewNotes }, reviewerId) => {
+  const allowed = ['approved', 'rejected'];
+  if (!allowed.includes(status)) {
+    throw new ValidationError('Invalid certificate status');
+  }
+  const user = await User.findOne({ _id: userId, organization: organizationId }).select('certificates certificationsCount');
+  if (!user) throw new NotFoundError('User');
+
+  const certs = Array.isArray(user.certificates) ? user.certificates : [];
+  const idx = certs.findIndex((entry) =>
+    typeof entry === 'string' ? entry === publicId : entry?.publicId === publicId
+  );
+  if (idx === -1) {
+    throw new NotFoundError('Certificate');
+  }
+
+  const existing = certs[idx];
+  const next = typeof existing === 'string'
+    ? { publicId: existing }
+    : { ...existing };
+
+  next.status = status;
+  next.reviewedAt = new Date();
+  next.reviewedBy = reviewerId;
+  if (reviewNotes) next.reviewNotes = reviewNotes;
+
+  certs[idx] = next;
+  user.certificates = certs;
+  user.certificationsCount = countApprovedCertificates(certs);
+  await user.save();
+
+  return { userId: user._id, certificate: next, certificationsCount: user.certificationsCount };
 };
 
 const getSettings = async (organizationId) => {
@@ -428,8 +481,8 @@ const resendOrgEmailVerification = async ({ orgCode, email } = {}) => {
   await org.save();
 
   const { sendEmail } = require('../utils/email');
-  const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const verifyLink = `${frontendBaseUrl}/verify-org-email?token=${rawToken}&orgCode=${org.orgCode}&email=${encodeURIComponent(org.orgEmail)}`;
+  const emailBaseUrl = getEmailBaseUrl();
+  const verifyLink = `${emailBaseUrl}/verify-org-email?token=${rawToken}&orgCode=${org.orgCode}&email=${encodeURIComponent(org.orgEmail)}`;
   const verifyHtml = renderTemplate('facilitypro-verify-email.html', {
     recipient_name: org.orgEmail,
     org_name: org.name,
@@ -438,14 +491,17 @@ const resendOrgEmailVerification = async ({ orgCode, email } = {}) => {
     support_email: getSupportEmail(org),
     year: new Date().getFullYear()
   });
-  await sendEmail({
+  const emailSent = await sendEmail({
     to: org.orgEmail,
     subject: 'Verify your organization email',
     text: `Please verify your organization email by visiting: ${verifyLink}`,
     html: verifyHtml || `<p>Please verify your organization email by clicking the link below:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
   });
 
-  return { sent: true };
+  return {
+    sent: emailSent,
+    ...(DEBUG_VERIFY_EMAIL ? { verificationLink: verifyLink } : {})
+  };
 };
 
 const getIntegrations = async (organizationId) => {
@@ -458,6 +514,7 @@ const getIntegrations = async (organizationId) => {
       id: hook.id,
       name: hook.name,
       url: hook.url,
+      type: hook.type || 'generic',
       events: hook.events || [],
       active: !!hook.active,
       createdAt: hook.createdAt,
@@ -478,7 +535,7 @@ const getIntegrations = async (organizationId) => {
   };
 };
 
-const createWebhook = async (organizationId, { name, url, events = [], active = true } = {}) => {
+const createWebhook = async (organizationId, { name, url, type = 'generic', events = [], active = true } = {}) => {
   const org = await Organization.findById(organizationId);
   if (!org) throw new NotFoundError('Organization');
 
@@ -493,6 +550,7 @@ const createWebhook = async (organizationId, { name, url, events = [], active = 
     id,
     name,
     url,
+    type: type || 'generic',
     secret,
     events,
     active: !!active
@@ -501,7 +559,7 @@ const createWebhook = async (organizationId, { name, url, events = [], active = 
   await org.save();
 
   return {
-    webhook: { id, name, url, events, active: !!active, createdAt: new Date(), deliveryLogs: [] },
+    webhook: { id, name, url, type: type || 'generic', events, active: !!active, createdAt: new Date(), deliveryLogs: [] },
     secret
   };
 };
@@ -600,6 +658,7 @@ module.exports = {
   disableOrganization,
   enableOrganization,
   setUserActiveStatus,
+  updateCertificateStatus,
   getSettings,
   updateSettings,
   getPublicSecurityPolicy,

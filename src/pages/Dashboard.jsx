@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { addActivity } = useActivity();
+  const { activities, addActivity } = useActivity();
   const { data: dashboardData, isLoading } = useQuery(
     'dashboard',
     getDashboardData,
@@ -32,8 +32,6 @@ const Dashboard = () => {
       }
     }
   );
-
-  const [recentActivities, setRecentActivities] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -50,37 +48,32 @@ const Dashboard = () => {
       return 'EV';
     };
 
-    const mapActivity = (payload) => {
-      const type = payload.type || 'event';
-      const action = type.includes('created')
-        ? 'created'
-        : type.includes('deleted')
-        ? 'deleted'
-        : type.includes('comment')
-        ? 'comment'
-        : type.includes('assigned')
-        ? 'assigned'
-        : type.includes('status')
-        ? 'status'
-        : 'updated';
-
-      return {
-        id: `${type}-${payload.entityId || Date.now()}`,
-        type,
-        action,
-        title: payload.message || 'Activity',
-        description: payload.entityType || '',
-        timestamp: payload.createdAt || new Date().toISOString(),
-        icon: iconForType(type),
-        status: null
-      };
-    };
-
     stream.addEventListener('activity', (event) => {
       try {
         const payload = JSON.parse(event.data);
-        const mapped = mapActivity(payload);
-        setRecentActivities((prev) => [mapped, ...prev].slice(0, 20));
+        const type = payload.type || 'event';
+        const action = type.includes('created')
+          ? 'created'
+          : type.includes('deleted')
+          ? 'deleted'
+          : type.includes('comment')
+          ? 'comment'
+          : type.includes('assigned')
+          ? 'assigned'
+          : type.includes('status')
+          ? 'status'
+          : 'updated';
+
+        addActivity({
+          id: `${type}-${payload.entityId || Date.now()}`,
+          type,
+          action,
+          title: payload.message || 'Activity',
+          description: payload.entityType || '',
+          timestamp: payload.createdAt || new Date().toISOString(),
+          icon: iconForType(type),
+          status: null
+        });
       } catch (e) {
         // ignore parse errors
       }
@@ -360,7 +353,7 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <RecentActivity activities={recentActivities} />
+                <RecentActivity activities={activities} />
               </CardContent>
             </Card>
           </div>

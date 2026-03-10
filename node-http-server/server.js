@@ -4,7 +4,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 
 const connectDB = require('./DataBase/dbconnection.js');
 
@@ -13,7 +12,6 @@ const { requestLogger } = require('./src/middleware/logger');
 const { protect } = require('./src/middleware/auth');
 const { AuthorizationError } = require('./src/utils/errorHandler');
 const constants = require('./src/constants/constants');
-const User = require('./src/models/User');
 const { errorHandler } = require('./src/utils/errorHandler');
 const webhookService = require('./src/services/webhookService');
 const workOrderService = require('./src/services/workOrderService');
@@ -50,38 +48,6 @@ app.use(cors());
 //  Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-//  Static uploads (auth protected with certificate access control)
-app.use('/uploads', protect, async (req, res, next) => {
-  try {
-    if (!req.path.startsWith('/certificates/')) {
-      return next();
-    }
-
-    const { role, id } = req.user || {};
-    const allowedRoles = [constants.ROLES.ADMIN, constants.ROLES.MANAGER, constants.ROLES.FACILITY_MANAGER];
-    if (allowedRoles.includes(role)) {
-      return next();
-    }
-
-    if (role !== constants.ROLES.TECHNICIAN) {
-      throw new AuthorizationError('Access denied');
-    }
-
-    const user = await User.findById(id).select('certificates');
-    const normalizedPath = `uploads${req.path.split(path.sep).join('/')}`;
-    const isOwner = user?.certificates?.includes(normalizedPath);
-
-    if (!isOwner) {
-      throw new AuthorizationError('Access denied');
-    }
-
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 //  Rate limiter
 const limiter = rateLimit({

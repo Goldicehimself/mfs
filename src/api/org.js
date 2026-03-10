@@ -58,8 +58,8 @@ export const getOrgIntegrations = async () => {
   return response.data?.data;
 };
 
-export const createOrgWebhook = async ({ name, url, events, active } = {}) => {
-  const response = await axiosInstance.post('/org/integrations/webhooks', { name, url, events, active });
+export const createOrgWebhook = async ({ name, url, type, events, active } = {}) => {
+  const response = await axiosInstance.post('/org/integrations/webhooks', { name, url, type, events, active });
   return response.data?.data;
 };
 
@@ -75,5 +75,14 @@ export const createOrgApiKey = async ({ name, scopes, expiresAt, rateLimit } = {
 
 export const revokeOrgApiKey = async (id) => {
   const response = await axiosInstance.delete(`/org/integrations/api-keys/${id}`);
+  return response.data?.data;
+};
+
+export const updateCertificateStatus = async (userId, { publicId, status, reviewNotes } = {}) => {
+  const response = await axiosInstance.patch(`/org/users/${userId}/certificates/status`, {
+    publicId,
+    status,
+    reviewNotes
+  });
   return response.data?.data;
 };

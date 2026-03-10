@@ -10,7 +10,11 @@ export const updateProfile = async (payload = {}, avatarFile = null) => {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, value);
+        if (typeof value === 'object') {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
       }
     });
     formData.append('avatar', avatarFile);
@@ -32,6 +36,20 @@ export const uploadCertificates = async (files = []) => {
 
   const response = await axiosInstance.post('/auth/certificates', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data?.data;
+};
+
+export const getCertificateUrl = async ({ publicId, userId } = {}) => {
+  const response = await axiosInstance.get('/auth/certificates/url', {
+    params: { publicId, userId }
+  });
+  return response.data?.data;
+};
+
+export const deleteCertificate = async (publicId) => {
+  const response = await axiosInstance.delete(`/auth/certificates`, {
+    params: { publicId }
   });
   return response.data?.data;
 };

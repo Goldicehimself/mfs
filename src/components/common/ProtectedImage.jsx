@@ -17,6 +17,7 @@ export default function ProtectedImage({
   className = '',
   style = {},
   fallback = '/placeholder-asset.svg',
+  cacheKey,
   onClick,
   imgProps = {},
 }) {
@@ -26,9 +27,14 @@ export default function ProtectedImage({
   const resolvedSrc = useMemo(() => {
     if (!src) return fallback;
     if (src.startsWith('data:') || src.startsWith('blob:')) return src;
-    if (isUploadPath(src)) return buildUploadUrl(src);
+    if (isUploadPath(src)) {
+      const baseUrl = buildUploadUrl(src);
+      if (!cacheKey) return baseUrl;
+      const sep = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${sep}v=${encodeURIComponent(cacheKey)}`;
+    }
     return src;
-  }, [src, fallback]);
+  }, [src, fallback, cacheKey]);
 
   useEffect(() => {
     let active = true;
@@ -36,7 +42,7 @@ export default function ProtectedImage({
 
     const loadProtected = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const response = await fetch(resolvedSrc, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });

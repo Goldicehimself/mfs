@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Mail } from 'lucide-react';
 import axiosInstance from '../../api/axiosConfig';
 import AuthLayout from '../../components/common/Layout/AuthLayout';
 
@@ -21,12 +21,12 @@ const VerifyOrgEmail = () => {
     const verified = searchParams.get('verified');
     if (!token && verified === '1') {
       setStatus('success');
-      setMessage('Organization email verified successfully.');
+      setMessage('Organization email verified successfully. Your account is now active.');
       return;
     }
     if (!token) {
-      setStatus('error');
-      setMessage('Verification token missing. You can resend using your org code and email.');
+      setStatus('pending');
+      setMessage('Verification link has been sent to your email. Click the link to verify and activate your account.');
       return;
     }
     if (hasVerifiedRef.current) return;
@@ -39,7 +39,7 @@ const VerifyOrgEmail = () => {
           suppressToast: true
         });
         setStatus('success');
-        setMessage('Organization email verified successfully.');
+        setMessage('Organization email verified successfully. Your account is now active.');
         try {
           localStorage.removeItem('pendingOrgVerification');
         } catch (e) {
@@ -106,19 +106,22 @@ const VerifyOrgEmail = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             {status === 'success' ? (
               <CheckCircle size={28} color="#16a34a" />
+            ) : status === 'pending' ? (
+              <Mail size={28} color="#0f766e" />
             ) : (
               <AlertTriangle size={28} color={status === 'loading' ? '#0f172a' : '#dc2626'} />
             )}
             <h1 style={{ fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>
-              {status === 'success' ? 'Email Verified' : status === 'loading' ? 'Verifying' : 'Verification Failed'}
+              {status === 'success'
+                ? 'Email Verified'
+                : status === 'pending'
+                  ? 'Check Your Email'
+                  : status === 'loading'
+                    ? 'Verifying'
+                    : 'Verification Failed'}
             </h1>
           </div>
-          <p style={{ color: '#475569', lineHeight: 1.6 }}>{message}</p>
-          <div style={{ marginTop: 24 }}>
-            <RouterLink to="/login" style={{ display: 'inline-block', padding: '0.75rem 1.5rem', background: '#4f46e5', color: '#fff', borderRadius: 10, textDecoration: 'none', fontWeight: 600 }}>
-              Go to Login
-            </RouterLink>
-          </div>
+          <p style={{ color: '#0f172a', lineHeight: 1.6 }}>{message}</p>
           <div style={{ marginTop: 16 }}>
             {!orgCode.trim() || !email.trim() ? (
               <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
@@ -150,13 +153,13 @@ const VerifyOrgEmail = () => {
                 padding: '0.6rem 1.2rem',
                 borderRadius: 10,
                 border: '1px solid #cbd5f5',
-                background: '#eef2ff',
-                color: '#4338ca',
+                background: '#0f766e',
+                color: '#ffffff',
                 fontWeight: 600,
                 cursor: resendStatus === 'loading' ? 'not-allowed' : 'pointer'
               }}
             >
-              {resendStatus === 'loading' ? 'Resending...' : 'Resend verification email'}
+              {resendStatus === 'loading' ? 'Resending...' : 'Resend email'}
             </button>
             {resendStatus === 'success' && (
               <div style={{ marginTop: 8, fontSize: 12, color: '#16a34a' }}>

@@ -54,14 +54,64 @@ const buildSignatureHeaders = (secret, timestamp, payload) => {
   };
 };
 
-const deliverWithRetry = async ({ organizationId, webhook, event, payload, attempt = 1 }) => {
-  const timestamp = new Date().toISOString();
-  const body = JSON.stringify({
+const formatWorkOrderLine = (workOrder = {}) => {
+  const number = workOrder.workOrderNumber || workOrder.woNumber || workOrder._id || 'WO';
+  const title = workOrder.title || 'Work Order';
+  return `${number} — ${title}`;
+};
+
+const formatSlackTeamsText = (event, payload = {}) => {
+  const workOrder = payload.workOrder || payload;
+  const lines = [];
+
+  if (event === 'workorder.created') {
+    lines.push(`Work order created: ${formatWorkOrderLine(workOrder)}`);
+  } else if (event === 'workorder.assigned') {
+    const assignee = workOrder?.assignedTo?.name || workOrder?.assignedTo?.email || 'Unassigned';
+    lines.push(`Work order assigned: ${formatWorkOrderLine(workOrder)}`);
+    lines.push(`Assigned to: ${assignee}`);
+  } else if (event === 'workorder.status_changed') {
+    const status = payload.status || workOrder?.status || 'updated';
+    lines.push(`Work order status changed: ${formatWorkOrderLine(workOrder)}`);
+    lines.push(`Status: ${status}`);
+  } else if (event === 'workorder.overdue') {
+    lines.push(`Work order overdue: ${formatWorkOrderLine(workOrder)}`);
+  } else if (event === 'pm.due') {
+    const assetName = payload?.asset?.name || payload?.maintenance?.asset?.name || 'Asset';
+    const dueDate = payload?.nextDueDate || payload?.maintenance?.nextDueDate || '';
+    lines.push(`Preventive maintenance due: ${assetName}`);
+    if (dueDate) lines.push(`Next due: ${new Date(dueDate).toLocaleString()}`);
+  } else {
+    lines.push(`Event: ${event}`);
+  }
+
+  const priority = workOrder?.priority ? `Priority: ${workOrder.priority}` : '';
+  const location = workOrder?.location?.name || workOrder?.location || '';
+  if (priority) lines.push(priority);
+  if (location) lines.push(`Location: ${location}`);
+
+  return lines.filter(Boolean).join('\n');
+};
+
+const buildWebhookBody = ({ webhook, event, payload, organizationId, timestamp }) => {
+  const type = String(webhook?.type || 'generic').toLowerCase();
+  if (type === 'slack' || type === 'teams') {
+    return JSON.stringify({
+      text: formatSlackTeamsText(event, payload)
+    });
+  }
+
+  return JSON.stringify({
     event,
     data: payload,
     organizationId,
     occurredAt: timestamp
   });
+};
+
+const deliverWithRetry = async ({ organizationId, webhook, event, payload, attempt = 1 }) => {
+  const timestamp = new Date().toISOString();
+  const body = buildWebhookBody({ webhook, event, payload, organizationId, timestamp });
   const headers = buildSignatureHeaders(webhook.secret, timestamp, body);
   headers['x-maintainpro-event'] = event;
 

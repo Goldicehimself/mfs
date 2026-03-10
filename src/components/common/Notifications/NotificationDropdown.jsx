@@ -29,15 +29,32 @@ const NotificationDropdown = () => {
     switch (type) {
       case 'work_order_assigned':
       case 'workorder_assigned':
+      case 'workorder_bulk_assigned':
+      case 'workorder_created':
+      case 'workorder_comment':
+      case 'workorder_status':
+      case 'service_request_created':
+      case 'service_request_assigned':
+      case 'maintenance_scheduled':
+      case 'leave_request_submitted':
+      case 'fund_request_created':
+      case 'technician_message':
+      case 'admin_reply':
         return <Info className="h-4 w-4 text-blue-500" />;
+      case 'certificate_uploaded':
+        return <AlertCircle className="h-4 w-4 text-indigo-500" />;
       case 'work_order_overdue':
       case 'workorder_due_soon':
+      case 'workorder_overdue':
+      case 'leave_rejected':
+      case 'fund_rejected':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'pm_due':
       case 'maintenance_due_soon':
         return <AlertCircle className="h-4 w-4 text-amber-500" />;
       case 'work_order_completed':
-      case 'workorder_status':
+      case 'leave_approved':
+      case 'fund_approved':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       default:
         return <Info className="h-4 w-4 text-slate-500" />;

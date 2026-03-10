@@ -32,15 +32,20 @@ const sendEmail = async ({ to, subject, text, html }) => {
     return false;
   }
 
-  const from = process.env.SMTP_FROM || 'no-reply@facilitypro.local';
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html
-  });
-  return true;
+  const from = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'no-reply@facilitypro.local';
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html
+    });
+    return true;
+  } catch (error) {
+    console.error('[email] failed to send:', error.message);
+    return false;
+  }
 };
 
 module.exports = {

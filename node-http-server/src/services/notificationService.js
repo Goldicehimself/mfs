@@ -3,10 +3,74 @@ const Notification = require('../models/Notification');
 const WorkOrder = require('../models/WorkOrder');
 const PreventiveMaintenance = require('../models/PreventiveMaintenance');
 const User = require('../models/User');
+const Organization = require('../models/Organization');
 const constants = require('../constants/constants');
+
+// Helper function to check if in-app notification should be sent
+const shouldSendInAppNotification = async (organizationId, userId, notificationType) => {
+  try {
+    // Check org-level in-app setting
+    const org = await Organization.findById(organizationId).select('settings.notifications');
+    if (!org?.settings?.notifications?.notifyInApp) return false;
+
+    // Check type-specific org settings
+    const typeSettings = {
+      'workorder_created': org.settings.notifications.notifyWoCreated,
+      'workorder_assigned': org.settings.notifications.notifyWoAssigned,
+      'workorder_overdue': org.settings.notifications.notifyWoOverdue,
+      'workorder_due_soon': org.settings.notifications.notifyWoOverdue, // Map due soon to overdue setting
+      'maintenance_due_soon': org.settings.notifications.notifyPmDue,
+      'service_request_created': org.settings.notifications.notifyWoCreated, // Map to work order created for now
+      'technician_message': true, // Always allow admin messages
+      'admin_reply': true // Always allow admin replies
+    };
+
+    if (typeSettings[notificationType] === false) return false;
+
+    // Check quiet hours
+    if (org.settings.notifications.quietHoursEnabled) {
+      const now = new Date();
+      const currentTime = now.getHours() * 100 + now.getMinutes();
+      const startTime = parseInt(org.settings.notifications.quietHoursStart.replace(':', ''), 10);
+      const endTime = parseInt(org.settings.notifications.quietHoursEnd.replace(':', ''), 10);
+
+      if (!Number.isNaN(startTime) && !Number.isNaN(endTime)) {
+        const inQuietHours = startTime === endTime
+          ? true
+          : startTime < endTime
+            ? currentTime >= startTime && currentTime <= endTime
+            : currentTime >= startTime || currentTime <= endTime;
+
+        if (inQuietHours) return false;
+      }
+    }
+
+    // Check user preference
+    const user = await User.findById(userId).select('preferences.inAppNotifications');
+    return user?.preferences?.inAppNotifications !== false;
+  } catch (error) {
+    console.error('Error checking notification preferences:', error);
+    return false; // Default to not sending on error
+  }
+};
+
+// Helper function to filter users based on preferences
+const filterUsersByPreferences = async (organizationId, userIds, notificationType) => {
+  const filtered = [];
+  for (const userId of userIds) {
+    if (await shouldSendInAppNotification(organizationId, userId, notificationType)) {
+      filtered.push(userId);
+    }
+  }
+  return filtered;
+};
 
 const createNotification = async (payload) => {
   try {
+    // Check if user should receive this notification
+    const shouldSend = await shouldSendInAppNotification(payload.organization, payload.user, payload.type);
+    if (!shouldSend) return null;
+
     return await Notification.create(payload);
   } catch (error) {
     if (error.code === 11000) {
@@ -18,7 +82,12 @@ const createNotification = async (payload) => {
 
 const createNotificationsForUsers = async (userIds, payload) => {
   if (!userIds || userIds.length === 0) return [];
-  const docs = userIds.map((userId) => ({ ...payload, user: userId }));
+
+  // Filter users based on preferences
+  const allowedUserIds = await filterUsersByPreferences(payload.organization, userIds, payload.type);
+  if (allowedUserIds.length === 0) return [];
+
+  const docs = allowedUserIds.map((userId) => ({ ...payload, user: userId }));
   try {
     return await Notification.insertMany(docs, { ordered: false });
   } catch (error) {
@@ -75,6 +144,12 @@ const ensureDueSoonNotifications = async (user, days = 7) => {
   const due = new Date();
   due.setDate(due.getDate() + days);
 
+  const overdueFilter = {
+    organization: user.organization,
+    dueDate: { $lt: now },
+    status: { $nin: [constants.WORK_ORDER_STATUS.COMPLETED, constants.WORK_ORDER_STATUS.CANCELLED] }
+  };
+
   const workOrderFilter = {
     organization: user.organization,
     dueDate: { $gte: now, $lte: due },
@@ -84,6 +159,11 @@ const ensureDueSoonNotifications = async (user, days = 7) => {
   if (user.role === constants.ROLES.ADMIN || user.role === constants.ROLES.FACILITY_MANAGER) {
     // no extra filter
   } else if (user.role === constants.ROLES.TECHNICIAN || user.role === constants.ROLES.VENDOR) {
+    overdueFilter.$or = [
+      { assignedTo: user.id },
+      { team: user.id },
+      { createdBy: user.id }
+    ];
     workOrderFilter.$or = [
       { assignedTo: user.id },
       { team: user.id },
@@ -91,6 +171,21 @@ const ensureDueSoonNotifications = async (user, days = 7) => {
     ];
   } else {
     return;
+  }
+
+  const overdueWorkOrders = await WorkOrder.find(overdueFilter).select('_id title dueDate');
+  for (const workOrder of overdueWorkOrders) {
+    await createNotification({
+      user: user.id,
+      organization: user.organization,
+      title: 'Work order overdue',
+      message: `${workOrder.title} is overdue`,
+      type: 'workorder_overdue',
+      entityType: 'WorkOrder',
+      entityId: workOrder._id,
+      link: `/work-orders/${workOrder._id}`,
+      dedupeKey: `workorder-overdue-${workOrder._id}`
+    });
   }
 
   const workOrders = await WorkOrder.find(workOrderFilter).select('_id title dueDate');
@@ -138,6 +233,54 @@ const ensureDueSoonNotifications = async (user, days = 7) => {
   }
 };
 
+const notifyAdminsAndManagers = async (organizationId, sender, message, meta = {}) => {
+  const recipients = await getRoleUserIds(
+    [constants.ROLES.ADMIN, constants.ROLES.FACILITY_MANAGER],
+    organizationId
+  );
+  if (!recipients.length) return [];
+  const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ').trim() || sender?.email || 'Technician';
+  const payload = {
+    organization: organizationId,
+    title: 'Message from technician',
+    message: message,
+    type: 'technician_message',
+    entityType: 'User',
+    entityId: sender?._id || sender?.id,
+    link: '/technician-portal',
+    metadata: {
+      senderId: sender?._id || sender?.id,
+      senderName,
+      senderEmail: sender?.email || '',
+      senderPhone: sender?.phone || '',
+      ...meta
+    }
+  };
+  return createNotificationsForUsers(recipients, payload);
+};
+
+const notifyUser = async (organizationId, recipientId, sender, message, meta = {}) => {
+  if (!recipientId) return null;
+  const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ').trim() || sender?.email || 'Admin';
+  const payload = {
+    organization: organizationId,
+    title: 'Reply from admin',
+    message: message,
+    type: 'admin_reply',
+    entityType: 'User',
+    entityId: sender?._id || sender?.id,
+    link: '/technician-portal',
+    metadata: {
+      senderId: sender?._id || sender?.id,
+      senderName,
+      senderEmail: sender?.email || '',
+      senderPhone: sender?.phone || '',
+      ...meta
+    }
+  };
+  return createNotification({ ...payload, user: recipientId });
+};
+
 module.exports = {
   createNotification,
   createNotificationsForUsers,
@@ -145,5 +288,7 @@ module.exports = {
   markRead,
   markAllRead,
   getRoleUserIds,
-  ensureDueSoonNotifications
+  ensureDueSoonNotifications,
+  notifyAdminsAndManagers,
+  notifyUser
 };

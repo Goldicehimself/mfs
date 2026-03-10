@@ -160,12 +160,20 @@
   background: #0f172a !important;
   border: 1px solid #1f2937 !important;
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.5) !important;
+  color: #e2e8f0 !important;
 }
 
 .dark .react-international-phone-country-selector-dropdown__list-item {
   background: #0f172a !important;
+  color: #e2e8f0 !important;
 }
 
 .dark .react-international-phone-country-selector-dropdown__list-item:hover {
   background: rgba(148, 163, 184, 0.15) !important;
+}
+
+.dark .react-international-phone-country-selector-search-input {
+  background-color: #0f172a !important;
+  border: 1px solid #1f2937 !important;
+  color: #e2e8f0 !important;
 }

@@ -12,9 +12,9 @@ import {
   Avatar,
   IconButton,
   Popover,
+  useMediaQuery,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { motion } from 'framer-motion';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
 import {
   LayoutDashboard,
   Wrench,
@@ -29,6 +29,9 @@ import {
   ChevronsRight,
   ChevronUp,
   ChevronDown,
+  Sun,
+  Moon,
+  MessageSquare,
   PlusCircle,
   List as IconList,
   Users2,
@@ -36,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useTheme as useAppTheme } from '../../../contexts/ThemeContext';
 
 // This component now only renders the menu content.
 // The layout (Drawer / aside) is controlled by the parent (MainLayout).
@@ -43,7 +47,9 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const theme = useTheme();
+  const theme = useMuiTheme();
+  const { resolvedTheme, toggleTheme } = useAppTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [openAssets, setOpenAssets] = React.useState(false);
   const [openWorkOrders, setOpenWorkOrders] = React.useState(false);
@@ -68,6 +74,12 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
       title: 'Technician Portal',
       icon: <Wrench />,
       path: '/technician-portal',
+      roles: ['technician'],
+    },
+    {
+      title: 'Messages',
+      icon: <MessageSquare />,
+      path: '/technician-messages',
       roles: ['technician'],
     },
     {
@@ -167,16 +179,16 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
       roles: ['facility_manager', 'admin', 'finance'],
     },
     {
+      title: 'Messages',
+      icon: <MessageSquare />,
+      path: '/messages',
+      roles: ['facility_manager', 'admin'],
+    },
+    {
       title: 'Settings',
       icon: <Settings2 />,
       path: '/settings',
       roles: ['facility_manager', 'admin'],
-    },
-    {
-      title: 'Org Admin',
-      icon: <Building />,
-      path: '/org-admin',
-      roles: ['admin'],
     },
   ];
 
@@ -199,9 +211,32 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
     },
     {
       label: 'Admin',
-      items: ['Finance Portal', 'Reports', 'Settings', 'Org Admin'],
+      items: ['Finance Portal', 'Reports', 'Messages', 'Settings'],
     },
   ];
+
+  const [openGroups, setOpenGroups] = React.useState(() => {
+    const defaultOpen = !isMobile;
+    return groupedMenu.reduce((acc, group) => {
+      acc[group.label] = defaultOpen;
+      return acc;
+    }, {});
+  });
+
+  React.useEffect(() => {
+    const defaultOpen = !isMobile;
+    setOpenGroups(groupedMenu.reduce((acc, group) => {
+      acc[group.label] = defaultOpen;
+      return acc;
+    }, {}));
+  }, [isMobile]);
+
+  const toggleGroup = (label) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
 
   const primaryAction = {
     title: 'New Work Order',
@@ -357,41 +392,23 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
     <Box className="h-full mp-sidebar">
       <Box className="mp-sidebar-header">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 1,
-              overflow: 'hidden',
-              bgcolor: theme.palette.mode === 'dark' ? '#0b1220' : '#fff',
-              boxShadow: theme.palette.mode === 'dark'
-                ? '0 1px 6px rgba(0,0,0,0.5)'
-                : '0 1px 4px rgba(30,58,138,0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 9, ease: 'linear', repeat: Infinity }} style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Wrench size={18} color="var(--mp-brand)" />
-            </motion.div>
-          </Box>
-
-          {!collapsed && (
-            <div style={{ flex: 1 }}>
-            <Typography className="mp-sidebar-header-title">FacilityPro</Typography>
-            <Typography className="mp-sidebar-header-subtitle">Maintenance made simple</Typography>
-            </div>
-          )}
+          <img
+            src="/facilitypro-logo.svg"
+            alt="FacilityPro logo"
+            className="fp-logo"
+            style={{ width: 56, height: 56, objectFit: 'contain' }}
+          />
 
           {!collapsed && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <IconButton size="small" onClick={() => navigate('/profile')} title="Profile">
-              <Avatar sx={{ width: 28, height: 28 }}>{user?.name?.charAt(0) || 'U'}</Avatar>
-            </IconButton>
-            <IconButton size="small" onClick={() => navigate('/settings')} title="Settings">
-              <Settings2 size={16} />
-            </IconButton>
+              <IconButton size="small" onClick={() => navigate('/profile')} title="Profile">
+                <Avatar sx={{ width: 28, height: 28 }}>{user?.name?.charAt(0) || 'U'}</Avatar>
+              </IconButton>
+              {['admin', 'facility_manager'].includes(user?.role) && (
+                <IconButton size="small" onClick={() => navigate('/settings')} title="Settings">
+                  <Settings2 size={16} />
+                </IconButton>
+              )}
             </div>
           )}
         </Box>
@@ -417,7 +434,12 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
             <ListItemIcon sx={{ minWidth: 36, color: '#fff' }}>
               {React.cloneElement(primaryAction.icon, { size: 18 })}
             </ListItemIcon>
-            {!collapsed && <ListItemText primary={primaryAction.title} />}
+            {!collapsed && (
+              <ListItemText
+                primary={primaryAction.title}
+                primaryTypographyProps={{ sx: { color: '#fff', fontWeight: 600 } }}
+              />
+            )}
           </ListItemButton>
         )}
       </Box>
@@ -430,22 +452,41 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
           if (items.length === 0) return null;
           return (
             <Box key={group.label} sx={{ pb: 1 }}>
-              <Typography
-                variant="caption"
+              <Box
+                component="button"
+                type="button"
+                onClick={() => toggleGroup(group.label)}
                 sx={{
+                  width: '100%',
                   px: 2,
                   pb: 0.5,
-                  color: 'text.secondary',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
+                  pt: 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
                 }}
               >
-                {group.label}
-              </Typography>
-              <List sx={{ px: 1 }}>
-                {items.map(renderMenuItem)}
-              </List>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {group.label}
+                </Typography>
+                {openGroups[group.label] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </Box>
+              <Collapse in={openGroups[group.label]} timeout="auto" unmountOnExit>
+                <List sx={{ px: 1 }}>
+                  {items.map(renderMenuItem)}
+                </List>
+              </Collapse>
               <Divider sx={{ my: 1, borderColor: 'divider' }} />
             </Box>
           );
@@ -516,6 +557,20 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
 
       <Box sx={{ mt: 'auto', px: 2, py: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
         <ListItemButton
+          onClick={toggleTheme}
+          className="mp-nav-item"
+          title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          sx={{
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            px: collapsed ? 1 : 2,
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </ListItemIcon>
+        </ListItemButton>
+
+        <ListItemButton
           onClick={onToggleCollapse}
           className="mp-nav-item"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -527,7 +582,6 @@ const NavigationMenu = ({ onCloseMobile = () => {}, collapsed = false, onToggleC
           <ListItemIcon sx={{ minWidth: 36 }}>
             {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
           </ListItemIcon>
-          {!collapsed && <ListItemText primary="Collapse" primaryTypographyProps={{ sx: { color: 'text.primary' } }} />}
         </ListItemButton>
       </Box>
     </Box>

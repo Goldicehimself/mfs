@@ -72,6 +72,21 @@ const setUserActiveStatus = async (req, res, next) => {
   }
 };
 
+const updateCertificateStatus = async (req, res, next) => {
+  try {
+    const { publicId, status, reviewNotes } = req.validatedData || req.body;
+    const result = await orgService.updateCertificateStatus(
+      req.user.organization,
+      req.params.id,
+      { publicId, status, reviewNotes },
+      req.user.id
+    );
+    response.success(res, 'Certificate status updated', result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getSettings = async (req, res, next) => {
   try {
     const settings = await orgService.getSettings(req.user.organization);
@@ -175,6 +190,7 @@ module.exports = {
   disableOrganization,
   enableOrganization,
   setUserActiveStatus,
+  updateCertificateStatus,
   getSettings,
   updateSettings,
   getPublicSecurityPolicy,

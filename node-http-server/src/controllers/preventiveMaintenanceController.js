@@ -7,6 +7,7 @@ const activityService = require('../services/activityService');
 const User = require('../models/User');
 const Asset = require('../models/Asset');
 const { ValidationError, AuthorizationError } = require('../utils/errorHandler');
+const { countApprovedCertificates } = require('../utils/certificateUtils');
 
 const ensureUserInOrg = async (organizationId, userId) => {
   if (!userId) return;
@@ -22,7 +23,7 @@ const ensureCertifiedTechnicianAccess = async (organizationId, userId) => {
     throw new ValidationError('User not found');
   }
   if (user.role === constants.ROLES.TECHNICIAN) {
-    const certified = Array.isArray(user.certificates) && user.certificates.length > 0;
+    const certified = countApprovedCertificates(user.certificates) > 0;
     if (!certified) {
       throw new AuthorizationError('Certification required to access preventive maintenance');
     }
@@ -36,7 +37,7 @@ const ensureAssigneeCertifiedIfNeeded = async (organizationId, assigneeId) => {
     throw new ValidationError('Assigned user must belong to your organization and be active');
   }
   if (user.role === constants.ROLES.TECHNICIAN) {
-    const certified = Array.isArray(user.certificates) && user.certificates.length > 0;
+    const certified = countApprovedCertificates(user.certificates) > 0;
     if (!certified) {
       throw new AuthorizationError('Certification required to assign this maintenance task');
     }

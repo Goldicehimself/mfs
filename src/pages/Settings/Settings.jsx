@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Clock, Calendar, Bell, Lock, Database, Download } from 'lucide-react';
+import { Save, Clock, Calendar, Bell, Lock, Database, Download, Sun, Moon, Laptop } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   getOrgSettings,
   updateOrgSettings,
@@ -24,9 +25,11 @@ import {
   StaffSettings,
 } from './RoleSpecificSettings';
 import Help from '../Help/Help';
+import OrgAdmin from '../Org/OrgAdmin';
 
 const Settings = () => {
   const { user } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -83,14 +86,36 @@ const Settings = () => {
   const [apiKeys, setApiKeys] = useState([]);
   const [newWebhookName, setNewWebhookName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [newWebhookType, setNewWebhookType] = useState('generic');
   const [newApiKeyName, setNewApiKeyName] = useState('');
-  const [newWebhookEvents, setNewWebhookEvents] = useState([
+  const webhookEventOptions = [
+    { id: 'workorder.created', label: 'Work Order Created' },
+    { id: 'workorder.assigned', label: 'Work Order Assigned' },
+    { id: 'workorder.status_changed', label: 'Status Changed' },
+    { id: 'workorder.overdue', label: 'Work Order Overdue' },
+    { id: 'pm.due', label: 'Preventive Maintenance Due' }
+  ];
+
+  const baseWebhookEvents = [
     'workorder.created',
     'workorder.assigned',
     'workorder.status_changed',
     'workorder.overdue',
     'pm.due'
-  ]);
+  ];
+  const webhookEventDefaults = {
+    generic: baseWebhookEvents,
+    slack: ['workorder.created', 'workorder.assigned', 'workorder.status_changed'],
+    teams: ['workorder.created', 'workorder.assigned', 'workorder.status_changed'],
+    zapier: baseWebhookEvents
+  };
+  const webhookEventOptionsByType = {
+    generic: webhookEventOptions,
+    slack: webhookEventOptions,
+    teams: webhookEventOptions,
+    zapier: webhookEventOptions
+  };
+  const [newWebhookEvents, setNewWebhookEvents] = useState(webhookEventDefaults.generic);
   const [newApiKeyScopes, setNewApiKeyScopes] = useState([
     'workorders:read',
     'assets:read',
@@ -164,14 +189,6 @@ const Settings = () => {
     const match = lockoutOptions.find((opt) => opt.label === label);
     return match ? match.value : 5;
   };
-
-  const webhookEventOptions = [
-    { id: 'workorder.created', label: 'workorder.created' },
-    { id: 'workorder.assigned', label: 'workorder.assigned' },
-    { id: 'workorder.status_changed', label: 'workorder.status_changed' },
-    { id: 'workorder.overdue', label: 'workorder.overdue' },
-    { id: 'pm.due', label: 'pm.due' }
-  ];
 
   const apiKeyScopeOptions = [
     { id: 'workorders:read', label: 'workorders:read' },
@@ -386,6 +403,7 @@ const Settings = () => {
       const result = await createOrgWebhook({
         name: newWebhookName.trim(),
         url: newWebhookUrl.trim(),
+        type: newWebhookType,
         events: newWebhookEvents,
         active: true
       });
@@ -401,6 +419,41 @@ const Settings = () => {
     } catch (error) {
       toast.error('Failed to create webhook.');
     }
+  };
+
+  const applyIntegrationPreset = (type) => {
+    if (type === 'slack') {
+      setNewWebhookType('slack');
+      setNewWebhookName('Slack Notifications');
+      setNewWebhookUrl('');
+      setNewWebhookEvents(webhookEventDefaults.slack);
+      toast.info('Slack preset applied. Paste your Slack incoming webhook URL.');
+      return;
+    }
+
+    if (type === 'teams') {
+      setNewWebhookType('teams');
+      setNewWebhookName('Teams Notifications');
+      setNewWebhookUrl('');
+      setNewWebhookEvents(webhookEventDefaults.teams);
+      toast.info('Teams preset applied. Paste your Teams incoming webhook URL.');
+      return;
+    }
+
+    if (type === 'zapier') {
+      setNewWebhookType('zapier');
+      setNewWebhookName('Zapier / Make');
+      setNewWebhookUrl('');
+      setNewWebhookEvents(webhookEventDefaults.zapier);
+      toast.info('Zapier/Make preset applied. Paste the webhook URL.');
+      return;
+    }
+  };
+
+  const handleWebhookTypeChange = (value) => {
+    const nextType = value || 'generic';
+    setNewWebhookType(nextType);
+    setNewWebhookEvents(webhookEventDefaults[nextType] || baseWebhookEvents);
   };
 
   const handleDeleteWebhook = async (id) => {
@@ -901,6 +954,51 @@ const Settings = () => {
                       <option>YYYY-MM-DD</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Theme</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTheme('light')}
+                        className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          theme === 'light'
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                        }`}
+                      >
+                        <Sun className="h-4 w-4" />
+                        Light
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTheme('dark')}
+                        className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          theme === 'dark'
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                        }`}
+                      >
+                        <Moon className="h-4 w-4" />
+                        Dark
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTheme('system')}
+                        className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                          theme === 'system'
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                        }`}
+                      >
+                        <Laptop className="h-4 w-4" />
+                        System {theme === 'system' && resolvedTheme ? `(${resolvedTheme})` : ''}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Choose light or dark, or follow your system setting.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1038,6 +1136,24 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Users & Permissions Tab */}
+          {!loadingSettings && activeTab === 'users' && (
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900 rounded-lg">
+                    <span className="text-emerald-600 dark:text-emerald-400">👥</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Users & Permissions</h3>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Manage members, roles, access, and invitation links for your organization.
+                </p>
+              </div>
+              <OrgAdmin />
             </div>
           )}
 
@@ -1378,9 +1494,69 @@ const Settings = () => {
                 )}
 
                 <div className="space-y-8">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Quick Connect (MVP)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Slack Notifications</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uses Slack incoming webhook URL.</p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => applyIntegrationPreset('slack')}>
+                            Use Preset
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Teams Notifications</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Uses Microsoft Teams incoming webhook URL.</p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => applyIntegrationPreset('teams')}>
+                            Use Preset
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Zapier / Make</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Connect to Zapier or Make with a webhook URL.</p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => applyIntegrationPreset('zapier')}>
+                            Use Preset
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Accounting (QuickBooks / Xero)</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Coming soon in a future release.</p>
+                          </div>
+                          <Button variant="outline" size="sm" disabled>
+                            Coming Soon
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Webhooks</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <select
+                        value={newWebhookType}
+                        onChange={(e) => handleWebhookTypeChange(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      >
+                        <option value="generic">Generic Webhook</option>
+                        <option value="slack">Slack</option>
+                        <option value="teams">Microsoft Teams</option>
+                        <option value="zapier">Zapier / Make</option>
+                      </select>
                       <input
                         type="text"
                         value={newWebhookName}
@@ -1397,7 +1573,7 @@ const Settings = () => {
                       />
                     </div>
                     <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-300">
-                      {webhookEventOptions.map((event) => (
+                      {(webhookEventOptionsByType[newWebhookType] || webhookEventOptions).map((event) => (
                         <label key={event.id} className="flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -1457,6 +1633,7 @@ const Settings = () => {
                         >
                           <div>
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{hook.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Type: {hook.type || 'generic'}</div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">{hook.url}</div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Events: {(hook.events || []).join(', ') || 'None'}

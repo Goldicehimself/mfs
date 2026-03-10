@@ -27,8 +27,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { fetchAllLeaves, fetchPendingLeaves, approveLeave, rejectLeave } from '@/api/leave';
 import { toast } from 'react-toastify';
-import { fetchMembers } from '@/api/org';
+import { fetchMembers, updateCertificateStatus } from '@/api/org';
 import { getWorkOrders, assignWorkOrder } from '@/api/workOrders';
+import { getCertificateUrl } from '@/api/profile';
 
 // StatCard Component
 const StatCard = ({ icon: Icon, label, value, color = 'indigo' }) => (
@@ -129,6 +130,22 @@ const StaffCard = ({ staff, onSelect }) => {
   );
 };
 
+const getCertStatus = (cert) => {
+  if (!cert) return 'pending';
+  if (typeof cert === 'string') return 'approved';
+  return cert.status || 'approved';
+};
+
+const formatCertName = (cert) => {
+  if (!cert) return 'Certificate';
+  if (typeof cert === 'string') {
+    const cleaned = cert.split('?')[0];
+    const parts = cleaned.split('/');
+    return parts[parts.length - 1] || 'Certificate';
+  }
+  return cert.originalName || cert.publicId || 'Certificate';
+};
+
 export default function StaffManagement() {
   const [staffMembers, setStaffMembers] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
@@ -154,6 +171,7 @@ export default function StaffManagement() {
   });
   const [decisionNotes, setDecisionNotes] = useState({});
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [certActionLoading, setCertActionLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -197,9 +215,13 @@ export default function StaffManagement() {
       const assignedOrders = Number.isFinite(member.assignedOrders)
         ? member.assignedOrders
         : 0;
-      const certifications = Number.isFinite(member.certifications)
+      const certificateList = Array.isArray(member.certificates) ? member.certificates : [];
+      const certificationsApproved = Number.isFinite(member.certifications)
         ? member.certifications
-        : (Array.isArray(member.certificates) ? member.certificates.length : 0);
+        : certificateList.filter((cert) => getCertStatus(cert) === 'approved').length;
+      const certificationsPending = Number.isFinite(member.certificationsPending)
+        ? member.certificationsPending
+        : certificateList.filter((cert) => getCertStatus(cert) === 'pending').length;
       return {
         id,
         name,
@@ -213,8 +235,10 @@ export default function StaffManagement() {
         completedOrders,
         performance,
         rating,
-        certifications,
-        isCertified: certifications > 0,
+        certificates: certificateList,
+        certifications: certificationsApproved,
+        certificationsPending,
+        isCertified: certificationsApproved > 0,
         lastActive: member.lastActive || member.lastLogin || member.updatedAt || member.createdAt,
         joinDate: member.createdAt
       };
@@ -235,16 +259,55 @@ export default function StaffManagement() {
     return { totalStaff, activeAssignments, completionRate, teamRating };
   }, [normalizedStaff, workOrders]);
 
-  const getCertificatesForStaff = (staff) => {
-    if (!staff?.email) return [];
+  const getCertificatesForStaff = (staff) => Array.isArray(staff?.certificates) ? staff.certificates : [];
+
+  const handleReviewCertificate = async (staff, cert, status) => {
+    if (!staff?.id) return;
+    const publicId = typeof cert === 'string' ? cert : cert.publicId;
+    if (!publicId) return;
+    setCertActionLoading(true);
     try {
-      const users = JSON.parse(localStorage.getItem('local_users') || '[]');
-      const match = users.find(
-        (u) => u.email?.toLowerCase() === staff.email.toLowerCase()
+      const result = await updateCertificateStatus(staff.id, { publicId, status });
+      const updatedCert = result?.certificate;
+      setStaffMembers((prev) =>
+        prev.map((member) => {
+          if ((member.id || member._id) !== staff.id) return member;
+          const certs = Array.isArray(member.certificates) ? member.certificates : [];
+          const nextCerts = certs.map((entry) => {
+            const entryId = typeof entry === 'string' ? entry : entry.publicId;
+            if (entryId !== publicId) return entry;
+            return updatedCert || entry;
+          });
+          return { ...member, certificates: nextCerts };
+        })
       );
-      return match?.certificates || [];
-    } catch (e) {
-      return [];
+      setSelectedStaff((prev) => {
+        if (!prev) return prev;
+        const nextCerts = getCertificatesForStaff(prev).map((entry) => {
+          const entryId = typeof entry === 'string' ? entry : entry.publicId;
+          if (entryId !== publicId) return entry;
+          return updatedCert || entry;
+        });
+        return { ...prev, certificates: nextCerts };
+      });
+      toast.success(status === 'approved' ? 'Certificate approved' : 'Certificate rejected');
+    } catch (error) {
+      // handled by interceptor
+    } finally {
+      setCertActionLoading(false);
+    }
+  };
+
+  const handleViewCertificate = async (staff, cert) => {
+    try {
+      const publicId = typeof cert === 'string' ? cert : cert.publicId;
+      if (!publicId) return;
+      const data = await getCertificateUrl({ publicId, userId: staff.id });
+      if (data?.url) {
+        window.open(data.url, '_blank', 'noopener');
+      }
+    } catch (error) {
+      toast.error('Unable to open certificate');
     }
   };
 
@@ -815,11 +878,16 @@ export default function StaffManagement() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Certifications</p>
-                      <p className="text-xl font-bold text-emerald-600 flex items-center gap-1">
-                        <Award className="h-4 w-4" />
-                        {selectedStaff.certifications}
+                    <p className="text-xl font-bold text-emerald-600 flex items-center gap-1">
+                      <Award className="h-4 w-4" />
+                      {selectedStaff.certifications}
+                    </p>
+                    {selectedStaff.certificationsPending > 0 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        {selectedStaff.certificationsPending} pending
                       </p>
-                    </div>
+                    )}
+                  </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed Orders</p>
                       <p className="text-xl font-bold text-blue-600 flex items-center gap-1">
@@ -842,34 +910,78 @@ export default function StaffManagement() {
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {getCertificatesForStaff(selectedStaff).map((cert) => (
-                        <button
-                          key={cert.id}
-                          type="button"
-                          onClick={() => window.open(cert.dataUrl, '_blank')}
-                          className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-zinc-700 p-3 hover:border-emerald-400 hover:shadow-sm transition"
-                        >
-                          {cert.type === 'application/pdf' ? (
-                            <div className="h-10 w-10 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-semibold">
-                              PDF
+                      {getCertificatesForStaff(selectedStaff).map((cert) => {
+                        const status = getCertStatus(cert);
+                        const isPdf = typeof cert === 'object' && cert?.mimeType === 'application/pdf';
+                        const label = formatCertName(cert);
+                        const uploadedAt = cert?.uploadedAt ? new Date(cert.uploadedAt).toLocaleDateString() : '';
+                        return (
+                          <div
+                            key={typeof cert === 'string' ? cert : cert.publicId}
+                            className="rounded-lg border border-gray-200 dark:border-zinc-700 p-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              {isPdf ? (
+                                <div className="h-10 w-10 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-semibold">
+                                  PDF
+                                </div>
+                              ) : (
+                                <div className="h-10 w-10 rounded bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-semibold">
+                                  IMG
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[160px]">
+                                  {label}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {uploadedAt || 'Uploaded'}
+                                </p>
+                              </div>
+                              <Badge className={
+                                status === 'approved'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                  : status === 'rejected'
+                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300'
+                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                              }>
+                                {status}
+                              </Badge>
                             </div>
-                          ) : (
-                            <img
-                              src={cert.dataUrl}
-                              alt={cert.name}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          )}
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[160px]">
-                              {cert.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(cert.uploadedAt).toLocaleDateString()}
-                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => handleViewCertificate(selectedStaff, cert)}
+                              >
+                                View
+                              </Button>
+                              {status === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    onClick={() => handleReviewCertificate(selectedStaff, cert, 'approved')}
+                                    disabled={certActionLoading}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                                    onClick={() => handleReviewCertificate(selectedStaff, cert, 'rejected')}
+                                    disabled={certActionLoading}
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

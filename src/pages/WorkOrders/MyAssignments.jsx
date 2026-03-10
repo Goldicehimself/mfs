@@ -38,6 +38,7 @@ export default function MyAssignments() {
   const [visible, setVisible] = useState(6);
   const [workOrders, setWorkOrders] = useState([]);
   const [updatingId, setUpdatingId] = useState(null);
+  const isManager = ["admin", "facility_manager"].includes(user?.role);
 
   useEffect(() => {
     let active = true;
@@ -64,9 +65,29 @@ export default function MyAssignments() {
     return workOrders
       .map((wo) => ({
         ...wo,
-        overdue: isOverdue(wo.scheduledDate, wo.status),
+        overdue: isOverdue(wo.scheduledDate || wo.dueDate, wo.status),
       }))
       .filter((wo) => {
+        if (!isManager) {
+          const getId = (value) => value?._id || value?.id || value || '';
+          const assignedId = getId(wo.assignedTo);
+          const teamIds = Array.isArray(wo.team)
+            ? wo.team.map((member) => getId(member)).filter(Boolean)
+            : [];
+          const assignedName =
+            wo.assignedTo?.name ||
+            wo.assignedTo?.fullName ||
+            wo.assignedTo?.email ||
+            '';
+          const currentUserId = getId(user);
+          const currentUserName = user?.name || '';
+          const isAssignedToMe =
+            (currentUserId &&
+              (String(assignedId) === String(currentUserId) ||
+                teamIds.some((id) => String(id) === String(currentUserId)))) ||
+            (currentUserName && assignedName && assignedName === currentUserName);
+          if (!isAssignedToMe) return false;
+        }
         if (status !== "all" && wo.status !== status) return false;
         if (priority !== "all" && wo.priority !== priority) return false;
         if (
@@ -76,11 +97,12 @@ export default function MyAssignments() {
           return false;
         return true;
       });
-  }, [search, status, priority, workOrders]);
+  }, [search, status, priority, workOrders, isManager, user]);
 
   const stats = useMemo(() => {
+    const assigned = data.length;
     return {
-      assigned: 8,
+      assigned,
       inProgress: data.filter((d) => d.status === "in_progress").length,
       completed: data.filter((d) => d.status === "completed").length,
       overdue: data.filter((d) => d.overdue).length,
@@ -146,8 +168,6 @@ export default function MyAssignments() {
       setUpdatingId(null);
     }
   };
-
-  const isManager = ["admin", "facility_manager"].includes(user?.role);
 
   return (
     <div className="space-y-6">

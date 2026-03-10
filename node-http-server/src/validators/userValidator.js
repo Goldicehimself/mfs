@@ -10,6 +10,7 @@ const registerSchema = Joi.object({
   orgCode: Joi.string().alphanum().min(6).max(12).empty(''),
   inviteCode: Joi.string().alphanum().min(8).max(12).empty(''),
   phone: Joi.string().optional(),
+  gender: Joi.string().valid('male', 'female', 'other').optional(),
   department: Joi.string().optional()
 }).xor('orgCode', 'inviteCode');
 
@@ -19,7 +20,9 @@ const registerOrgSchema = Joi.object({
   firstName: Joi.string().required().min(2).max(50),
   lastName: Joi.string().required().min(2).max(50),
   email: Joi.string().email().required(),
-  password: Joi.string().required().min(6).max(50)
+  password: Joi.string().required().min(6).max(50),
+  phone: Joi.string().optional(),
+  gender: Joi.string().valid('male', 'female', 'other').optional()
 });
 
 const inviteSchema = Joi.object({
@@ -61,8 +64,13 @@ const updateUserSchema = Joi.object({
   firstName: Joi.string().optional().min(2).max(50),
   lastName: Joi.string().optional().min(2).max(50),
   phone: Joi.string().optional(),
+  gender: Joi.string().valid('male', 'female', 'other').optional(),
   department: Joi.string().optional(),
   avatar: Joi.string().optional(),
+  preferences: Joi.object({
+    emailNotifications: Joi.boolean().optional(),
+    inAppNotifications: Joi.boolean().optional()
+  }).optional(),
   role: Joi.string().optional().valid('admin', 'facility_manager', 'technician', 'staff', 'vendor', 'finance', 'procurement', 'user'),
   active: Joi.boolean().optional()
 }).min(1);

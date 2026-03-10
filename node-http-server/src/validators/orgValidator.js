@@ -89,6 +89,7 @@ const resendOrgEmailBodySchema = Joi.object({
 const createWebhookSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   url: Joi.string().uri({ scheme: ['http', 'https'] }).required(),
+  type: Joi.string().valid('generic', 'slack', 'teams', 'zapier').optional(),
   events: Joi.array().items(Joi.string().valid(...constants.WEBHOOK_EVENTS)).min(1).required(),
   active: Joi.boolean().optional()
 });
@@ -100,7 +101,13 @@ const createApiKeySchema = Joi.object({
   rateLimit: Joi.object({
     windowMs: Joi.number().integer().min(1000).max(24 * 60 * 60 * 1000).optional(),
     max: Joi.number().integer().min(1).max(10000).optional()
-  }).optional()
+}).optional()
+});
+
+const updateCertificateStatusSchema = Joi.object({
+  publicId: Joi.string().required(),
+  status: Joi.string().valid('approved', 'rejected').required(),
+  reviewNotes: Joi.string().allow('').max(500).optional()
 });
 
 module.exports = {
@@ -111,5 +118,6 @@ module.exports = {
   verifyOrgEmailQuerySchema,
   resendOrgEmailBodySchema,
   createWebhookSchema,
-  createApiKeySchema
+  createApiKeySchema,
+  updateCertificateStatusSchema
 };

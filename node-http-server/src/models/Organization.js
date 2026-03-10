@@ -64,6 +64,7 @@ const webhookSchema = new mongoose.Schema({
   id: { type: String, required: true },
   name: { type: String, required: true, trim: true },
   url: { type: String, required: true, trim: true },
+  type: { type: String, trim: true, default: 'generic' },
   secret: { type: String, required: true },
   events: { type: [String], default: [] },
   active: { type: Boolean, default: true },

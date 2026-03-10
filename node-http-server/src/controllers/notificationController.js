@@ -39,8 +39,48 @@ const markAllNotificationsRead = async (req, res, next) => {
   }
 };
 
+const sendTechnicianMessage = async (req, res, next) => {
+  try {
+    const { message } = req.body || {};
+    if (!message || !String(message).trim()) {
+      return response.badRequest(res, 'Message is required');
+    }
+    const notifications = await notificationService.notifyAdminsAndManagers(
+      req.user.organization,
+      req.user,
+      String(message).trim()
+    );
+    response.success(res, 'Message sent', { sent: notifications.length });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const sendReplyToUser = async (req, res, next) => {
+  try {
+    const { userId, message } = req.body || {};
+    if (!userId) {
+      return response.badRequest(res, 'User ID is required');
+    }
+    if (!message || !String(message).trim()) {
+      return response.badRequest(res, 'Message is required');
+    }
+    const result = await notificationService.notifyUser(
+      req.user.organization,
+      userId,
+      req.user,
+      String(message).trim()
+    );
+    response.success(res, 'Reply sent', { sent: !!result });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getNotifications,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  sendTechnicianMessage,
+  sendReplyToUser
 };

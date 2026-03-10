@@ -1,30 +1,8 @@
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
-const path = require('path');
-const fs = require('fs');
-
-// Create upload directories if they don't exist
-const uploadDirs = ['uploads/assets', 'uploads/avatars', 'uploads/certificates', 'uploads/documents', 'uploads/workorder-photos'];
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// ========== ASSET UPLOADS (Images only) ==========
-const assetStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/assets/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `asset-${uniqueSuffix}${fileExtension}`);
-  }
-});
+const memoryStorage = multer.memoryStorage();
 
 const assetUpload = multer({
-  storage: assetStorage,
+  storage: memoryStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
@@ -36,19 +14,8 @@ const assetUpload = multer({
 });
 
 // ========== AVATAR/PROFILE UPLOADS (Images only) ==========
-const avatarStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/avatars/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `avatar-${uniqueSuffix}${fileExtension}`);
-  }
-});
-
 const avatarUpload = multer({
-  storage: avatarStorage,
+  storage: memoryStorage,
   limits: { fileSize: 3 * 1024 * 1024 }, // 3MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
@@ -60,19 +27,8 @@ const avatarUpload = multer({
 });
 
 // ========== CERTIFICATE UPLOADS (PDF and Images) ==========
-const certificateStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/certificates/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `certificate-${uniqueSuffix}${fileExtension}`);
-  }
-});
-
 const certificateUpload = multer({
-  storage: certificateStorage,
+  storage: memoryStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'application/pdf'];
@@ -84,19 +40,8 @@ const certificateUpload = multer({
 });
 
 // ========== DOCUMENT UPLOADS (PDF, Word, Excel, etc.) ==========
-const documentStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/documents/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `document-${uniqueSuffix}${fileExtension}`);
-  }
-});
-
 const documentUpload = multer({
-  storage: documentStorage,
+  storage: memoryStorage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
@@ -117,19 +62,8 @@ const documentUpload = multer({
 });
 
 // ========== WORKORDER PHOTO UPLOADS (Images only) ==========
-const workOrderPhotoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/workorder-photos/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    const fileExtension = path.extname(file.originalname);
-    cb(null, `workorder-photo-${uniqueSuffix}${fileExtension}`);
-  }
-});
-
 const workOrderPhotoUpload = multer({
-  storage: workOrderPhotoStorage,
+  storage: memoryStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];

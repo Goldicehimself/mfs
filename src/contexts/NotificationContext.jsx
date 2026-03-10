@@ -32,7 +32,7 @@ export const NotificationProvider = ({ children }) => {
     }));
 
   const refreshNotifications = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token || token.startsWith('local-')) return;
 
     try {
@@ -53,7 +53,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAsRead = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (token && !token.startsWith('local-')) {
         await markNotificationRead(id);
       }
@@ -71,7 +71,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (token && !token.startsWith('local-')) {
         await markAllNotificationsRead();
       }

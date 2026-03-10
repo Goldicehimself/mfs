@@ -161,6 +161,11 @@ body {
   border-color: #1f2937;
 }
 
+/* Ensure the SVG logo remains visible on dark surfaces */
+.dark .fp-logo {
+  filter: brightness(1.6) contrast(1.1) saturate(1.05);
+}
+
 /* KPI styles migrated to Tailwind — removed */
 
 

@@ -49,9 +49,10 @@ import Inventory from './pages/Inventory/Inventory';
 import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
 import Profile from './pages/Settings/Profile';
-import OrgAdmin from './pages/Org/OrgAdmin';
 import Help from './pages/Help/Help';
 import PublicHelp from './pages/Help/PublicHelp';
+import Messages from './pages/Messages/Messages';
+import TechnicianMessages from './pages/Messages/TechnicianMessages';
 
 // Role-based route wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -290,7 +291,7 @@ const AppRoutes = () => {
       } />
       
       <Route path="/settings" element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
           <MainLayout><Settings /></MainLayout>
         </ProtectedRoute>
       } />
@@ -301,15 +302,22 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      <Route path="/org-admin" element={
-        <ProtectedRoute allowedRoles={["admin"]}>
-          <MainLayout><OrgAdmin /></MainLayout>
-        </ProtectedRoute>
-      } />
 
       <Route path="/help" element={
         <ProtectedRoute>
           <MainLayout><Help /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/messages" element={
+        <ProtectedRoute allowedRoles={["facility_manager", "admin"]}>
+          <MainLayout><Messages /></MainLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/technician-messages" element={
+        <ProtectedRoute allowedRoles={["technician"]}>
+          <MainLayout><TechnicianMessages /></MainLayout>
         </ProtectedRoute>
       } />
       

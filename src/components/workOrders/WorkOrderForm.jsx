@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Delete, ArrowLeft, Upload } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { createWorkOrder } from '../../api/workOrders';
+import { fetchMembers } from '../../api/org';
 import { useQuery, useQueryClient } from 'react-query';
 import { getAssets } from '../../api/assets';
 import { fetchVendors } from '../../api/vendors';
@@ -141,15 +142,60 @@ export default function WorkOrderForm() {
     setFileItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const assignees = useMemo(() => {
-    const localUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
-    const technicians = localUsers.filter(u => u.role === 'technician');
-    if (technicians.length > 0) return technicians;
-    return [
-      { id: 'tech1', name: 'John Doe' },
-      { id: 'tech2', name: 'Jane Smith' },
-    ];
+  const [orgMembers, setOrgMembers] = useState([]);
+  const [assigneesLoading, setAssigneesLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const loadMembers = async () => {
+      setAssigneesLoading(true);
+      try {
+        const data = await fetchMembers({ role: 'technician', limit: 200 });
+        const members = Array.isArray(data?.members)
+          ? data.members
+          : Array.isArray(data)
+          ? data
+          : [];
+        if (active) setOrgMembers(members);
+      } catch (err) {
+        if (active) setOrgMembers([]);
+      } finally {
+        if (active) setAssigneesLoading(false);
+      }
+    };
+    loadMembers();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const assignees = useMemo(() => {
+    const normalizeMember = (member) => ({
+      ...member,
+      id: member.id || member._id,
+      name:
+        member.name ||
+        [member.firstName, member.lastName].filter(Boolean).join(' ') ||
+        member.email ||
+        'Unknown',
+    });
+
+    const technicians = orgMembers
+      .filter((member) => member.role === 'technician')
+      .map(normalizeMember)
+      .filter((member) => member.id);
+
+    if (technicians.length > 0) return technicians;
+
+    const localUsers = JSON.parse(localStorage.getItem('local_users') || '[]');
+    const localTechnicians = localUsers
+      .filter((u) => u.role === 'technician')
+      .map(normalizeMember)
+      .filter((member) => member.id);
+    if (localTechnicians.length > 0) return localTechnicians;
+
+    return [];
+  }, [orgMembers]);
   const imageItems = fileItems.filter((item) => item.isImage && item.previewUrl);
   const otherItems = fileItems.filter((item) => !item.isImage || !item.previewUrl);
 
@@ -511,10 +557,17 @@ export default function WorkOrderForm() {
                         const next = assignees.find(a => a.id === e.target.value) || '';
                         field.onChange(next);
                       }}
+                      disabled={assigneesLoading}
                       className="w-full px-4 py-2.5 border border-gray-200 dark:border-zinc-700 rounded-lg bg-gray-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Unassigned</option>
-                      {assignees.map((t) => (
+                      {assigneesLoading && (
+                        <option value="" disabled>Loading technicians...</option>
+                      )}
+                      {!assigneesLoading && assignees.length === 0 && (
+                        <option value="" disabled>No technicians found</option>
+                      )}
+                      {!assigneesLoading && assignees.map((t) => (
                         <option key={t.id} value={t.id}>{t.name}</option>
                       ))}
                     </select>

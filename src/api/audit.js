@@ -1,7 +1,7 @@
 import axiosInstance from './axiosConfig';
 
 export const getLoginHistory = async (userId) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (!token || token.startsWith('local-')) {
     return [];
   }

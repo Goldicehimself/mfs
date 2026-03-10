@@ -12,7 +12,8 @@ const {
   verifyOrgEmailQuerySchema,
   resendOrgEmailBodySchema,
   createWebhookSchema,
-  createApiKeySchema
+  createApiKeySchema,
+  updateCertificateStatusSchema
 } = require('../validators/orgValidator');
 
 router.get('/members', protect, authorize('admin', 'facility_manager'), orgController.listMembers);
@@ -31,5 +32,12 @@ router.delete('/integrations/api-keys/:id', protect, authorize('admin'), orgCont
 router.patch('/disable', protect, authorize('admin'), orgController.disableOrganization);
 router.patch('/enable', protect, authorize('admin'), orgController.enableOrganization);
 router.patch('/users/:id/active', protect, authorize('admin'), validateRequest(setUserActiveSchema), orgController.setUserActiveStatus);
+router.patch(
+  '/users/:id/certificates/status',
+  protect,
+  authorize('admin', 'facility_manager'),
+  validateRequest(updateCertificateStatusSchema),
+  orgController.updateCertificateStatus
+);
 
 module.exports = router;

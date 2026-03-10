@@ -16,7 +16,6 @@ module.exports = {
   // File Upload
   MAX_FILE_SIZE: 5242880, // 5MB in bytes
   ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
-  UPLOAD_PATH: 'uploads/',
   
   // Role Constants
   ROLES: {

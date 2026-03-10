@@ -23,10 +23,13 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import { fetchMembers, fetchInvites, disableOrg, enableOrg, setUserActive, revokeInvite, createInvite } from '@/api/org';
+import { useAuth } from '@/contexts/AuthContext';
 
 const OrgAdmin = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +38,12 @@ const OrgAdmin = () => {
   const [disableConfirmOpen, setDisableConfirmOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState('staff');
   const [inviteExpiresDays, setInviteExpiresDays] = useState('7');
+  const [showRoleDescriptions, setShowRoleDescriptions] = useState(false);
 
-  const orgCode = useMemo(() => localStorage.getItem('orgCode') || '', []);
+  const orgCode = useMemo(
+    () => localStorage.getItem('orgCode') || sessionStorage.getItem('orgCode') || '',
+    []
+  );
 
   const loadData = async () => {
     setLoading(true);
@@ -127,6 +134,17 @@ const OrgAdmin = () => {
     }
   };
 
+  const roleDescriptions = [
+    { role: 'Admin', description: 'Full access to organization settings, billing, and integrations.' },
+    { role: 'Facility Manager', description: 'Manage work orders, assets, teams, and operations.' },
+    { role: 'Technician', description: 'View and complete assigned work orders.' },
+    { role: 'Staff', description: 'Create requests and assist with operations.' },
+    { role: 'Vendor', description: 'Handle assigned vendor work orders and updates.' },
+    { role: 'Finance', description: 'View financial reports and cost tracking.' },
+    { role: 'Procurement', description: 'Manage purchasing and vendor sourcing.' },
+  ];
+
+
   return (
     <Box sx={{ backgroundColor: isDark ? '#0b1120' : 'transparent' }}>
       <Box mb={3} display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
@@ -136,14 +154,16 @@ const OrgAdmin = () => {
             Manage members, invites, and org status
           </Typography>
         </Box>
-        <Box display="flex" gap={1} flexWrap="wrap">
-          <Button variant="outlined" onClick={handleEnableOrg} sx={{ color: isDark ? '#e2e8f0' : undefined }}>
-            Enable Org
-          </Button>
-          <Button variant="contained" color="error" onClick={() => setDisableConfirmOpen(true)}>
-            Disable Org
-          </Button>
-        </Box>
+        {isAdmin && (
+          <Box display="flex" gap={1} flexWrap="wrap">
+            <Button variant="outlined" onClick={handleEnableOrg} sx={{ color: isDark ? '#e2e8f0' : undefined }}>
+              Enable Org
+            </Button>
+            <Button variant="contained" color="error" onClick={() => setDisableConfirmOpen(true)}>
+              Disable Org
+            </Button>
+          </Box>
+        )}
       </Box>
 
       <Paper sx={{ p: 2, mb: 3, backgroundColor: isDark ? '#0f172a' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
@@ -355,6 +375,30 @@ const OrgAdmin = () => {
         </Table>
       </Paper>
 
+      <Paper sx={{ p: 2, mt: 3, backgroundColor: isDark ? '#0f172a' : '#fff', border: `1px solid ${isDark ? '#1f2937' : '#e2e8f0'}` }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mb={showRoleDescriptions ? 1 : 0}>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">Role Descriptions</Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setShowRoleDescriptions((prev) => !prev)}
+            sx={{ color: isDark ? '#e2e8f0' : undefined }}
+          >
+            {showRoleDescriptions ? 'Hide' : 'Show'}
+          </Button>
+        </Box>
+        {showRoleDescriptions && (
+          <Box display="grid" gap={1}>
+            {roleDescriptions.map((item) => (
+              <Box key={item.role} display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                <Typography variant="body2" fontWeight={600} color="text.primary">{item.role}</Typography>
+                <Typography variant="body2" color="text.secondary">{item.description}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Paper>
+
       <Dialog open={disableConfirmOpen} onClose={() => setDisableConfirmOpen(false)}>
         <DialogTitle>Disable organization?</DialogTitle>
         <DialogContent>
@@ -364,16 +408,18 @@ const OrgAdmin = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDisableConfirmOpen(false)}>Cancel</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={async () => {
-              setDisableConfirmOpen(false);
-              await handleDisableOrg();
-            }}
-          >
-            Disable
-          </Button>
+          {isAdmin && (
+            <Button
+              color="error"
+              variant="contained"
+              onClick={async () => {
+                setDisableConfirmOpen(false);
+                await handleDisableOrg();
+              }}
+            >
+              Disable
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

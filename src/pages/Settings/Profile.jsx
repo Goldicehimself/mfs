@@ -20,7 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { getHomeRoute } from '../../utils/roleHome';
 import axios from 'axios';
-import { updateProfile, uploadCertificates } from '../../api/profile';
+import { updateProfile, uploadCertificates, getCertificateUrl, deleteCertificate } from '../../api/profile';
 import { getLoginHistory } from '../../api/audit';
 import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
@@ -71,6 +71,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [prefEmailNotifications, setPrefEmailNotifications] = useState(false);
+  const [prefInAppNotifications, setPrefInAppNotifications] = useState(true);
   const [loginHistory, setLoginHistory] = useState([]);
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -90,6 +92,12 @@ const Profile = () => {
         role: user?.role || ''
       });
       setCertificates(user?.certificates || []);
+      setPrefEmailNotifications(Boolean(user?.preferences?.emailNotifications));
+      setPrefInAppNotifications(
+        typeof user?.preferences?.inAppNotifications === 'boolean'
+          ? user.preferences.inAppNotifications
+          : true
+      );
     }
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -114,8 +122,15 @@ const Profile = () => {
       return;
     }
 
+    const cacheKey = user?.updatedAt || user?.avatarUpdatedAt || '';
+    const withCache = (url) => {
+      if (!cacheKey || !url) return url;
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}v=${encodeURIComponent(cacheKey)}`;
+    };
+
     if (user.avatar.startsWith('data:') || user.avatar.startsWith('http')) {
-      setAvatarPreview(user.avatar);
+      setAvatarPreview(withCache(user.avatar));
       return;
     }
 
@@ -130,8 +145,8 @@ const Profile = () => {
 
     const loadAvatar = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(buildUploadUrl(user.avatar), {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const response = await axios.get(withCache(buildUploadUrl(user.avatar)), {
           responseType: 'blob',
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
@@ -229,7 +244,11 @@ const Profile = () => {
         firstName: firstName || user?.firstName || '',
         lastName,
         phone: formData.phone,
-        phoneCountryCode: getDialCode(formData.phone)
+        phoneCountryCode: getDialCode(formData.phone),
+        preferences: {
+          emailNotifications: prefEmailNotifications,
+          inAppNotifications: prefInAppNotifications
+        }
       };
 
       const updated = await updateProfile(payload, selectedImageFile);
@@ -343,7 +362,7 @@ const Profile = () => {
 
     if (validFiles.length === 0) return;
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (!token || token.startsWith('local-')) {
       toast.error('Certificate upload requires a backend login');
       event.target.value = '';
@@ -367,10 +386,21 @@ const Profile = () => {
     event.target.value = '';
   };
 
-  const handleRemoveCertificate = (id) => {
-    const token = localStorage.getItem('token');
+  const handleRemoveCertificate = async (id) => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token && !token.startsWith('local-')) {
-      toast.info('Certificate removal is not available yet.');
+      try {
+        await deleteCertificate(id);
+        const next = certificates.filter((c) => {
+          const certId = typeof c === 'string' ? c : c?.publicId;
+          return certId !== id;
+        });
+        setCertificates(next);
+        updateUser({ certificates: next });
+        toast.success('Certificate removed');
+      } catch (error) {
+        toast.error('Failed to remove certificate');
+      }
       return;
     }
     const next = certificates.filter((c) => (c?.id || c) !== id);
@@ -430,7 +460,20 @@ const Profile = () => {
   })();
   const isCertifiedTechnician = user?.role === 'technician'
     && Array.isArray(certificates)
-    && certificates.length > 0;
+    && certificates.some((cert) => (typeof cert === 'string' ? true : cert.status === 'approved' || !cert.status));
+
+  const openCertificate = async (cert) => {
+    try {
+      const publicId = typeof cert === 'string' ? cert : cert.publicId;
+      if (!publicId) throw new Error('Missing certificate id');
+      const data = await getCertificateUrl({ publicId, userId: user?.id });
+      if (data?.url) {
+        window.open(data.url, '_blank', 'noopener');
+      }
+    } catch (error) {
+      toast.error('Unable to open certificate');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(99,102,241,0.12),_transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_65%)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(30,64,175,0.25),_transparent_50%),radial-gradient(circle_at_80%_10%,_rgba(15,23,42,0.8),_transparent_45%),linear-gradient(180deg,#0b1120_0%,#0f172a_70%)]">
@@ -483,7 +526,7 @@ const Profile = () => {
 
         <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div className="space-y-6">
-            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
+            <Card className="relative z-20 border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Profile</CardTitle>
                 <CardDescription>Manage your identity and contact details.</CardDescription>
@@ -689,19 +732,19 @@ const Profile = () => {
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {certificates.map((cert) => {
-                      const certPath =
-                        typeof cert === 'string' ? cert : cert?.path || cert?.dataUrl || '';
                       const fileName =
                         typeof cert === 'string'
-                          ? certPath.split('/').pop()
-                          : cert?.name || certPath.split('/').pop();
+                          ? cert.split('/').pop()
+                          : cert?.originalName || cert?.publicId;
                       const isPdf =
                         typeof cert === 'string'
                           ? fileName?.toLowerCase().endsWith('.pdf')
-                          : cert?.type === 'application/pdf';
+                          : cert?.mimeType === 'application/pdf';
+                      const status =
+                        typeof cert === 'string' ? 'approved' : cert?.status || 'approved';
                       return (
                         <div
-                          key={cert?.id || certPath}
+                          key={typeof cert === 'string' ? cert : cert?.publicId}
                           className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900"
                         >
                           <div className="flex items-center gap-3">
@@ -712,9 +755,18 @@ const Profile = () => {
                               <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">{fileName}</p>
                               <p className="text-xs text-slate-500 dark:text-slate-400">Uploaded</p>
                             </div>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                              status === 'approved'
+                                ? 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                                : status === 'rejected'
+                                  ? 'border-rose-200 text-rose-700 bg-rose-50 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+                                  : 'border-amber-200 text-amber-700 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+                            }`}>
+                              {status}
+                            </span>
                             <button
                               type="button"
-                              onClick={() => handleRemoveCertificate(cert?.id || certPath)}
+                              onClick={() => handleRemoveCertificate(typeof cert === 'string' ? cert : cert?.publicId)}
                               className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                               title="Remove"
                             >
@@ -725,11 +777,7 @@ const Profile = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
-                                typeof cert === 'string'
-                                  ? openProtectedFile(certPath)
-                                  : window.open(cert?.dataUrl, '_blank')
-                              }
+                              onClick={() => openCertificate(cert)}
                             >
                               View
                             </Button>
@@ -777,6 +825,33 @@ const Profile = () => {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   Last login: {new Date().toLocaleDateString()}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70 bg-white/90 dark:border-slate-800 dark:bg-slate-900/90">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Preferences</CardTitle>
+                <CardDescription>Simple personal settings for your account.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                  <span className="text-slate-700 dark:text-slate-200">Email notifications</span>
+                  <input
+                    type="checkbox"
+                    checked={prefEmailNotifications}
+                    onChange={(e) => setPrefEmailNotifications(e.target.checked)}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                  <span className="text-slate-700 dark:text-slate-200">In-app notifications</span>
+                  <input
+                    type="checkbox"
+                    checked={prefInAppNotifications}
+                    onChange={(e) => setPrefInAppNotifications(e.target.checked)}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                </label>
               </CardContent>
             </Card>
 

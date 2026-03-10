@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Menu, LogOut, Settings, User, Wrench, ChevronsLeft, ChevronsRight, Search, Sun, Moon, Laptop } from "lucide-react";
-import { motion } from 'framer-motion';
+import { Menu, LogOut, Settings, User, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
-import { useTheme } from "../../../contexts/ThemeContext";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import ProtectedImage from "@/components/common/ProtectedImage";
 
 import NavigationMenu from "../Navigation/NavigationMenu";
 import NotificationDropdown from "../Notifications/NotificationDropdown";
@@ -29,7 +28,6 @@ const MainLayout = ({ children }) => {
   const [sidebarHover, setSidebarHover] = useState(false);
   const hoverTimeoutRef = React.useRef(null);
   const { user, logout } = useAuth();
-  const { theme, resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   /* =========================
@@ -93,23 +91,12 @@ const MainLayout = ({ children }) => {
           </Button>
 
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-4">
-              <div className="relative h-10 w-10 rounded-xl flex items-center justify-center text-white font-semibold overflow-hidden shadow-lg" style={{ backgroundColor: "var(--mp-brand)", boxShadow: "0 10px 15px -3px rgba(30, 58, 138, 0.4)" }}>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 12, ease: 'linear', repeat: Infinity }}
-                  style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transformOrigin: 'center' }}
-                >
-                  <Wrench size={20} color="#fff" />
-                </motion.div>
-              </div>
-
-              <div>
-                <div className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                  FacilityPro
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">Maintenance Made Simple</div>
-              </div>
+            <div className="flex items-center">
+              <img
+                src="/facilitypro-logo.svg"
+                alt="FacilityPro logo"
+                className="h-14 w-auto fp-logo"
+              />
             </div>
 
           </div>
@@ -188,10 +175,13 @@ const MainLayout = ({ children }) => {
                 variant="ghost"
                 className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-slate-100 transition text-slate-900"
               >
-                <Avatar className="h-8 w-8 border-2 border-white bg-white shadow-sm">
-                  <AvatarImage
+                <Avatar className="h-8 w-8 border-2 border-white bg-white shadow-sm overflow-hidden">
+                  <ProtectedImage
                     src={user?.avatar}
                     alt={user?.name || "User avatar"}
+                    cacheKey={user?.updatedAt || user?.avatarUpdatedAt || ''}
+                    className="h-full w-full object-cover rounded-full"
+                    fallback="/avatar-placeholder.svg"
                   />
                   <AvatarFallback className="bg-slate-200 font-semibold text-xs text-slate-700">
                     {user?.name?.charAt(0) || "U"}
@@ -221,8 +211,14 @@ const MainLayout = ({ children }) => {
               {/* User Info */}
               <div className="px-4 py-3 border-b border-slate-200">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border border-slate-200 bg-blue-50">
-                    <AvatarImage src={user?.avatar} />
+                  <Avatar className="h-10 w-10 border border-slate-200 bg-blue-50 overflow-hidden">
+                    <ProtectedImage
+                      src={user?.avatar}
+                      alt={user?.name || "User avatar"}
+                      cacheKey={user?.updatedAt || user?.avatarUpdatedAt || ''}
+                      className="h-full w-full object-cover rounded-full"
+                      fallback="/avatar-placeholder.svg"
+                    />
                     <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
                       {user?.name?.charAt(0) || "U"}
                     </AvatarFallback>
@@ -246,40 +242,15 @@ const MainLayout = ({ children }) => {
                 My Profile
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => navigate("/settings")}
-                className="cursor-pointer gap-2 text-slate-700"
-              >
-                <Settings className="h-4 w-4 text-slate-500" />
-                Settings
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem disabled sx={{ fontSize: 12, opacity: 0.7 }}>
-                Appearance
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme('light')}
-                className="cursor-pointer gap-2 text-slate-700"
-              >
-                <Sun className="h-4 w-4 text-slate-500" />
-                Light {theme === 'light' && '✓'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme('dark')}
-                className="cursor-pointer gap-2 text-slate-700"
-              >
-                <Moon className="h-4 w-4 text-slate-500" />
-                Dark {theme === 'dark' && '✓'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme('system')}
-                className="cursor-pointer gap-2 text-slate-700"
-              >
-                <Laptop className="h-4 w-4 text-slate-500" />
-                System {theme === 'system' && `(${resolvedTheme})`} {theme === 'system' && '✓'}
-              </DropdownMenuItem>
+              {['admin', 'facility_manager'].includes(user?.role) && (
+                <DropdownMenuItem
+                  onClick={() => navigate("/settings")}
+                  className="cursor-pointer gap-2 text-slate-700"
+                >
+                  <Settings className="h-4 w-4 text-slate-500" />
+                  Settings
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuSeparator />
 
@@ -353,3 +324,5 @@ const MainLayout = ({ children }) => {
 };
 
 export default MainLayout;
+
+

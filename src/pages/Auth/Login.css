@@ -27,29 +27,14 @@
   margin-bottom: 18px;
 }
 
-.auth-logo {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  background: #2b4a70;
-  display: grid;
-  place-items: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+.auth-logo-img {
+  width: 220px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
 }
 
-.auth-logo-spin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.auth-brand-name {
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: -0.2px;
-}
 
 .auth-header {
   text-align: center;
